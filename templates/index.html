@@ -106,8 +106,10 @@ header span { color:var(--dim); font-size:0.85rem; }
           {% endif %}
         </div>
       </a>
-      <button class="del-btn" title="Supprimer"
-        onclick="delProject({{ p.id }}, '{{ p.name|replace("'","\'") }}')">
+      <button class="del-btn"
+        data-id="{{ p.id }}"
+        data-name="{{ p.name|replace('"', '&quot;') }}"
+        title="Supprimer ce projet">
         &times;
       </button>
     </div>
@@ -164,6 +166,29 @@ header span { color:var(--dim); font-size:0.85rem; }
 </div>
 
 <script>
+// Attacher les événements delete via addEventListener (pas onclick dans le HTML)
+// → évite le ReferenceError "delProject is not defined"
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.del-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();  // empêche de naviguer vers le projet
+      var id   = this.dataset.id;
+      var name = this.dataset.name;
+      if (!confirm('Supprimer "' + name + '" ?
+Toutes les donnees seront perdues.')) return;
+      fetch('/api/projects/' + id, { method: 'DELETE' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) { if (d.ok) location.reload(); });
+    });
+  });
+
+  // Fermer modal en cliquant dehors
+  document.getElementById('modal-new').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+  });
+});
+
 function createProject() {
   var name = document.getElementById('np-name').value.trim();
   if (!name) { alert('Nom obligatoire'); return; }
