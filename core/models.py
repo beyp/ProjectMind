@@ -311,6 +311,17 @@ def get_risks(project_id: int) -> list[dict]:
 
 # ── Fiscal Year helpers ────────────────────────────────────────────────────────
 
+def delete_project(project_id: int) -> bool:
+    """Supprime un projet et toutes ses donnees (CASCADE)."""
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("DELETE FROM projects WHERE id=?", (project_id,))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
+
+
 def get_fiscal_year(d: date | None = None) -> str:
     """Retourne le Fiscal Year pour une date (ex: FY27)."""
     if d is None:
