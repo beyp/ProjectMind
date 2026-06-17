@@ -1,0 +1,17 @@
+# Ajouter dans AION pour lancer ProjectMind
+# Usage : depuis le repo AION
+#   docker-compose -f docker-compose.yml -f aion/docker-compose.projectmind.yml up -d
+
+version: "3.9"
+
+services:
+  projectmind:
+    image: projectmind:latest
+    container_name: projectmind
+    ports:
+      - "8766:8766"
+    volumes:
+      - ./data/projectmind:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
