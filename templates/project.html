@@ -200,12 +200,52 @@ header h1{color:var(--accent);font-size:1.1rem;}
 
     <div class="tab-content" id="tc-ai">
       <div class="card">
-        <div class="card-ttl">Assistant IA - Groq</div>
-        <p style="color:var(--dim);font-size:0.8rem;margin-bottom:10px;">Collez du texte brut — l IA structurera les taches automatiquement. Ctrl+Entree pour envoyer.</p>
-        <div class="chist" id="chist"><div style="color:var(--dim);">Pret. Collez vos notes ici.</div></div>
-        <div style="display:flex;gap:8px;">
-          <textarea class="cinput" id="cinput" rows="4" placeholder="Collez vos notes, emails, compte-rendus..."></textarea>
-          <div style="display:flex;flex-direction:column;gap:6px;">
+        <div class="card-ttl">
+          Assistant IA - Groq
+          <span id="ai-model-badge" style="margin-left:8px;font-size:0.7rem;background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);padding:2px 8px;border-radius:10px;text-transform:none;letter-spacing:0;">
+            llama-3.3-70b
+          </span>
+        </div>
+        <p style="color:var(--dim);font-size:0.8rem;margin-bottom:12px;">
+          Collez du texte ou deposez une image — l IA extraira les taches automatiquement.
+          <br>Avec image : bascule automatiquement sur <b style="color:var(--accent);">llama-4-scout</b> (vision).
+        </p>
+
+        <!-- Zone de drop image -->
+        <div id="img-drop-zone"
+          style="border:2px dashed var(--border);border-radius:8px;padding:16px;
+            text-align:center;margin-bottom:12px;cursor:pointer;transition:border-color 0.2s;
+            color:var(--dim);font-size:0.83rem;">
+          <div id="img-drop-label">
+            &#x1F4F7; Glisser-deposer une image ici ou
+            <label for="img-input" style="color:var(--accent);cursor:pointer;text-decoration:underline;">
+              cliquer pour choisir
+            </label>
+          </div>
+          <input type="file" id="img-input" accept="image/*" style="display:none;">
+          <!-- Preview image -->
+          <div id="img-preview" style="display:none;margin-top:8px;position:relative;">
+            <img id="img-preview-el" style="max-height:180px;max-width:100%;border-radius:6px;border:1px solid var(--border);">
+            <button id="img-clear"
+              style="position:absolute;top:4px;right:4px;background:var(--red);color:white;
+                border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;
+                font-size:0.85rem;line-height:20px;text-align:center;">
+              &times;
+            </button>
+            <div id="img-info" style="margin-top:4px;font-size:0.75rem;color:var(--green);"></div>
+          </div>
+        </div>
+
+        <!-- Historique -->
+        <div class="chist" id="chist">
+          <div style="color:var(--dim);">Pret. Collez du texte ou deposez une image.</div>
+        </div>
+
+        <!-- Input texte + boutons -->
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <textarea class="cinput" id="cinput" rows="3"
+            placeholder="Texte optionnel (contexte, notes supplementaires)..."></textarea>
+          <div style="display:flex;flex-direction:column;gap:6px;min-width:110px;">
             <button class="btn btn-p" id="btn-send-ai">Analyser</button>
             <button class="btn btn-n" id="btn-restructure">Restructurer</button>
           </div>
@@ -438,50 +478,235 @@ document.getElementById('btn-confirm-task').addEventListener('click', function()
 });
 
 // ── IA Chat ───────────────────────────────────────────────────────────────────
-document.getElementById('btn-send-ai').addEventListener('click', function() {
-  var text = document.getElementById('cinput').value.trim();
-  if (!text) return;
-  var hist = document.getElementById('chist');
-  hist.insertAdjacentHTML('beforeend', '<div style="color:#1e90ff;margin-top:8px;">Vous: ' + text.slice(0,100) + '...</div>');
-  hist.insertAdjacentHTML('beforeend', '<div id="ai-load" style="color:#888;">Analyse Groq en cours...</div>');
+// ── Gestion image ─────────────────────────────────────────────────────────────
+window._pm_image = null;  // { data: base64, mime: string, name: string }
+
+function updateModelBadge(hasImage) {
+  var badge = document.getElementById('ai-model-badge');
+  if (badge) {
+    badge.textContent = hasImage ? 'llama-4-scout (vision)' : 'llama-3.3-70b';
+    badge.style.background = hasImage
+      ? 'color-mix(in srgb,#9C27B0 15%,transparent)'
+      : 'color-mix(in srgb,var(--accent) 15%,transparent)';
+    badge.style.color = hasImage ? '#9C27B0' : 'var(--accent)';
+  }
+}
+
+function loadImageFile(file) {
+  if (!file || !file.type.startsWith('image/')) {
+    alert('Fichier non supporté. Choisissez une image (JPG, PNG, WEBP, GIF).');
+    return;
+  }
+  var maxSize = 10 * 1024 * 1024; // 10 MB
+  if (file.size > maxSize) {
+    alert('Image trop grande (max 10 MB). Réduisez la taille.');
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var dataUrl  = e.target.result;
+    var base64   = dataUrl.split(',')[1];
+    var mime     = file.type;
+    window._pm_image = { data: base64, mime: mime, name: file.name };
+    // Afficher la preview
+    var preview = document.getElementById('img-preview');
+    var previewEl = document.getElementById('img-preview-el');
+    var dropLabel = document.getElementById('img-drop-label');
+    var info = document.getElementById('img-info');
+    if (previewEl) previewEl.src = dataUrl;
+    if (preview) preview.style.display = 'block';
+    if (dropLabel) dropLabel.style.display = 'none';
+    if (info) info.textContent = file.name + ' (' + (file.size/1024).toFixed(0) + ' KB) — ' + mime;
+    // Mettre à jour le badge modèle
+    updateModelBadge(true);
+    // Changer la couleur de la zone de drop
+    var zone = document.getElementById('img-drop-zone');
+    if (zone) zone.style.borderColor = '#9C27B0';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImage() {
+  window._pm_image = null;
+  var preview   = document.getElementById('img-preview');
+  var previewEl = document.getElementById('img-preview-el');
+  var dropLabel = document.getElementById('img-drop-label');
+  var imgInput  = document.getElementById('img-input');
+  if (preview)   preview.style.display = 'none';
+  if (previewEl) previewEl.src = '';
+  if (dropLabel) dropLabel.style.display = 'block';
+  if (imgInput)  imgInput.value = '';
+  updateModelBadge(false);
+  var zone = document.getElementById('img-drop-zone');
+  if (zone) zone.style.borderColor = '';
+}
+
+// Events image
+var imgInput = document.getElementById('img-input');
+if (imgInput) imgInput.addEventListener('change', function() {
+  if (this.files && this.files[0]) loadImageFile(this.files[0]);
+});
+
+var imgClear = document.getElementById('img-clear');
+if (imgClear) imgClear.addEventListener('click', function(e) {
+  e.stopPropagation();
+  clearImage();
+});
+
+var dropZone = document.getElementById('img-drop-zone');
+if (dropZone) {
+  dropZone.addEventListener('click', function(e) {
+    if (e.target !== document.getElementById('img-clear')) {
+      document.getElementById('img-input').click();
+    }
+  });
+  dropZone.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    this.style.borderColor = 'var(--accent)';
+    this.style.background  = 'color-mix(in srgb,var(--accent) 5%,transparent)';
+  });
+  dropZone.addEventListener('dragleave', function() {
+    this.style.borderColor = '';
+    this.style.background  = '';
+  });
+  dropZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.style.borderColor = '';
+    this.style.background  = '';
+    var files = e.dataTransfer.files;
+    if (files && files[0]) loadImageFile(files[0]);
+  });
+}
+
+// Coller une image depuis le presse-papiers (Ctrl+V)
+document.addEventListener('paste', function(e) {
+  var items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type.startsWith('image/')) {
+      var file = items[i].getAsFile();
+      if (file) {
+        loadImageFile(file);
+        // Feedback dans le chat
+        var hist = document.getElementById('chist');
+        if (hist) hist.insertAdjacentHTML('beforeend',
+          '<div style="color:#9C27B0;font-size:0.8rem;margin-top:4px;">&#x1F4CB; Image collee depuis le presse-papiers</div>');
+      }
+    }
+  }
+});
+
+// ── Analyser texte ou image ────────────────────────────────────────────────────
+function doAIAnalysis() {
+  var text     = document.getElementById('cinput').value.trim();
+  var hasImage = !!window._pm_image;
+  var hist     = document.getElementById('chist');
+
+  if (!text && !hasImage) {
+    alert('Collez du texte ou deposez une image.');
+    return;
+  }
+
+  // Message dans l historique
+  var preview_msg = hasImage
+    ? '&#x1F4F7; Image: ' + window._pm_image.name + (text ? ' + texte' : '')
+    : text.slice(0, 100) + (text.length > 100 ? '...' : '');
+
+  hist.insertAdjacentHTML('beforeend',
+    '<div style="color:#1e90ff;margin-top:8px;">Vous: ' + preview_msg + '</div>');
+
+  var model_label = hasImage ? 'llama-4-scout (vision)' : 'llama-3.3-70b';
+  hist.insertAdjacentHTML('beforeend',
+    '<div id="ai-load" style="color:#888;">&#x23F3; Analyse ' + model_label + ' en cours...</div>');
   hist.scrollTop = hist.scrollHeight;
-  fetch('/api/projects/' + PID + '/ai/parse', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: text, language: LANG })
+
+  var url     = hasImage
+    ? '/api/projects/' + PID + '/ai/parse-image'
+    : '/api/projects/' + PID + '/ai/parse';
+
+  var payload = hasImage
+    ? { image_data: window._pm_image.data, image_mime: window._pm_image.mime,
+        text_context: text, language: LANG }
+    : { text: text, language: LANG };
+
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
     var ld = document.getElementById('ai-load');
     if (ld) ld.remove();
-    if (data.error) { hist.insertAdjacentHTML('beforeend', '<div style="color:#f44336;">Erreur: ' + data.error + '</div>'); return; }
+
+    if (data.error) {
+      hist.insertAdjacentHTML('beforeend',
+        '<div style="color:#f44336;">Erreur: ' + data.error + '</div>');
+      return;
+    }
+
     var tasks = data.tasks || [];
+    var model_used = data.model || model_label;
+
     var html = '<div style="background:#1a1d27;border:1px solid #2a2d3e;border-radius:6px;padding:10px;margin-top:8px;">';
-    html += '<b style="color:#4caf50;">' + tasks.length + ' tache(s) identifiee(s):</b><br><br>';
-    tasks.forEach(function(t, i) {
-      html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 6px;background:#0a0c14;border-radius:4px;margin-bottom:3px;font-size:0.8rem;">';
-      html += '<span style="color:#1e90ff;">' + (t.category||'') + '</span> | ';
-      html += '<span>' + (t.title||'') + '</span> | ';
-      html += '<span style="color:#888;">' + (t.status||'') + ' ' + (t.date_label||'') + '</span></div>';
+    html += '<b style="color:#4caf50;">' + tasks.length + ' tache(s) identifiee(s)</b>';
+    html += '<span style="color:#888;font-size:0.75rem;margin-left:8px;">via ' + model_used + '</span><br><br>';
+
+    tasks.forEach(function(t) {
+      if (t.error) {
+        html += '<div style="color:#f44336;font-size:0.8rem;">Erreur: ' + t.error + '</div>';
+        return;
+      }
+      html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 6px;' +
+              'background:#0a0c14;border-radius:4px;margin-bottom:3px;font-size:0.8rem;">';
+      html += '<span style="color:#1e90ff;min-width:80px;font-weight:600;">' + (t.category||'—') + '</span> ';
+      html += '<span style="flex:1;">' + (t.title||'') + '</span> ';
+      html += '<span style="color:#ff9800;font-size:0.72rem;white-space:nowrap;">' + (t.status||'') + '</span>';
+      if (t.date_label) html += ' <span style="color:#888;font-size:0.72rem;">' + t.date_label + '</span>';
+      html += '</div>';
     });
+
     window._pm_tasks = tasks;
-    html += '<br><button class="btn btn-g" id="btn-import-tasks">Importer les taches</button></div>';
+    html += '<br><div style="display:flex;gap:8px;">';
+    html += '<button class="btn btn-g btn-import-ai" style="font-size:0.78rem;">Importer toutes les taches</button>';
+    html += '</div></div>';
+
     hist.insertAdjacentHTML('beforeend', html);
     hist.scrollTop = hist.scrollHeight;
+
+    // Reset inputs
     document.getElementById('cinput').value = '';
-    var btn = document.getElementById('btn-import-tasks');
-    if (btn) btn.addEventListener('click', function() {
-      fetch('/api/projects/' + PID + '/ai/import', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tasks: window._pm_tasks, language: LANG })
-      }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) { alert(d.imported + ' tache(s) importee(s) !'); location.reload(); }
+    if (hasImage) clearImage();
+
+    // Attacher l import
+    var importBtns = hist.querySelectorAll('.btn-import-ai');
+    var lastBtn = importBtns[importBtns.length - 1];
+    if (lastBtn) {
+      lastBtn.addEventListener('click', function() {
+        fetch('/api/projects/' + PID + '/ai/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tasks: window._pm_tasks, language: LANG })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.ok) { alert(d.imported + ' tache(s) importee(s) !'); location.reload(); }
+        });
       });
-    });
+    }
+  })
+  .catch(function(err) {
+    var ld = document.getElementById('ai-load');
+    if (ld) ld.remove();
+    hist.insertAdjacentHTML('beforeend',
+      '<div style="color:#f44336;">Erreur reseau: ' + err + '</div>');
   });
-});
+}
+
+document.getElementById('btn-send-ai').addEventListener('click', doAIAnalysis);
 
 document.getElementById('cinput').addEventListener('keydown', function(e) {
-  if (e.ctrlKey && e.key === 'Enter') { document.getElementById('btn-send-ai').click(); }
+  if (e.ctrlKey && e.key === 'Enter') doAIAnalysis();
 });
 
 document.getElementById('btn-restructure').addEventListener('click', function() {
