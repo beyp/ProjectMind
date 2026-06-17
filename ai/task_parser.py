@@ -231,9 +231,10 @@ class VisionTaskParser:
         if text_context.strip():
             user_content.append({
                 "type": "text",
-                "text": f"Contexte additionnel : {text_context}
-
-Analyse cette image et extrais les tâches :"
+                "text": (
+                    f"Contexte additionnel : {text_context}\n\n"
+                    "Analyse cette image et extrais les taches :"
+                )
             })
         else:
             user_content.append({
