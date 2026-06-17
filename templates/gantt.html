@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Gantt — {{ project.name }}</title>
+<link rel="stylesheet" href="https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.css">
+<script src="https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Segoe UI",sans-serif;background:#0f1117;color:#e0e0e0;}
+header{background:#151821;border-bottom:2px solid #1e90ff;padding:12px 24px;
+  display:flex;align-items:center;gap:16px;}
+header h1{color:#1e90ff;font-size:1.1rem;}
+header a{color:#888;text-decoration:none;font-size:0.85rem;}
+header a:hover{color:#1e90ff;}
+.gantt-info{padding:10px 24px;background:#1a1d27;border-bottom:1px solid #2a2d3e;
+  display:flex;gap:20px;font-size:0.82rem;color:#888;}
+.gantt-info span{color:#e0e0e0;}
+#gantt_here{width:100%;height:calc(100vh - 100px);}
+/* Style Gantt sombre */
+.gantt_container{background:#1a1d27;color:#e0e0e0;}
+.gantt_grid_scale,.gantt_scale_line{background:#151821;color:#888;}
+.gantt_row{background:#1a1d27;}
+.gantt_row.odd{background:#12141f;}
+.gantt_row:hover{background:#2a2d3e;}
+.gantt_task_line{background:#1e90ff;border-color:#1570cc;}
+.gantt_task_progress{background:#0d5fa3;}
+.gantt_task_line.gantt_task_inline_color .gantt_task_progress{background:inherit;filter:brightness(0.7);}
+</style>
+</head>
+<body>
+<header>
+  <a href="/project/{{ project.id }}">&#x2190; {{ project.name }}</a>
+  <h1>&#x1F4C5; Vue Gantt</h1>
+  <span style="margin-left:auto;color:#888;">{{ fiscal_q }} &nbsp;|&nbsp; {{ fiscal_y }}</span>
+</header>
+<div class="gantt-info">
+  <span>Projet : <span>{{ project.name }}</span></span>
+  {% if project.go_live_date %}
+  <span>Go-Live : <span style="color:#f44336;">{{ project.go_live_date }}</span></span>
+  {% endif %}
+  <span>Fiscal Year : <span>{{ fiscal_y }}</span> (début 1er mars)</span>
+</div>
+
+<div id="gantt_here"></div>
+
+<script>
+// Configuration Gantt
+gantt.config.date_format = "%Y-%m-%d";
+gantt.config.scale_unit  = "week";
+gantt.config.date_scale  = "Sem. %W";
+gantt.config.subscales   = [
+  {unit: "month", step: 1, date: "%F %Y"},
+];
+gantt.config.show_progress = true;
+gantt.config.drag_progress = true;
+gantt.config.drag_resize   = true;
+gantt.config.drag_move     = true;
+
+// Colonnes
+gantt.config.columns = [
+  {name: "text",     label: "Tâche",     width: 250, tree: true},
+  {name: "category", label: "Catégorie", width: 120},
+  {name: "start_date", label: "Début",   width: 90,  align: "center"},
+  {name: "duration", label: "Durée",     width: 60,  align: "center"},
+  {name: "progress", label: "%",         width: 44,  align: "center",
+    template: function(t){ return Math.round((t.progress||0)*100)+"%"; }},
+];
+
+// Fiscal Year markers
+gantt.plugins({marker: true});
+
+// Données
+var tasks = {{ gantt_tasks | tojson }};
+var data  = {
+  data: tasks.map(function(t, i){
+    return {
+      id:         t.id,
+      text:       t.text,
+      start_date: t.start_date || new Date().toISOString().slice(0,10),
+      end_date:   t.end_date   || "",
+      progress:   t.progress   || 0,
+      category:   t.category   || "",
+      duration:   1,
+    };
+  }),
+  links: []
+};
+
+gantt.init("gantt_here");
+gantt.parse(data);
+
+// Marker Go-Live
+{% if project.go_live_date %}
+try {
+  var goLiveParts = "{{ project.go_live_date }}".split("/");
+  if (goLiveParts.length === 3) {
+    var goLiveDate = new Date(goLiveParts[2], goLiveParts[1]-1, goLiveParts[0]);
+    gantt.addMarker({
+      start_date: goLiveDate,
+      css: "deadline",
+      text: "Go-Live",
+      title: "Date de mise en production"
+    });
+  }
+} catch(e) {}
+{% endif %}
+
+// Marker aujourd hui
+gantt.addMarker({
+  start_date: new Date(),
+  css: "today",
+  text: "Aujourd hui",
+});
+</script>
+</body>
+</html>
