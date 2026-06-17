@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
   projectmind:
     build: .
@@ -6,14 +7,21 @@ services:
     ports:
       - "8766:8766"
     volumes:
+      # Persistance des données SQLite
       - ./data:/app/data
+      # Template PowerPoint
+      - ./templates:/app/templates
+      # Logs
       - ./logs:/app/logs
-      - ./.env:/app/.env
     env_file:
       - .env
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8766/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8766/api/projects"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+networks:
+  default:
+    name: projectmind-network
