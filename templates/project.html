@@ -3,536 +3,572 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>{{ project.name }} — ProjectMind</title>
-<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<title>{{ project.name }} - ProjectMind</title>
 <style>
-:root[data-theme="dark"]{
-  --bg:#0f1117;--card:#1a1d27;--border:#2a2d3e;--text:#e0e0e0;--text-dim:#888;
-  --accent:#1e90ff;--green:#4caf50;--orange:#ff9800;--red:#f44336;--header:#151821;
+:root {
+  --bg:#0f1117;--card:#1a1d27;--border:#2a2d3e;--text:#e0e0e0;
+  --dim:#888;--accent:#1e90ff;--green:#4caf50;--orange:#ff9800;
+  --red:#f44336;--hdr:#151821;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:"Segoe UI",sans-serif;background:var(--bg);color:var(--text);}
-header{background:var(--header);border-bottom:2px solid var(--accent);
-  padding:0 24px;height:52px;display:flex;align-items:center;gap:12px;}
-header a{color:var(--text-dim);text-decoration:none;font-size:0.85rem;}
+header{background:var(--hdr);border-bottom:2px solid var(--accent);
+  padding:0 20px;height:52px;display:flex;align-items:center;gap:10px;}
+header a{color:var(--dim);text-decoration:none;font-size:0.85rem;}
 header a:hover{color:var(--accent);}
 header h1{color:var(--accent);font-size:1.1rem;}
-.header-meta{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:0.82rem;}
-.header-btn{background:var(--card);border:1px solid var(--border);color:var(--text);
-  padding:5px 12px;border-radius:6px;cursor:pointer;font-size:0.82rem;text-decoration:none;
-  white-space:nowrap;}
-.header-btn:hover,.header-btn.primary{background:var(--accent);color:white;border-color:var(--accent);}
+.hmeta{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.hbtn{background:var(--card);border:1px solid var(--border);color:var(--text);
+  padding:5px 12px;border-radius:6px;cursor:pointer;font-size:0.82rem;text-decoration:none;}
+.hbtn:hover,.hbtn.primary{background:var(--accent);color:white;border-color:var(--accent);}
 .layout{display:flex;height:calc(100vh - 52px);}
-/* Sidebar */
-.sidebar{width:240px;background:var(--card);border-right:1px solid var(--border);
-  display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;padding:12px 0;}
-.sb-section{padding:10px 14px;border-bottom:1px solid var(--border);}
-.sb-title{font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;
-  color:var(--text-dim);margin-bottom:8px;}
-.kpi-row{display:flex;justify-content:space-between;align-items:center;
-  padding:3px 0;font-size:0.78rem;}
-.kpi-dot{display:inline-block;width:18px;height:18px;border-radius:3px;
-  font-weight:700;font-size:0.68rem;line-height:18px;text-align:center;color:#000;}
-/* Main */
-.main{flex:1;overflow-y:auto;padding:20px;}
-/* Tabs */
-.tabs{display:flex;gap:3px;margin-bottom:16px;border-bottom:1px solid var(--border);}
-.tab{padding:7px 14px;cursor:pointer;border-radius:6px 6px 0 0;font-size:0.83rem;
-  color:var(--text-dim);border:1px solid transparent;border-bottom:none;}
+.sidebar{width:230px;background:var(--card);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
+.sb-sec{padding:12px 14px;border-bottom:1px solid var(--border);}
+.sb-ttl{font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;
+  color:var(--dim);margin-bottom:8px;}
+.sb-btn{display:block;width:100%;text-align:left;background:var(--border);
+  border:none;color:var(--text);padding:7px 10px;border-radius:5px;
+  cursor:pointer;font-size:0.8rem;margin-bottom:5px;}
+.sb-btn:hover{background:var(--accent);color:white;}
+.sb-btn.primary{background:var(--accent);color:white;}
+.main{flex:1;overflow-y:auto;padding:18px;}
+.tabs{display:flex;gap:3px;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.tab{padding:7px 14px;cursor:pointer;border-radius:6px 6px 0 0;
+  font-size:0.83rem;color:var(--dim);border:1px solid transparent;border-bottom:none;}
 .tab.active{background:var(--card);border-color:var(--border);color:var(--accent);font-weight:600;}
 .tab:hover:not(.active){color:var(--text);}
 .tab-content{display:none;}
 .tab-content.active{display:block;}
-/* Weekly table */
 .wt{width:100%;border-collapse:collapse;background:var(--card);
-  border-radius:8px;overflow:hidden;border:1px solid var(--border);font-size:0.83rem;}
+  border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:0.83rem;}
 .wt th{background:#041E42;color:#fff;padding:8px 12px;text-align:left;}
 .wt td{padding:7px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
 .wt tr:last-child td{border-bottom:none;}
-.cat-cell{font-weight:700;color:#fff;text-align:center;font-size:0.82rem;}
-.status-badge{display:inline-block;padding:2px 8px;border-radius:10px;
-  font-size:0.73rem;font-weight:600;white-space:nowrap;}
-/* Chat */
-.chat-wrap{display:flex;flex-direction:column;max-height:520px;}
-.chat-hist{flex:1;overflow-y:auto;background:#0a0c14;border-radius:8px;
-  padding:14px;font-size:0.82rem;min-height:200px;max-height:350px;margin-bottom:10px;}
-.chat-row{display:flex;gap:8px;margin-top:6px;}
-.chat-input{flex:1;background:#12141f;border:1px solid var(--border);color:var(--text);
-  padding:8px 12px;border-radius:6px;font-size:0.83rem;font-family:inherit;resize:vertical;}
-.btn-col{display:flex;flex-direction:column;gap:6px;}
-/* Forms */
+.cat-td{font-weight:700;color:#fff;text-align:center;font-size:0.82rem;}
+.sbadge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.73rem;font-weight:600;}
 .fg{margin-bottom:10px;}
-.fg label{display:block;font-size:0.75rem;color:var(--text-dim);margin-bottom:3px;}
-.fg input,.fg select,.fg textarea{width:100%;background:#12141f;
-  border:1px solid var(--border);color:var(--text);padding:6px 10px;
-  border-radius:6px;font-size:0.83rem;}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
-.card{background:var(--card);border:1px solid var(--border);
-  border-radius:8px;padding:16px;margin-bottom:16px;}
-.card-title{color:var(--accent);font-size:0.88rem;text-transform:uppercase;
-  letter-spacing:1px;margin-bottom:12px;}
+.fg label{display:block;font-size:0.75rem;color:var(--dim);margin-bottom:3px;}
+.fg input,.fg select,.fg textarea{width:100%;background:#12141f;border:1px solid var(--border);
+  color:var(--text);padding:6px 10px;border-radius:6px;font-size:0.83rem;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--accent);}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:14px;}
+.card-ttl{color:var(--accent);font-size:0.88rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;}
 .btn{padding:7px 16px;border-radius:6px;border:none;cursor:pointer;font-size:0.83rem;}
 .btn-p{background:var(--accent);color:white;}
-.btn-s{background:var(--green);color:white;}
-.btn-d{background:var(--red);color:white;}
+.btn-g{background:var(--green);color:white;}
+.btn-r{background:var(--red);color:white;}
 .btn-n{background:var(--border);color:var(--text);}
 .btn:hover{opacity:0.85;}
-.parsed-task{display:flex;align-items:center;gap:8px;padding:5px 8px;
-  border-radius:5px;background:#12141f;margin-bottom:3px;font-size:0.8rem;}
+.ksel{border:none;padding:4px 8px;border-radius:4px;cursor:pointer;color:#000;}
+.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);
+  z-index:1000;align-items:center;justify-content:center;}
+.moverlay.open{display:flex;}
+.mbox{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:24px;width:460px;max-width:95vw;}
+.chist{background:#0a0c14;border-radius:8px;padding:14px;font-size:0.82rem;
+  min-height:180px;max-height:320px;overflow-y:auto;margin-bottom:10px;}
+.cinput{width:100%;background:#12141f;border:1px solid var(--border);
+  color:var(--text);padding:8px 12px;border-radius:6px;font-size:0.83rem;
+  font-family:inherit;resize:vertical;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
-/* Modal */
-.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);
-  z-index:1000;align-items:center;justify-content:center;}
-.modal-ov.open{display:flex;}
-.modal-box{background:var(--card);border:1px solid var(--border);border-radius:12px;
-  padding:24px;width:460px;max-width:95vw;}
 </style>
-<script>
-// Fonctions disponibles immédiatement (avant le DOM)
-function showTab(name) {
-  document.querySelectorAll('.tab-content').forEach(function(el) {
-    el.classList.remove('active');
-  });
-  document.querySelectorAll('.tab').forEach(function(el) {
-    el.classList.remove('active');
-  });
-  var tc = document.getElementById('tc-' + name);
-  if (tc) tc.classList.add('active');
-  var tab = document.getElementById('tab-' + name);
-  if (tab) tab.classList.add('active');
-}
-
-function openModal() {
-  var m = document.getElementById('modal-task');
-  if (m) { m.classList.add('open'); }
-  // Focus après que le modal soit visible
-  setTimeout(function() {
-    var inp = document.getElementById('nt-t');
-    if (inp) inp.focus();
-  }, 50);
-}
-
-function closeModal() {
-  var m = document.getElementById('modal-task');
-  if (m) m.classList.remove('open');
-}
-
-function exportPPTX() {
-  window.location.href = '/api/projects/' + window.PM_PID + '/export/pptx';
-}
-
-// Le reste des fonctions qui nécessitent le DOM
-document.addEventListener('DOMContentLoaded', function() {
-  // Initialiser PID et LANG depuis les data-attributes
-  var body = document.getElementById('pm-data');
-  window.PM_PID  = body ? parseInt(body.dataset.pid)  : 1;
-  window.PM_LANG = body ? body.dataset.lang : 'fr';
-
-  // Fermer modal en cliquant dehors
-  var overlay = document.getElementById('modal-task');
-  if (overlay) {
-    overlay.addEventListener('click', function(e) {
-      if (e.target === overlay) closeModal();
-    });
-  }
-});
-
-// Alias globaux
-var PID  = 0;  // sera mis à jour après DOMContentLoaded
-var LANG = 'fr';
-</script>
 </head>
-<body><div id="pm-data" data-pid="{{ project.id }}" data-lang="{{ project.language }}" style="display:none;"></div>
+<body>
+
 <header>
-  <a href="/">&#x2190; Projets</a>
-  <h1>&#x1F4CB; {{ project.name }}</h1>
-  <div class="header-meta">
+  <a href="/">&larr; Projets</a>
+  <h1>{{ project.name }}</h1>
+  <div class="hmeta">
     {% if project.go_live_date %}
-    <span style="color:var(--red);">&#x1F3AF; {{ project.go_live_date }}</span>
+    <span style="color:var(--red);font-size:0.82rem;">Go-Live: {{ project.go_live_date }}</span>
     {% endif %}
-    <span style="color:var(--text-dim);">{{ fiscal_q }}</span>
-    <a class="header-btn" href="/project/{{ project.id }}/gantt" target="_blank">&#x1F4C5; Gantt</a>
-    <button class="header-btn" onclick="exportPPTX()">&#x1F4CE; Export PPT</button>
-    <button class="header-btn btn-p" onclick="openModal()">&#x2795; Tâche</button>
+    <span style="color:var(--dim);font-size:0.82rem;">{{ fiscal_q }}</span>
+    <a class="hbtn" href="/project/{{ project.id }}/gantt" target="_blank">Gantt</a>
+    <button class="hbtn" id="btn-ppt">Export PPT</button>
+    <button class="hbtn primary" id="btn-add">+ Tache</button>
   </div>
 </header>
 
 <div class="layout">
-  <!-- Sidebar -->
   <div class="sidebar">
-    <!-- KPIs -->
-    <div class="sb-section">
-      <div class="sb-title">KPIs</div>
-      {% macro kpi_color(val) %}{% if val == "G" %}#92D050{% elif val == "Y" %}#FFFF00{% elif val == "R" %}#FF0000{% else %}#92D050{% endif %}{% endmacro %}
+    <div class="sb-sec">
+      <div class="sb-ttl">KPIs</div>
       {% for kpi in kpis %}
-      <div class="kpi-row">
-        <span style="font-size:0.75rem;">{{ kpi.kpi_name }}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:0.78rem;">
+        <span>{{ kpi.kpi_name }}</span>
         <div style="display:flex;gap:3px;">
-          <span class="kpi-dot" title="Sem. prec."
-            style="background:{{ kpi_color(kpi.prev_value) }};">
-            {{ kpi.prev_value }}</span>
-          <span class="kpi-dot" title="Aujourd hui"
-            style="background:{{ kpi_color(kpi.curr_value) }};">
-            {{ kpi.curr_value }}</span>
+          {% if kpi.prev_value == "G" %}<span style="background:#92D050;color:#000;padding:1px 5px;border-radius:3px;font-size:0.7rem;">G</span>
+          {% elif kpi.prev_value == "Y" %}<span style="background:#FFFF00;color:#000;padding:1px 5px;border-radius:3px;font-size:0.7rem;">Y</span>
+          {% else %}<span style="background:#FF0000;color:#fff;padding:1px 5px;border-radius:3px;font-size:0.7rem;">R</span>{% endif %}
+          {% if kpi.curr_value == "G" %}<span style="background:#92D050;color:#000;padding:1px 5px;border-radius:3px;font-size:0.7rem;">G</span>
+          {% elif kpi.curr_value == "Y" %}<span style="background:#FFFF00;color:#000;padding:1px 5px;border-radius:3px;font-size:0.7rem;">Y</span>
+          {% else %}<span style="background:#FF0000;color:#fff;padding:1px 5px;border-radius:3px;font-size:0.7rem;">R</span>{% endif %}
         </div>
       </div>
       {% endfor %}
     </div>
-    <!-- Catégories -->
-    <div class="sb-section">
-      <div class="sb-title">Catégories ({{ categories|length }})</div>
+    <div class="sb-sec">
+      <div class="sb-ttl">Categories ({{ categories|length }})</div>
       {% for cat in categories %}
       <div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:0.8rem;">
-        <span style="width:8px;height:8px;border-radius:50%;
-          background:{{ cat.color }};flex-shrink:0;"></span>
+        <span style="width:8px;height:8px;border-radius:50%;background:{{ cat.color }};flex-shrink:0;"></span>
         {{ cat.name }}
       </div>
       {% endfor %}
     </div>
-    <!-- Actions -->
-    <div class="sb-section" style="flex:1;">
-      <div class="sb-title">Actions</div>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <button class="btn btn-p" style="font-size:0.78rem;"
-          onclick="showTab('tab-ai')">&#x1F916; IA Chat</button>
-        <button class="btn btn-n" style="font-size:0.78rem;"
-          onclick="showTab('tab-weekly')">&#x1F4DD; Notes hebdo</button>
-        <button class="btn btn-n" style="font-size:0.78rem;"
-          onclick="showTab('tab-ms')">&#x1F3AF; Jalons</button>
-        <button class="btn btn-n" style="font-size:0.78rem;"
-          onclick="showTab('tab-risks')">&#x26A0; Risques</button>
-        <button class="btn btn-n" style="font-size:0.78rem;"
-          onclick="showTab('tab-kpis')">&#x1F4C8; KPIs</button>
-        <button class="btn btn-n" style="font-size:0.78rem;"
-          onclick="showTab('tab-cfg')">&#x2699; Config</button>
-      </div>
+    <div class="sb-sec" style="flex:1;">
+      <div class="sb-ttl">Actions</div>
+      <button class="sb-btn primary" id="sb-ai">IA Chat</button>
+      <button class="sb-btn" id="sb-weekly">Notes hebdo</button>
+      <button class="sb-btn" id="sb-ms">Jalons</button>
+      <button class="sb-btn" id="sb-risks">Risques</button>
+      <button class="sb-btn" id="sb-kpis">KPIs</button>
+      <button class="sb-btn" id="sb-cfg">Config</button>
     </div>
   </div>
 
-  <!-- Main -->
   <div class="main">
     <div class="tabs">
-      <div class="tab active" id="tab-status-btn" onclick="showTab('tab-status')">
-        &#x1F4CA; Weekly Status</div>
-      <div class="tab" id="tab-ai-btn" onclick="showTab('tab-ai')">
-        &#x1F916; IA Chat</div>
-      <div class="tab" id="tab-weekly-btn" onclick="showTab('tab-weekly')">
-        &#x1F4DD; Notes</div>
-      <div class="tab" id="tab-ms-btn" onclick="showTab('tab-ms')">
-        &#x1F3AF; Jalons</div>
-      <div class="tab" id="tab-risks-btn" onclick="showTab('tab-risks')">
-        &#x26A0; Risques</div>
-      <div class="tab" id="tab-kpis-btn" onclick="showTab('tab-kpis')">
-        &#x1F4C8; KPIs</div>
-      <div class="tab" id="tab-cfg-btn" onclick="showTab('tab-cfg')">
-        &#x2699; Config</div>
+      <div class="tab active" id="tab-status">Weekly Status</div>
+      <div class="tab" id="tab-ai">IA Chat</div>
+      <div class="tab" id="tab-weekly">Notes</div>
+      <div class="tab" id="tab-ms">Jalons</div>
+      <div class="tab" id="tab-risks">Risques</div>
+      <div class="tab" id="tab-kpis">KPIs</div>
+      <div class="tab" id="tab-cfg">Config</div>
     </div>
 
-    <!-- Weekly Status -->
-    <div class="tab-content active" id="tab-status">
+    <div class="tab-content active" id="tc-status">
+      <div style="margin-bottom:12px;">
+        <button class="btn btn-p" id="tc-add-btn">+ Ajouter une tache</button>
+      </div>
       <table class="wt">
         <thead>
           <tr>
-            <th style="width:130px;">Catégorie</th>
-            <th>Activités / Livrables</th>
+            <th style="width:130px;">Categorie</th>
+            <th>Activites</th>
             <th style="width:80px;text-align:center;">Date</th>
             <th style="width:115px;text-align:center;">Statut</th>
           </tr>
         </thead>
         <tbody>
           {% for cat in categories %}
-          {% set ct = tasks_by_cat.get(cat.id, []) %}
-          {% if ct %}
-            {% for task in ct %}
-            <tr>
-              {% if loop.first %}
-              <td class="cat-cell" rowspan="{{ ct|length }}"
-                style="background:{{ cat.color }};">{{ cat.name }}</td>
-              {% endif %}
-              <td>
-                • {{ task.title }}
-                {% if task.ado_item_id %}
-                <a href="https://dev.azure.com/Premiertech/{{ project.ado_project | default('') | replace(' ', '%20') }}/_workitems/edit/{{ task.ado_item_id }}"
-                  target="_blank" style="color:var(--accent);font-size:0.72rem;
-                  text-decoration:none;margin-left:6px;"
-                  title="ADO #{{ task.ado_item_id }}">&#x1F535;#{{ task.ado_item_id }}</a>
+            {% set ct = tasks_by_cat.get(cat.id, []) %}
+            {% if ct %}
+              {% for task in ct %}
+              <tr>
+                {% if loop.first %}
+                <td class="cat-td" rowspan="{{ ct|length }}" style="background:{{ cat.color }};">{{ cat.name }}</td>
                 {% endif %}
-              </td>
-              <td style="text-align:center;color:var(--text-dim);font-size:0.78rem;">
-                {{ task.date_label or "" }}
-              </td>
-              <td style="text-align:center;">
-                <span class="status-badge"
-                  style="background:{{ STATUS_COLORS.get(task.status, '#888888') }}22;
-                    color:{{ STATUS_COLORS.get(task.status, '#888888') }};">
-                  {{ task.status }}
-                </span>
-              </td>
-            </tr>
-            {% endfor %}
-          {% endif %}
+                <td>
+                  &bull; {{ task.title }}
+                  {% if task.ado_item_id %}
+                  <a href="https://dev.azure.com/Premiertech/{{ project.ado_project|default('')|replace(' ','%20') }}/_workitems/edit/{{ task.ado_item_id }}"
+                    target="_blank" style="color:var(--accent);font-size:0.72rem;text-decoration:none;margin-left:6px;">#{{ task.ado_item_id }}</a>
+                  {% endif %}
+                </td>
+                <td style="text-align:center;color:var(--dim);font-size:0.78rem;">{{ task.date_label or "" }}</td>
+                <td style="text-align:center;">
+                  <span class="sbadge" style="background:{{ STATUS_COLORS.get(task.status,'#888888') }}22;color:{{ STATUS_COLORS.get(task.status,'#888888') }};">{{ task.status }}</span>
+                </td>
+              </tr>
+              {% endfor %}
+            {% endif %}
           {% endfor %}
           {% set unc = tasks_by_cat.get(0, []) %}
           {% for task in unc %}
           <tr>
-            {% if loop.first %}
-            <td class="cat-cell" rowspan="{{ unc|length }}"
-              style="background:#444;">—</td>
-            {% endif %}
-            <td>• {{ task.title }}</td>
-            <td style="text-align:center;color:var(--text-dim);font-size:0.78rem;">
-              {{ task.date_label or "" }}</td>
+            {% if loop.first %}<td class="cat-td" rowspan="{{ unc|length }}" style="background:#444;">-</td>{% endif %}
+            <td>&bull; {{ task.title }}</td>
+            <td style="text-align:center;color:var(--dim);font-size:0.78rem;">{{ task.date_label or "" }}</td>
             <td style="text-align:center;">
-              <span class="status-badge"
-                style="background:{{ STATUS_COLORS.get(task.status, '#888888') }}22;
-                  color:{{ STATUS_COLORS.get(task.status, '#888888') }};">
-                {{ task.status }}
-              </span>
+              <span class="sbadge" style="background:{{ STATUS_COLORS.get(task.status,'#888888') }}22;color:{{ STATUS_COLORS.get(task.status,'#888888') }};">{{ task.status }}</span>
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+      {% if not categories and not tasks_by_cat %}
+      <div style="text-align:center;padding:40px;color:var(--dim);">
+        <p style="margin-bottom:16px;">Projet vide. Commencez par ajouter des categories et des taches.</p>
+      </div>
+      {% endif %}
     </div>
 
-    <!-- IA Chat -->
-    <div class="tab-content" id="tab-ai">
+    <div class="tab-content" id="tc-ai">
       <div class="card">
-        <div class="card-title">&#x1F916; Assistant IA — Groq llama-3.3-70b</div>
-        <p style="color:var(--text-dim);font-size:0.8rem;margin-bottom:10px;">
-          Collez du texte brut — l IA structurera automatiquement les tâches.
-          <kbd style="background:var(--border);padding:1px 5px;border-radius:3px;
-            font-size:0.75rem;">Ctrl+Enter</kbd> pour envoyer.
-        </p>
-        <div class="chat-wrap">
-          <div class="chat-hist" id="chat-hist">
-            <div style="color:var(--text-dim);">Bonjour ! Collez vos notes ici et j analyse.</div>
-          </div>
-          <div class="chat-row">
-            <textarea class="chat-input" id="chat-in" rows="4"
-              placeholder="Collez vos notes, emails, compte-rendus..."
-              onkeydown="if(event.ctrlKey&&event.key==='Enter')sendAI()"></textarea>
-            <div class="btn-col">
-              <button class="btn btn-p" onclick="sendAI()">&#x1F916; Analyser</button>
-              <button class="btn btn-n" onclick="restructure()">&#x1F504; Restructurer</button>
-            </div>
+        <div class="card-ttl">Assistant IA - Groq</div>
+        <p style="color:var(--dim);font-size:0.8rem;margin-bottom:10px;">Collez du texte brut — l IA structurera les taches automatiquement. Ctrl+Entree pour envoyer.</p>
+        <div class="chist" id="chist"><div style="color:var(--dim);">Pret. Collez vos notes ici.</div></div>
+        <div style="display:flex;gap:8px;">
+          <textarea class="cinput" id="cinput" rows="4" placeholder="Collez vos notes, emails, compte-rendus..."></textarea>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <button class="btn btn-p" id="btn-send-ai">Analyser</button>
+            <button class="btn btn-n" id="btn-restructure">Restructurer</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Notes hebdo -->
-    <div class="tab-content" id="tab-weekly">
+    <div class="tab-content" id="tc-weekly">
       <div class="card">
-        <div class="card-title">&#x1F4DD; Notes hebdomadaires</div>
-        <div class="fg">
-          <label>Résumé exécutif (Summary)</label>
-          <textarea id="wn-summary" rows="3">{{ weekly_note.summary if weekly_note else "" }}</textarea>
+        <div class="card-ttl">Notes hebdomadaires</div>
+        <div class="fg"><label>Resume executif</label><textarea id="wn-sum" rows="3">{{ weekly_note.summary if weekly_note else "" }}</textarea></div>
+        <div class="fg2">
+          <div class="fg"><label>Realisations</label><textarea id="wn-ach" rows="5">{{ weekly_note.achievements if weekly_note else "" }}</textarea></div>
+          <div class="fg"><label>Planifie</label><textarea id="wn-pln" rows="5">{{ weekly_note.planned if weekly_note else "" }}</textarea></div>
         </div>
-        <div class="form-grid">
-          <div class="fg">
-            <label>Réalisations (Last Period Achievements)</label>
-            <textarea id="wn-ach" rows="5">{{ weekly_note.achievements if weekly_note else "" }}</textarea>
-          </div>
-          <div class="fg">
-            <label>Activités planifiées (Planned Activities)</label>
-            <textarea id="wn-plan" rows="5">{{ weekly_note.planned if weekly_note else "" }}</textarea>
-          </div>
-        </div>
-        <div class="fg">
-          <label>Points de vigilance (Watch Items)</label>
-          <textarea id="wn-watch" rows="3">{{ weekly_note.watch_items if weekly_note else "" }}</textarea>
-        </div>
-        <button class="btn btn-p" onclick="saveWeekly()">&#x2705; Sauvegarder</button>
+        <div class="fg"><label>Points de vigilance</label><textarea id="wn-wtch" rows="3">{{ weekly_note.watch_items if weekly_note else "" }}</textarea></div>
+        <button class="btn btn-p" id="btn-save-weekly">Sauvegarder</button>
         <span id="wn-ok" style="margin-left:10px;color:var(--green);font-size:0.8rem;"></span>
       </div>
     </div>
 
-    <!-- Jalons -->
-    <div class="tab-content" id="tab-ms">
+    <div class="tab-content" id="tc-ms">
       <div class="card">
-        <div class="card-title">&#x1F3AF; Next 4 Weeks Milestones</div>
+        <div class="card-ttl">Next 4 Weeks Milestones</div>
         <table class="wt" style="margin-bottom:16px;">
-          <thead><tr>
-            <th>Milestone</th>
-            <th style="width:120px;">Baseline</th>
-            <th style="width:120px;">Actuelle</th>
-            <th style="width:110px;">Statut</th>
-          </tr></thead>
+          <thead><tr><th>Milestone</th><th style="width:120px;">Baseline</th><th style="width:120px;">Actuelle</th><th style="width:110px;">Statut</th></tr></thead>
           <tbody>
             {% for m in milestones %}
             <tr>
               <td>{{ m.title }}</td>
               <td style="text-align:center;font-size:0.8rem;">{{ m.baseline_date }}</td>
               <td style="text-align:center;font-size:0.8rem;">{{ m.current_date }}</td>
-              <td style="text-align:center;font-size:0.78rem;color:var(--text-dim);">{{ m.status }}</td>
+              <td style="text-align:center;font-size:0.78rem;color:var(--dim);">{{ m.status }}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
-        <div class="form-grid">
-          <div class="fg"><label>Milestone *</label>
-            <input id="ms-t" type="text" placeholder="Titre du jalon"></div>
-          <div class="fg"><label>Statut</label>
-            <select id="ms-s">
-              <option>In progress</option><option>Completed</option>
-              <option>At Risk</option><option>Delayed</option>
-            </select></div>
-          <div class="fg"><label>Date Baseline</label>
-            <input id="ms-b" type="text" placeholder="30/08/2026"></div>
-          <div class="fg"><label>Date Actuelle</label>
-            <input id="ms-c" type="text" placeholder="30/08/2026"></div>
+        <div class="fg2">
+          <div class="fg"><label>Milestone *</label><input id="ms-t" type="text" placeholder="Titre"></div>
+          <div class="fg"><label>Statut</label><select id="ms-s"><option>In progress</option><option>Completed</option><option>At Risk</option><option>Delayed</option></select></div>
+          <div class="fg"><label>Date Baseline</label><input id="ms-b" type="text" placeholder="30/08/2026"></div>
+          <div class="fg"><label>Date Actuelle</label><input id="ms-c" type="text" placeholder="30/08/2026"></div>
         </div>
-        <button class="btn btn-p" onclick="addMS()">&#x2795; Ajouter jalon</button>
+        <button class="btn btn-p" id="btn-add-ms">+ Ajouter jalon</button>
       </div>
     </div>
 
-    <!-- Risques -->
-    <div class="tab-content" id="tab-risks">
+    <div class="tab-content" id="tc-risks">
       <div class="card">
-        <div class="card-title">&#x26A0; Risques & Issues</div>
+        <div class="card-ttl">Risques et Issues</div>
         <table class="wt" style="margin-bottom:16px;">
-          <thead><tr>
-            <th style="width:50px;">Type</th>
-            <th>Description</th>
-            <th style="width:100px;">Owner</th>
-          </tr></thead>
+          <thead><tr><th style="width:50px;">Type</th><th>Description</th><th style="width:100px;">Owner</th></tr></thead>
           <tbody>
             {% for r in risks %}
             <tr>
               <td style="text-align:center;font-weight:700;color:var(--orange);">{{ r.risk_type }}:</td>
               <td style="font-size:0.82rem;">{{ r.description }}</td>
-              <td style="font-size:0.78rem;color:var(--text-dim);">{{ r.owner }}</td>
+              <td style="font-size:0.78rem;color:var(--dim);">{{ r.owner }}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
-        <div class="form-grid">
-          <div class="fg"><label>Type</label>
-            <select id="r-type">
-              <option value="I">I: Issue</option>
-              <option value="R">R: Risk</option>
-              <option value="D">D: Decision</option>
-            </select></div>
-          <div class="fg"><label>Owner</label>
-            <input id="r-own" type="text" placeholder="Nom"></div>
-          <div class="fg" style="grid-column:1/-1;"><label>Description *</label>
-            <input id="r-desc" type="text" placeholder="Description du risque..."></div>
+        <div class="fg2">
+          <div class="fg"><label>Type</label><select id="r-type"><option value="I">I: Issue</option><option value="R">R: Risk</option><option value="D">D: Decision</option></select></div>
+          <div class="fg"><label>Owner</label><input id="r-own" type="text" placeholder="Nom"></div>
+          <div class="fg" style="grid-column:1/-1;"><label>Description *</label><input id="r-desc" type="text" placeholder="Description..."></div>
         </div>
-        <button class="btn btn-d" onclick="addRisk()">&#x2795; Ajouter</button>
+        <button class="btn btn-r" id="btn-add-risk">+ Ajouter</button>
       </div>
     </div>
 
-    <!-- KPIs -->
-    <div class="tab-content" id="tab-kpis">
+    <div class="tab-content" id="tc-kpis">
       <div class="card">
-        <div class="card-title">&#x1F4C8; KPIs du projet</div>
+        <div class="card-ttl">KPIs du projet</div>
         <table class="wt" style="margin-bottom:16px;">
-          <thead><tr>
-            <th>KPI</th>
-            <th style="width:160px;text-align:center;">Sem. précédente</th>
-            <th style="width:160px;text-align:center;">Aujourd hui</th>
-          </tr></thead>
+          <thead><tr><th>KPI</th><th style="width:150px;text-align:center;">Sem. precedente</th><th style="width:150px;text-align:center;">Aujourd hui</th></tr></thead>
           <tbody>
             {% for kpi in kpis %}
             <tr>
               <td style="font-weight:600;">{{ kpi.kpi_name }}</td>
               <td style="text-align:center;">
-                <select class="ks" data-k="{{ kpi.kpi_name }}" data-f="prev"
-                  onchange="kpiChg(this)"
-                  style="background:{% if kpi.prev_value == 'G' %}#92D050{% elif kpi.prev_value == 'Y' %}#FFFF00{% elif kpi.prev_value == 'R' %}#FF0000{% else %}#92D050{% endif %};
-                    color:#000;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">
-                  <option value="G" {{ "selected" if kpi.prev_value=="G" }}>G — Green</option>
-                  <option value="Y" {{ "selected" if kpi.prev_value=="Y" }}>Y — Yellow</option>
-                  <option value="R" {{ "selected" if kpi.prev_value=="R" }}>R — Red</option>
+                <select class="ksel" data-k="{{ kpi.kpi_name }}" data-f="prev" id="kpi-prev-{{ kpi.kpi_name }}"
+                  style="{% if kpi.prev_value == 'G' %}background:#92D050;{% elif kpi.prev_value == 'Y' %}background:#FFFF00;{% else %}background:#FF0000;color:#fff;{% endif %}">
+                  <option value="G" {% if kpi.prev_value == "G" %}selected{% endif %}>G - Green</option>
+                  <option value="Y" {% if kpi.prev_value == "Y" %}selected{% endif %}>Y - Yellow</option>
+                  <option value="R" {% if kpi.prev_value == "R" %}selected{% endif %}>R - Red</option>
                 </select>
               </td>
               <td style="text-align:center;">
-                <select class="ks" data-k="{{ kpi.kpi_name }}" data-f="curr"
-                  onchange="kpiChg(this)"
-                  style="background:{% if kpi.curr_value == 'G' %}#92D050{% elif kpi.curr_value == 'Y' %}#FFFF00{% elif kpi.curr_value == 'R' %}#FF0000{% else %}#92D050{% endif %};
-                    color:#000;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">
-                  <option value="G" {{ "selected" if kpi.curr_value=="G" }}>G — Green</option>
-                  <option value="Y" {{ "selected" if kpi.curr_value=="Y" }}>Y — Yellow</option>
-                  <option value="R" {{ "selected" if kpi.curr_value=="R" }}>R — Red</option>
+                <select class="ksel" data-k="{{ kpi.kpi_name }}" data-f="curr" id="kpi-curr-{{ kpi.kpi_name }}"
+                  style="{% if kpi.curr_value == 'G' %}background:#92D050;{% elif kpi.curr_value == 'Y' %}background:#FFFF00;{% else %}background:#FF0000;color:#fff;{% endif %}">
+                  <option value="G" {% if kpi.curr_value == "G" %}selected{% endif %}>G - Green</option>
+                  <option value="Y" {% if kpi.curr_value == "Y" %}selected{% endif %}>Y - Yellow</option>
+                  <option value="R" {% if kpi.curr_value == "R" %}selected{% endif %}>R - Red</option>
                 </select>
               </td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
-        <button class="btn btn-p" onclick="saveKPIs()">&#x2705; Sauvegarder KPIs</button>
+        <button class="btn btn-p" id="btn-save-kpis">Sauvegarder KPIs</button>
         <span id="kpi-ok" style="margin-left:10px;color:var(--green);font-size:0.8rem;"></span>
       </div>
     </div>
 
-    <!-- Config -->
-    <div class="tab-content" id="tab-cfg">
+    <div class="tab-content" id="tc-cfg">
       <div class="card">
-        <div class="card-title">&#x2699; Ajouter une catégorie</div>
-        <div class="form-grid">
-          <div class="fg"><label>Nom FR *</label>
-            <input id="c-name" type="text" placeholder="ex: OCM"></div>
-          <div class="fg"><label>Nom EN</label>
-            <input id="c-en" type="text" placeholder="ex: Change Management"></div>
-          <div class="fg"><label>Couleur</label>
-            <input id="c-color" type="color" value="#041E42"></div>
+        <div class="card-ttl">Ajouter une categorie</div>
+        <div class="fg2">
+          <div class="fg"><label>Nom FR *</label><input id="c-n" type="text" placeholder="ex: OCM"></div>
+          <div class="fg"><label>Nom EN</label><input id="c-en" type="text" placeholder="ex: Change Management"></div>
+          <div class="fg"><label>Couleur</label><input id="c-col" type="color" value="#041E42"></div>
         </div>
-        <button class="btn btn-p" onclick="addCat()">&#x2795; Ajouter catégorie</button>
+        <button class="btn btn-p" id="btn-add-cat">+ Ajouter categorie</button>
+        <span id="cat-ok" style="margin-left:10px;color:var(--green);font-size:0.8rem;"></span>
       </div>
       <div class="card">
-        <div class="card-title">&#x2139; Infos projet</div>
-        <div style="font-size:0.83rem;color:var(--text-dim);">
-          <p>ID : {{ project.id }}</p>
-          <p>Langue : {{ project.language.upper() }}</p>
-          {% if project.ado_project %}<p>ADO Projet : {{ project.ado_project }}</p>{% endif %}
-          {% if project.ado_area_path %}<p>ADO Area : {{ project.ado_area_path }}</p>{% endif %}
-        </div>
+        <div class="card-ttl">Infos projet</div>
+        <p style="font-size:0.83rem;color:var(--dim);">
+          ID: {{ project.id }} | Langue: {{ project.language|upper }}
+          {% if project.ado_project %} | ADO: {{ project.ado_project }}{% endif %}
+        </p>
       </div>
-    </div>
-
-  </div><!-- /main -->
-</div><!-- /layout -->
-
-<!-- Modal nouvelle tâche -->
-<div class="modal-ov" id="modal-task">
-  <div class="modal-box">
-    <h3 style="color:var(--accent);margin-bottom:14px;">&#x2795; Nouvelle tâche</h3>
-    <div class="fg"><label>Titre *</label>
-      <input id="nt-t" type="text" placeholder="Titre de la tâche" autofocus></div>
-    <div class="form-grid">
-      <div class="fg"><label>Catégorie</label>
-        <select id="nt-c">
-          <option value="">— Sans catégorie —</option>
-          {% for cat in categories %}
-          <option value="{{ cat.id }}">{{ cat.name }}</option>
-          {% endfor %}
-        </select></div>
-      <div class="fg"><label>Statut</label>
-        <select id="nt-s">
-          {% set lang_statuses = STATUSES[project.language] if project.language in STATUSES else STATUSES["fr"] %}
-          {% for s in lang_statuses %}
-          <option value="{{ s }}" {{ "selected" if s in ["A planifier","To Plan"] }}>
-            {{ s }}</option>
-          {% endfor %}
-        </select></div>
-      <div class="fg"><label>Date / Période</label>
-        <input id="nt-d" type="text" placeholder="ex: 17/06 ou Juin"></div>
-      <div class="fg"><label>ID ADO</label>
-        <input id="nt-a" type="number" placeholder="ex: 191614"></div>
-      <div class="fg"><label>Date début Gantt</label>
-        <input id="nt-sd" type="date"></div>
-      <div class="fg"><label>Date fin Gantt</label>
-        <input id="nt-ed" type="date"></div>
-    </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px;">
-      <button class="btn btn-n" onclick="closeModal()">Annuler</button>
-      <button class="btn btn-p" onclick="addTask()">&#x2705; Ajouter</button>
     </div>
   </div>
 </div>
 
+<!-- Modal nouvelle tache -->
+<div class="moverlay" id="modal-task">
+  <div class="mbox">
+    <h3 style="color:var(--accent);margin-bottom:14px;">Nouvelle tache</h3>
+    <div class="fg"><label>Titre *</label><input id="nt-t" type="text" placeholder="Titre de la tache"></div>
+    <div class="fg2">
+      <div class="fg"><label>Categorie</label>
+        <select id="nt-c">
+          <option value="">-- Sans categorie --</option>
+          {% for cat in categories %}<option value="{{ cat.id }}">{{ cat.name }}</option>{% endfor %}
+        </select></div>
+      <div class="fg"><label>Statut</label>
+        <select id="nt-s">
+          {% set lang = project.language if project.language in STATUSES else "fr" %}
+          {% for s in STATUSES[lang] %}<option value="{{ s }}" {% if s in ["A planifier","To Plan"] %}selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select></div>
+      <div class="fg"><label>Date / Periode</label><input id="nt-d" type="text" placeholder="ex: 17/06 ou Juin"></div>
+      <div class="fg"><label>ID ADO</label><input id="nt-a" type="number" placeholder="ex: 191614"></div>
+      <div class="fg"><label>Date debut Gantt</label><input id="nt-sd" type="date"></div>
+      <div class="fg"><label>Date fin Gantt</label><input id="nt-ed" type="date"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px;">
+      <button class="btn btn-n" id="btn-cancel-task">Annuler</button>
+      <button class="btn btn-p" id="btn-confirm-task">Ajouter</button>
+    </div>
+  </div>
+</div>
 
+<!-- Tout le JS est ici, APRÈS le DOM complet -->
+<script>
+// ── Données projet ────────────────────────────────────────────────────────────
+var PID  = {{ project.id }};
+var LANG = "{{ project.language }}";
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(el) { el.classList.remove('active'); });
+  var tc  = document.getElementById('tc-' + name);
+  var tab = document.getElementById('tab-' + name);
+  if (tc)  tc.classList.add('active');
+  if (tab) tab.classList.add('active');
+}
+
+// Attacher les événements tabs via addEventListener (PAS onclick dans le HTML)
+document.getElementById('tab-status').addEventListener('click', function() { showTab('status'); });
+document.getElementById('tab-ai').addEventListener('click', function() { showTab('ai'); });
+document.getElementById('tab-weekly').addEventListener('click', function() { showTab('weekly'); });
+document.getElementById('tab-ms').addEventListener('click', function() { showTab('ms'); });
+document.getElementById('tab-risks').addEventListener('click', function() { showTab('risks'); });
+document.getElementById('tab-kpis').addEventListener('click', function() { showTab('kpis'); });
+document.getElementById('tab-cfg').addEventListener('click', function() { showTab('cfg'); });
+
+// Sidebar
+document.getElementById('sb-ai').addEventListener('click', function() { showTab('ai'); });
+document.getElementById('sb-weekly').addEventListener('click', function() { showTab('weekly'); });
+document.getElementById('sb-ms').addEventListener('click', function() { showTab('ms'); });
+document.getElementById('sb-risks').addEventListener('click', function() { showTab('risks'); });
+document.getElementById('sb-kpis').addEventListener('click', function() { showTab('kpis'); });
+document.getElementById('sb-cfg').addEventListener('click', function() { showTab('cfg'); });
+
+// Header buttons
+document.getElementById('btn-ppt').addEventListener('click', function() {
+  window.location.href = '/api/projects/' + PID + '/export/pptx';
+});
+document.getElementById('btn-add').addEventListener('click', function() { openModal(); });
+
+// Bouton dans tab-status
+document.getElementById('tc-add-btn').addEventListener('click', function() { openModal(); });
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('modal-task').classList.add('open');
+  setTimeout(function() { document.getElementById('nt-t').focus(); }, 50);
+}
+
+document.getElementById('btn-cancel-task').addEventListener('click', function() {
+  document.getElementById('modal-task').classList.remove('open');
+});
+document.getElementById('modal-task').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+
+// ── Ajouter tache ─────────────────────────────────────────────────────────────
+document.getElementById('btn-confirm-task').addEventListener('click', function() {
+  var title = document.getElementById('nt-t').value.trim();
+  if (!title) { alert('Titre obligatoire'); return; }
+  var payload = {
+    title:       title,
+    category_id: document.getElementById('nt-c').value || null,
+    status:      document.getElementById('nt-s').value,
+    date_label:  document.getElementById('nt-d').value,
+    start_date:  document.getElementById('nt-sd').value,
+    end_date:    document.getElementById('nt-ed').value,
+    ado_item_id: document.getElementById('nt-a').value ? parseInt(document.getElementById('nt-a').value) : null
+  };
+  fetch('/api/projects/' + PID + '/tasks', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) { if (d.ok) { document.getElementById('modal-task').classList.remove('open'); location.reload(); } });
+});
+
+// ── IA Chat ───────────────────────────────────────────────────────────────────
+document.getElementById('btn-send-ai').addEventListener('click', function() {
+  var text = document.getElementById('cinput').value.trim();
+  if (!text) return;
+  var hist = document.getElementById('chist');
+  hist.insertAdjacentHTML('beforeend', '<div style="color:#1e90ff;margin-top:8px;">Vous: ' + text.slice(0,100) + '...</div>');
+  hist.insertAdjacentHTML('beforeend', '<div id="ai-load" style="color:#888;">Analyse Groq en cours...</div>');
+  hist.scrollTop = hist.scrollHeight;
+  fetch('/api/projects/' + PID + '/ai/parse', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: text, language: LANG })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var ld = document.getElementById('ai-load');
+    if (ld) ld.remove();
+    if (data.error) { hist.insertAdjacentHTML('beforeend', '<div style="color:#f44336;">Erreur: ' + data.error + '</div>'); return; }
+    var tasks = data.tasks || [];
+    var html = '<div style="background:#1a1d27;border:1px solid #2a2d3e;border-radius:6px;padding:10px;margin-top:8px;">';
+    html += '<b style="color:#4caf50;">' + tasks.length + ' tache(s) identifiee(s):</b><br><br>';
+    tasks.forEach(function(t, i) {
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 6px;background:#0a0c14;border-radius:4px;margin-bottom:3px;font-size:0.8rem;">';
+      html += '<span style="color:#1e90ff;">' + (t.category||'') + '</span> | ';
+      html += '<span>' + (t.title||'') + '</span> | ';
+      html += '<span style="color:#888;">' + (t.status||'') + ' ' + (t.date_label||'') + '</span></div>';
+    });
+    window._pm_tasks = tasks;
+    html += '<br><button class="btn btn-g" id="btn-import-tasks">Importer les taches</button></div>';
+    hist.insertAdjacentHTML('beforeend', html);
+    hist.scrollTop = hist.scrollHeight;
+    document.getElementById('cinput').value = '';
+    var btn = document.getElementById('btn-import-tasks');
+    if (btn) btn.addEventListener('click', function() {
+      fetch('/api/projects/' + PID + '/ai/import', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tasks: window._pm_tasks, language: LANG })
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) { alert(d.imported + ' tache(s) importee(s) !'); location.reload(); }
+      });
+    });
+  });
+});
+
+document.getElementById('cinput').addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === 'Enter') { document.getElementById('btn-send-ai').click(); }
+});
+
+document.getElementById('btn-restructure').addEventListener('click', function() {
+  var hist = document.getElementById('chist');
+  hist.insertAdjacentHTML('beforeend', '<div style="color:#888;">Restructuration en cours...</div>');
+  fetch('/api/projects/' + PID + '/ai/restructure', { method: 'POST' })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    hist.insertAdjacentHTML('beforeend',
+      '<div style="color:#4caf50;font-family:monospace;font-size:0.78rem;white-space:pre-wrap;">' +
+      'Suggestion IA:\n' + JSON.stringify(data.tasks, null, 2) + '</div>');
+    hist.scrollTop = hist.scrollHeight;
+  });
+});
+
+// ── Notes hebdo ───────────────────────────────────────────────────────────────
+document.getElementById('btn-save-weekly').addEventListener('click', function() {
+  fetch('/api/projects/' + PID + '/weekly-note', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      summary:      document.getElementById('wn-sum').value,
+      achievements: document.getElementById('wn-ach').value,
+      planned:      document.getElementById('wn-pln').value,
+      watch_items:  document.getElementById('wn-wtch').value
+    })
+  }).then(function() {
+    var el = document.getElementById('wn-ok');
+    if (el) { el.textContent = 'Sauvegarde !'; setTimeout(function() { el.textContent = ''; }, 3000); }
+  });
+});
+
+// ── KPIs ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.ksel').forEach(function(sel) {
+  sel.addEventListener('change', function() {
+    var c = { G: '#92D050', Y: '#FFFF00', R: '#FF0000' };
+    this.style.background = c[this.value] || '#92D050';
+    this.style.color = this.value === 'R' ? '#fff' : '#000';
+  });
+});
+
+document.getElementById('btn-save-kpis').addEventListener('click', function() {
+  var payload = {};
+  document.querySelectorAll('.ksel').forEach(function(s) {
+    var k = s.dataset.k, f = s.dataset.f;
+    if (!payload[k]) payload[k] = {};
+    payload[k][f] = s.value;
+  });
+  fetch('/api/projects/' + PID + '/kpis', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(function() {
+    var el = document.getElementById('kpi-ok');
+    if (el) { el.textContent = 'Sauvegarde !'; setTimeout(function() { el.textContent = ''; location.reload(); }, 1500); }
+  });
+});
+
+// ── Categorie ─────────────────────────────────────────────────────────────────
+document.getElementById('btn-add-cat').addEventListener('click', function() {
+  var n = document.getElementById('c-n').value.trim();
+  if (!n) { alert('Nom obligatoire'); return; }
+  fetch('/api/projects/' + PID + '/categories', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: n, name_en: document.getElementById('c-en').value.trim(), color: document.getElementById('c-col').value })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) { var el = document.getElementById('cat-ok'); if (el) el.textContent = 'Ajoutee !'; setTimeout(function() { location.reload(); }, 800); }
+  });
+});
+
+// ── Jalon ─────────────────────────────────────────────────────────────────────
+document.getElementById('btn-add-ms').addEventListener('click', function() {
+  var t = document.getElementById('ms-t').value.trim();
+  if (!t) return;
+  fetch('/api/projects/' + PID + '/milestones', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: t, baseline_date: document.getElementById('ms-b').value, current_date: document.getElementById('ms-c').value, status: document.getElementById('ms-s').value })
+  }).then(function() { location.reload(); });
+});
+
+// ── Risque ────────────────────────────────────────────────────────────────────
+document.getElementById('btn-add-risk').addEventListener('click', function() {
+  var d = document.getElementById('r-desc').value.trim();
+  if (!d) return;
+  fetch('/api/projects/' + PID + '/risks', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description: d, owner: document.getElementById('r-own').value, risk_type: document.getElementById('r-type').value })
+  }).then(function() { location.reload(); });
+});
+</script>
 </body>
 </html>
