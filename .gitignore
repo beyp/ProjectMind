@@ -1,0 +1,12 @@
+.env
+*.db
+*.sqlite
+__pycache__/
+.venv/
+venv/
+*.pyc
+.DS_Store
+data/
+logs/
+*.pptx
+!templates/weekly_template.pptx
