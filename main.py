@@ -20,7 +20,7 @@ from core.models import (
     get_categories, create_category, get_tasks, create_task, update_task,
     get_kpis, get_weekly_note, get_milestones, get_risks,
     STATUS_COLORS, STATUSES, KPI_ITEMS, get_fiscal_quarter, get_fiscal_year,
-    get_db
+    get_db, delete_project
 )
 from ai.task_parser import TaskParser
 
@@ -167,6 +167,15 @@ async def api_create_project(request: Request):
         ado_area_path = data.get("ado_area_path", ""),
     )
     return {"id": project_id, "ok": True}
+
+
+@app.delete("/api/projects/{project_id}")
+async def api_delete_project(project_id: int):
+    """Supprime un projet et toutes ses donnees."""
+    ok = delete_project(project_id)
+    if not ok:
+        raise HTTPException(404, "Projet introuvable")
+    return {"ok": True, "deleted": project_id}
 
 
 @app.get("/api/projects/{project_id}/tasks")
