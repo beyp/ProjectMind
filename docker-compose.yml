@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  projectmind:
+    build: .
+    container_name: projectmind
+    ports:
+      - "8766:8766"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./.env:/app/.env
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8766/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
