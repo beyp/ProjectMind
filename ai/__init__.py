@@ -1,1 +1,1 @@
-"""ProjectMind AI."""
+"""ProjectMind AI package."""
