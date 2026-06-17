@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ProjectMind</title>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<style>
+:root[data-theme="dark"]{
+  --bg:#0f1117;--card:#1a1d27;--border:#2a2d3e;--text:#e0e0e0;--text-dim:#888;
+  --accent:#1e90ff;--green:#4caf50;--orange:#ff9800;--red:#f44336;--header:#151821;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+header{background:var(--header);border-bottom:2px solid var(--accent);padding:0 24px;height:56px;
+  display:flex;align-items:center;gap:16px;}
+header h1{color:var(--accent);font-size:1.4rem;}
+header span{color:var(--text-dim);font-size:0.85rem;}
+.main{max-width:1200px;margin:0 auto;padding:32px 24px;}
+.page-title{font-size:1.5rem;margin-bottom:24px;color:var(--text);}
+.projects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;}
+.project-card{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:20px;cursor:pointer;transition:border-color 0.2s,transform 0.1s;text-decoration:none;color:var(--text);}
+.project-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.project-card h2{font-size:1.1rem;color:var(--accent);margin-bottom:8px;}
+.project-card .meta{font-size:0.82rem;color:var(--text-dim);display:flex;gap:12px;flex-wrap:wrap;}
+.project-card .badge{background:color-mix(in srgb,var(--accent) 15%,transparent);
+  color:var(--accent);padding:2px 8px;border-radius:10px;font-size:0.75rem;}
+.new-project-card{background:transparent;border:2px dashed var(--border);border-radius:12px;
+  padding:20px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:border-color 0.2s;color:var(--text-dim);font-size:0.9rem;gap:8px;}
+.new-project-card:hover{border-color:var(--accent);color:var(--accent);}
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;
+  align-items:center;justify-content:center;}
+.modal-overlay.active{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:28px;width:480px;max-width:95vw;}
+.modal h2{color:var(--accent);margin-bottom:20px;}
+.form-group{margin-bottom:14px;}
+.form-group label{display:block;font-size:0.82rem;color:var(--text-dim);margin-bottom:4px;}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;background:#12141f;border:1px solid var(--border);color:var(--text);
+  padding:8px 12px;border-radius:6px;font-size:0.88rem;}
+.form-group select{cursor:pointer;}
+.btn-row{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+.btn{padding:8px 20px;border-radius:6px;border:none;cursor:pointer;font-size:0.88rem;}
+.btn-primary{background:var(--accent);color:white;}
+.btn-secondary{background:var(--border);color:var(--text);}
+.btn:hover{opacity:0.85;}
+::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:1.5rem;">&#x1F4CB;</span>
+  <h1>ProjectMind</h1>
+  <span>AI-Powered Project Management</span>
+</header>
+
+<div class="main">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+    <h2 class="page-title">Mes projets</h2>
+    <span style="color:var(--text-dim);font-size:0.82rem;">
+      &#x1F4C5; {{ today.strftime("%d %b %Y") }} &nbsp;|&nbsp;
+      {{ get_fiscal_quarter() }}
+    </span>
+  </div>
+
+  <div class="projects-grid">
+    {% for p in projects %}
+    <a class="project-card" href="/project/{{ p.id }}">
+      <h2>{{ p.name }}</h2>
+      <div class="meta">
+        <span class="badge">{{ p.language.upper() }}</span>
+        {% if p.ado_project %}<span>&#x1F535; {{ p.ado_project }}</span>{% endif %}
+        {% if p.go_live_date %}<span>&#x1F3AF; {{ p.go_live_date }}</span>{% endif %}
+        {% if p.description %}<span style="width:100%;margin-top:6px;">{{ p.description[:80] }}</span>{% endif %}
+      </div>
+    </a>
+    {% endfor %}
+
+    <!-- Nouveau projet -->
+    <div class="new-project-card" onclick="document.getElementById('modal-new').classList.add('active')">
+      <span style="font-size:1.5rem;">&#x2795;</span>
+      <span>Nouveau projet</span>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nouveau projet -->
+<div class="modal-overlay" id="modal-new">
+  <div class="modal">
+    <h2>&#x1F4CB; Nouveau projet</h2>
+    <form id="form-new-project">
+      <div class="form-group">
+        <label>Nom du projet *</label>
+        <input id="np-name" type="text" placeholder="PTG - TMM D2" required autofocus>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="np-desc" rows="2" placeholder="Description courte..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Langue du projet</label>
+        <select id="np-lang">
+          <option value="fr">&#x1F1EB;&#x1F1F7; Français</option>
+          <option value="en">&#x1F1EC;&#x1F1E7; English</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Date Go-Live</label>
+        <input id="np-golive" type="text" placeholder="ex: 01/03/2027 ou TBD">
+      </div>
+      <div class="form-group">
+        <label>Projet Azure DevOps</label>
+        <input id="np-ado" type="text" placeholder="ex: PTG - TMM D2">
+      </div>
+      <div class="form-group">
+        <label>Area Path ADO</label>
+        <input id="np-area" type="text" placeholder="ex: PTG - TMM D2\\OCM">
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-secondary"
+          onclick="document.getElementById('modal-new').classList.remove('active')">
+          Annuler
+        </button>
+        <button type="button" class="btn btn-primary" onclick="createProject()">
+          &#x2705; Créer
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function createProject() {
+  var name    = document.getElementById("np-name").value.trim();
+  var desc    = document.getElementById("np-desc").value.trim();
+  var lang    = document.getElementById("np-lang").value;
+  var golive  = document.getElementById("np-golive").value.trim();
+  var ado     = document.getElementById("np-ado").value.trim();
+  var area    = document.getElementById("np-area").value.trim();
+  if (!name) { alert("Le nom du projet est obligatoire."); return; }
+  fetch("/api/projects", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({name, description: desc, language: lang,
+                          go_live_date: golive, ado_project: ado, ado_area_path: area})
+  })
+  .then(r => r.json())
+  .then(data => { if (data.ok) window.location.href = "/project/" + data.id; });
+}
+// Fermer modal en cliquant dehors
+document.getElementById("modal-new").addEventListener("click", function(e) {
+  if (e.target === this) this.classList.remove("active");
+});
+</script>
+</body>
+</html>
