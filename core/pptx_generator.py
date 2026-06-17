@@ -1,104 +1,189 @@
-"""Generateur PowerPoint Weekly Status — template TMM."""
-import os
-from datetime import date
+"""
+PPTXGenerator - Génère le one-pager Weekly Status PowerPoint.
+Basé sur le template Project template TMM.pptx
+"""
+import copy
+import io
+import logging
+from datetime import date, datetime
 from pathlib import Path
+from typing import Any
 
-import aiosqlite
+logger = logging.getLogger(__name__)
 
-from core.database import DB_PATH
-from core.fiscal_year import get_fiscal_period
-
-TEMPLATE_PATH = Path(__file__).parent.parent / "templates" / "weekly_template.pptx"
-OUTPUT_DIR    = Path("data/exports")
-
-
-async def generate_weekly_pptx(project_id: int) -> str:
-    """Genere le PPTX weekly status et retourne son chemin."""
+try:
     from pptx import Presentation
-    from pptx.util import Pt
     from pptx.dml.color import RGBColor
+    from pptx.util import Pt
+    PPTX_AVAILABLE = True
+except ImportError:
+    PPTX_AVAILABLE = False
+    logger.warning("python-pptx non disponible")
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+TEMPLATE_PATH = Path("templates/weekly_template.pptx")
+
+KPI_HEX = {"G": "92D050", "Y": "FFFF00", "R": "FF0000"}
+
+MONTHS_FR = ["", "Jan.", "Fév.", "Mars", "Avr.", "Mai", "Juin",
+             "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc."]
+MONTHS_EN = ["", "Jan.", "Feb.", "Mar.", "Apr.", "May", "Jun.",
+             "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."]
+
+
+def _fmt_date(d: date, language: str = "fr") -> str:
+    months = MONTHS_FR if language == "fr" else MONTHS_EN
+    suffix = "st" if d.day == 1 else "nd" if d.day == 2 else "rd" if d.day == 3 else "th"
+    if language == "fr":
+        return f"{d.day} {months[d.month]} {d.year}"
+    return f"{months[d.month]} {d.day}{suffix}, {d.year}"
+
+
+def generate_weekly_pptx(
+    project:    dict,
+    tasks:      list[dict],
+    categories: list[dict],
+    kpis:       list[dict],
+    milestones: list[dict],
+    risks:      list[dict],
+    weekly_note: dict | None,
+    language:   str = "fr",
+) -> bytes:
+    """
+    Génère le fichier PowerPoint Weekly Status.
+    Retourne les bytes du fichier .pptx.
+    """
+    if not PPTX_AVAILABLE:
+        raise RuntimeError("python-pptx non installé")
 
     if not TEMPLATE_PATH.exists():
         raise FileNotFoundError(f"Template introuvable : {TEMPLATE_PATH}")
 
-    # Charger les donnees du projet
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT * FROM projects WHERE id=?", (project_id,)) as c:
-            project = dict(await c.fetchone() or {})
-        if not project:
-            raise ValueError(f"Projet {project_id} introuvable")
-        async with db.execute(
-            "SELECT * FROM weekly_reports WHERE project_id=? ORDER BY report_date DESC LIMIT 1",
-            (project_id,)
-        ) as c:
-            report = dict(await c.fetchone() or {})
+    prs  = Presentation(str(TEMPLATE_PATH))
+    slide = prs.slides[0]
+    today = date.today()
 
-    prs    = Presentation(str(TEMPLATE_PATH))
-    slide  = prs.slides[0]
-    today  = date.today()
-    fiscal = get_fiscal_period(today)
+    def set_text(shape_name: str, text: str) -> None:
+        for shape in slide.shapes:
+            if shape.name == shape_name and shape.has_text_frame:
+                tf = shape.text_frame
+                for para in tf.paragraphs:
+                    for run in para.runs:
+                        if run.text.strip():
+                            run.text = text
+                            return
 
-    KPI_COLORS = {"G": "4CAF50", "Y": "FFC107", "R": "F44336"}
-
-    def set_text(cell, text, bold=False, color=None, size=9):
-        tf = cell.text_frame
-        tf.clear()
-        run = tf.paragraphs[0].add_run()
-        run.text       = str(text or "")
-        run.font.bold  = bold
-        run.font.size  = Pt(size)
-        if color:
-            run.font.color.rgb = RGBColor.from_string(color)
-
+    # ── Titre et date ─────────────────────────────────────────────────────────
     for shape in slide.shapes:
-        # Titre + nom projet
         if shape.name == "Title 1" and shape.has_text_frame:
-            for para in shape.text_frame.paragraphs:
-                for run in para.runs:
-                    run.text = run.text.replace("[Project Name]", project.get("name", ""))
+            tf = shape.text_frame
+            paras = tf.paragraphs
+            if len(paras) >= 2:
+                for run in paras[1].runs:
+                    run.text = f"       {project.get('name', '')}"
 
-        # Date
         if shape.name == "TextBox 12" and shape.has_text_frame:
-            for para in shape.text_frame.paragraphs:
+            tf = shape.text_frame
+            for para in tf.paragraphs:
                 for run in para.runs:
-                    run.text = f"  {today.strftime('%B %d, %Y')}  |  {fiscal.label}"
+                    run.text = f"              {_fmt_date(today, language)}"
 
-        # Go-Live
         if shape.name == "TextBox 1" and shape.has_text_frame:
-            for para in shape.text_frame.paragraphs:
+            go_live = project.get("go_live_date", "TBD")
+            lbl = "Go-Live" if language == "en" else "Mise en prod."
+            tf = shape.text_frame
+            for para in tf.paragraphs:
                 for run in para.runs:
-                    if "Go" in run.text:
-                        run.text = f"Go-Live : {project.get('go_live_date', 'TBD')}"
+                    run.text = f"{lbl} : {go_live}"
 
-        # KPIs
+    # ── KPIs (Table 26) ───────────────────────────────────────────────────────
+    kpi_map = {k["kpi_name"]: k for k in kpis}
+    for shape in slide.shapes:
         if shape.name == "Table 26" and shape.has_table:
-            kpi_keys = [
-                "kpi_cost", "kpi_scope", "kpi_schedule",
-                "kpi_resources", "kpi_risk", "kpi_transition",
-            ]
-            for i, key in enumerate(kpi_keys, 1):
-                if i < len(shape.table.rows):
-                    val = report.get(key, "G") if report else "G"
-                    set_text(
-                        shape.table.rows[i].cells[2],
-                        val, bold=True, color=KPI_COLORS.get(val, "000000"),
-                    )
+            table = shape.table
+            kpi_order = ["COST", "SCOPE", "SCHEDULE", "RESOURCES", "RISK", "TRANSITION"]
+            for row_idx, kpi_name in enumerate(kpi_order, start=1):
+                kpi = kpi_map.get(kpi_name, {})
+                prev_val = kpi.get("prev_value", "G")
+                curr_val = kpi.get("curr_value", "G")
+                for col_idx, val in [(1, prev_val), (2, curr_val)]:
+                    cell = table.cell(row_idx, col_idx)
+                    for para in cell.text_frame.paragraphs:
+                        for run in para.runs:
+                            run.text = val
+                    # Couleur de fond
+                    hex_color = KPI_HEX.get(val, "92D050")
+                    fill = cell.fill
+                    fill.solid()
+                    fill.fore_color.rgb = RGBColor.from_string(hex_color)
 
-        # Sections texte
-        text_sections = {
-            "Table 7":  "summary",
-            "Table 25": "last_period_achievements",
-            "Table 13": "planned_activities",
-            "Table 15": "watch_items",
-            "Table 20": "risks_issues",
-        }
-        if shape.name in text_sections and shape.has_table and len(shape.table.rows) > 1:
-            key = text_sections[shape.name]
-            set_text(shape.table.rows[1].cells[0], report.get(key, "") if report else "")
+    # ── Summary (Table 7) ────────────────────────────────────────────────────
+    if weekly_note:
+        for shape in slide.shapes:
+            if shape.name == "Table 7" and shape.has_table:
+                cell = shape.table.cell(1, 0)
+                cell.text_frame.paragraphs[0].runs[0].text =                     weekly_note.get("summary", "")
 
-    output_path = OUTPUT_DIR / f"weekly_{project_id}_{today}.pptx"
-    prs.save(str(output_path))
-    return str(output_path)
+    # ── Achievements (Table 25) ───────────────────────────────────────────────
+    if weekly_note:
+        for shape in slide.shapes:
+            if shape.name == "Table 25" and shape.has_table:
+                cell = shape.table.cell(1, 0)
+                text = weekly_note.get("achievements", "")
+                if cell.text_frame.paragraphs:
+                    cell.text_frame.paragraphs[0].runs[0].text = text
+
+    # ── Planned (Table 13) ────────────────────────────────────────────────────
+    if weekly_note:
+        for shape in slide.shapes:
+            if shape.name == "Table 13" and shape.has_table:
+                cell = shape.table.cell(1, 0)
+                text = weekly_note.get("planned", "")
+                if cell.text_frame.paragraphs:
+                    cell.text_frame.paragraphs[0].runs[0].text = text
+
+    # ── Watch Items (Table 15) ────────────────────────────────────────────────
+    if weekly_note:
+        for shape in slide.shapes:
+            if shape.name == "Table 15" and shape.has_table:
+                cell = shape.table.cell(1, 0)
+                text = weekly_note.get("watch_items", "")
+                if cell.text_frame.paragraphs:
+                    cell.text_frame.paragraphs[0].runs[0].text = text
+
+    # ── Milestones (Table 4) ──────────────────────────────────────────────────
+    for shape in slide.shapes:
+        if shape.name == "Table 4" and shape.has_table:
+            cell_titles   = shape.table.cell(1, 0)
+            cell_baseline = shape.table.cell(1, 1)
+            cell_current  = shape.table.cell(1, 2)
+            cell_status   = shape.table.cell(1, 3)
+            titles    = "\n".join(m.get("title", "")         for m in milestones)
+            baselines = "\n".join(m.get("baseline_date", "") for m in milestones)
+            currents  = "\n".join(m.get("current_date", "")  for m in milestones)
+            statuses  = "\n".join(m.get("status", "")        for m in milestones)
+            for cell, text in [(cell_titles, titles), (cell_baseline, baselines),
+                               (cell_current, currents), (cell_status, statuses)]:
+                if cell.text_frame.paragraphs:
+                    try:
+                        cell.text_frame.paragraphs[0].runs[0].text = text
+                    except IndexError:
+                        pass
+
+    # ── Risks (Table 20) ──────────────────────────────────────────────────────
+    for shape in slide.shapes:
+        if shape.name == "Table 20" and shape.has_table:
+            cell_desc  = shape.table.cell(1, 0)
+            cell_owner = shape.table.cell(1, 1)
+            descs  = "\n".join(f"{r.get('risk_type','I')}:  {r.get('description','')}" for r in risks)
+            owners = "\n".join(r.get("owner", "") for r in risks)
+            try:
+                cell_desc.text_frame.paragraphs[0].runs[0].text  = descs
+                cell_owner.text_frame.paragraphs[0].runs[0].text = owners
+            except IndexError:
+                pass
+
+    # Sauvegarder en mémoire
+    buf = io.BytesIO()
+    prs.save(buf)
+    buf.seek(0)
+    return buf.read()
