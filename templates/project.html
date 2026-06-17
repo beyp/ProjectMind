@@ -88,8 +88,62 @@ header h1{color:var(--accent);font-size:1.1rem;}
 .modal-box{background:var(--card);border:1px solid var(--border);border-radius:12px;
   padding:24px;width:460px;max-width:95vw;}
 </style>
+<script>
+// Fonctions disponibles immédiatement (avant le DOM)
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  document.querySelectorAll('.tab').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  var tc = document.getElementById('tc-' + name);
+  if (tc) tc.classList.add('active');
+  var tab = document.getElementById('tab-' + name);
+  if (tab) tab.classList.add('active');
+}
+
+function openModal() {
+  var m = document.getElementById('modal-task');
+  if (m) { m.classList.add('open'); }
+  // Focus après que le modal soit visible
+  setTimeout(function() {
+    var inp = document.getElementById('nt-t');
+    if (inp) inp.focus();
+  }, 50);
+}
+
+function closeModal() {
+  var m = document.getElementById('modal-task');
+  if (m) m.classList.remove('open');
+}
+
+function exportPPTX() {
+  window.location.href = '/api/projects/' + window.PM_PID + '/export/pptx';
+}
+
+// Le reste des fonctions qui nécessitent le DOM
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialiser PID et LANG depuis les data-attributes
+  var body = document.getElementById('pm-data');
+  window.PM_PID  = body ? parseInt(body.dataset.pid)  : 1;
+  window.PM_LANG = body ? body.dataset.lang : 'fr';
+
+  // Fermer modal en cliquant dehors
+  var overlay = document.getElementById('modal-task');
+  if (overlay) {
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) closeModal();
+    });
+  }
+});
+
+// Alias globaux
+var PID  = 0;  // sera mis à jour après DOMContentLoaded
+var LANG = 'fr';
+</script>
 </head>
-<body>
+<body><div id="pm-data" data-pid="{{ project.id }}" data-lang="{{ project.language }}" style="display:none;"></div>
 <header>
   <a href="/">&#x2190; Projets</a>
   <h1>&#x1F4CB; {{ project.name }}</h1>
@@ -479,166 +533,6 @@ header h1{color:var(--accent);font-size:1.1rem;}
   </div>
 </div>
 
-<script>
-const PID  = {{ project.id }};
-const LANG = "{{ project.language }}";
 
-function showTab(id) {
-  document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-  var el = document.getElementById(id);
-  if (el) el.classList.add("active");
-  var btn = document.getElementById(id+"-btn");
-  if (btn) btn.classList.add("active");
-}
-
-function openModal(){ document.getElementById("modal-task").classList.add("open"); document.getElementById("nt-t").focus(); }
-function closeModal(){ document.getElementById("modal-task").classList.remove("open"); }
-document.getElementById("modal-task").addEventListener("click", function(e){ if(e.target===this) closeModal(); });
-
-function addTask(){
-  var t = document.getElementById("nt-t").value.trim();
-  if(!t){alert("Titre obligatoire");return;}
-  fetch("/api/projects/"+PID+"/tasks",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      title:t, category_id:document.getElementById("nt-c").value||null,
-      status:document.getElementById("nt-s").value,
-      date_label:document.getElementById("nt-d").value,
-      start_date:document.getElementById("nt-sd").value,
-      end_date:document.getElementById("nt-ed").value,
-      ado_item_id:document.getElementById("nt-a").value||null
-    })
-  }).then(r=>r.json()).then(d=>{if(d.ok)location.reload();});
-}
-
-function sendAI(){
-  var text = document.getElementById("chat-in").value.trim();
-  if(!text) return;
-  var h = document.getElementById("chat-hist");
-  h.insertAdjacentHTML("beforeend","<div style='color:#1e90ff;margin-top:8px;'>&#x1F464; "+text.slice(0,80)+"...</div>");
-  h.insertAdjacentHTML("beforeend","<div id='ai-loading' style='color:#888;'>&#x1F916; Analyse Groq en cours...</div>");
-  h.scrollTop=h.scrollHeight;
-  fetch("/api/projects/"+PID+"/ai/parse",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({text,language:LANG})
-  }).then(r=>r.json()).then(data=>{
-    var ld = document.getElementById("ai-loading");
-    if(ld) ld.remove();
-    if(data.error){
-      h.insertAdjacentHTML("beforeend","<div style='color:var(--red);'>Erreur: "+data.error+"</div>");
-      return;
-    }
-    var tasks = data.tasks||[];
-    var html = "<div style='background:#1a1d27;border:1px solid #2a2d3e;border-radius:6px;padding:10px;margin-top:8px;'>";
-    html += "<b style='color:#4caf50;'>&#x1F916; "+tasks.length+" tâche(s) identifiée(s) :</b><br><br>";
-    tasks.forEach(function(t,i){
-      html += "<div class='parsed-task'><input type='checkbox' id='pt-"+i+"' checked>";
-      html += "<span style='color:#1e90ff;font-size:0.72rem;'>"+t.category+"</span> | ";
-      html += "<span>"+t.title+"</span> | ";
-      html += "<span style='color:#888;font-size:0.72rem;'>"+t.status+" "+(t.date_label||"")+"</span></div>";
-    });
-    window._pm_tasks = tasks;
-    html += "<br><button class='btn btn-s' onclick='importTasks()' style='font-size:0.78rem;'>&#x2705; Importer toutes les tâches</button>";
-    html += "</div>";
-    h.insertAdjacentHTML("beforeend",html);
-    h.scrollTop=h.scrollHeight;
-    document.getElementById("chat-in").value="";
-  });
-}
-
-function importTasks(){
-  var tasks = window._pm_tasks||[];
-  fetch("/api/projects/"+PID+"/ai/import",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({tasks,language:LANG})
-  }).then(r=>r.json()).then(d=>{
-    if(d.ok){alert(d.imported+" tâche(s) importée(s) !");location.reload();}
-  });
-}
-
-function restructure(){
-  var h = document.getElementById("chat-hist");
-  h.insertAdjacentHTML("beforeend","<div style='color:#888;'>&#x1F504; Restructuration en cours...</div>");
-  fetch("/api/projects/"+PID+"/ai/restructure",{method:"POST"})
-    .then(r=>r.json()).then(data=>{
-      h.insertAdjacentHTML("beforeend",
-        "<div style='color:#4caf50;font-family:monospace;font-size:0.78rem;white-space:pre-wrap;'>"+
-        "&#x1F504; Suggestion IA :
-"+JSON.stringify(data.tasks,null,2)+"</div>");
-      h.scrollTop=h.scrollHeight;
-    });
-}
-
-function saveWeekly(){
-  fetch("/api/projects/"+PID+"/weekly-note",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      summary:document.getElementById("wn-summary").value,
-      achievements:document.getElementById("wn-ach").value,
-      planned:document.getElementById("wn-plan").value,
-      watch_items:document.getElementById("wn-watch").value
-    })
-  }).then(()=>{
-    var el=document.getElementById("wn-ok");
-    el.textContent="✅ Sauvegardé !";
-    setTimeout(()=>el.textContent="",3000);
-  });
-}
-
-function kpiChg(sel){
-  var c={"G":"#92D050","Y":"#FFFF00","R":"#FF0000"};
-  sel.style.background=c[sel.value]||"#92D050";
-}
-
-function saveKPIs(){
-  var p={};
-  document.querySelectorAll(".ks").forEach(s=>{
-    var k=s.dataset.k,f=s.dataset.f;
-    if(!p[k])p[k]={};p[k][f]=s.value;
-  });
-  fetch("/api/projects/"+PID+"/kpis",{
-    method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)
-  }).then(()=>{
-    var el=document.getElementById("kpi-ok");
-    el.textContent="✅ Sauvegardé !";
-    setTimeout(()=>{el.textContent="";location.reload();},1500);
-  });
-}
-
-function addCat(){
-  var n=document.getElementById("c-name").value.trim();
-  if(!n){alert("Nom obligatoire");return;}
-  fetch("/api/projects/"+PID+"/categories",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({name:n,name_en:document.getElementById("c-en").value,
-      color:document.getElementById("c-color").value})
-  }).then(r=>r.json()).then(d=>{if(d.ok)location.reload();});
-}
-
-function addMS(){
-  var t=document.getElementById("ms-t").value.trim();
-  if(!t)return;
-  fetch("/api/projects/"+PID+"/milestones",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({title:t,baseline_date:document.getElementById("ms-b").value,
-      current_date:document.getElementById("ms-c").value,status:document.getElementById("ms-s").value})
-  }).then(()=>location.reload());
-}
-
-function addRisk(){
-  var d=document.getElementById("r-desc").value.trim();
-  if(!d)return;
-  fetch("/api/projects/"+PID+"/risks",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({description:d,owner:document.getElementById("r-own").value,
-      risk_type:document.getElementById("r-type").value})
-  }).then(()=>location.reload());
-}
-
-function exportPPTX(){
-  window.location.href="/api/projects/"+PID+"/export/pptx";
-}
-</script>
 </body>
 </html>
