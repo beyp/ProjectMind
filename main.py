@@ -17,8 +17,11 @@ from fastapi.templating import Jinja2Templates
 
 from core.models import (
     init_db, get_all_projects, get_project, create_project,
-    get_categories, create_category, get_tasks, create_task, update_task,
+    get_categories, create_category, update_category, delete_category, reorder_categories,
+    get_tasks, get_task, create_task, update_task, delete_task,
     get_kpis, get_weekly_note, get_milestones, get_risks,
+    get_resources, create_resource, update_resource, delete_resource,
+    get_capacity, upsert_capacity, get_capacity_matrix,
     STATUS_COLORS, STATUSES, KPI_ITEMS, get_fiscal_quarter, get_fiscal_year,
     get_db, delete_project
 )
@@ -98,6 +101,7 @@ async def project_view(request: Request, project_id: int):
         cat_id = task.get("category_id") or 0
         tasks_by_cat.setdefault(cat_id, []).append(task)
 
+    resources = get_resources(project_id)
     return templates.TemplateResponse(
         request=request,
         name="project.html",
@@ -105,10 +109,12 @@ async def project_view(request: Request, project_id: int):
             "project":      project,
             "categories":   categories,
             "tasks_by_cat": tasks_by_cat,
+            "tasks_flat":   tasks,
             "kpis":         kpis,
             "milestones":   milestones,
             "risks":        risks,
             "weekly_note":  weekly_note,
+            "resources":    resources,
             "today":        date.today(),
             "fiscal_q":     get_fiscal_quarter(),
         },
@@ -379,6 +385,153 @@ async def api_ai_parse_image(project_id: int, request: Request):
         language     = language,
     )
     return {"tasks": tasks, "count": len(tasks), "model": "llama-4-scout-17b"}
+
+
+# ── Tasks : GET one, DELETE, PUT (update complet) ────────────────────────────
+
+@app.get("/api/tasks/{task_id}")
+async def api_get_task(task_id: int):
+    task = get_task(task_id)
+    if not task:
+        raise HTTPException(404, "Tache introuvable")
+    return task
+
+
+@app.put("/api/tasks/{task_id}")
+async def api_update_task_full(task_id: int, request: Request):
+    data = await request.json()
+    update_task(task_id, **data)
+    return {"ok": True}
+
+
+@app.delete("/api/tasks/{task_id}")
+async def api_delete_task(task_id: int):
+    ok = delete_task(task_id)
+    if not ok:
+        raise HTTPException(404, "Tache introuvable")
+    return {"ok": True}
+
+
+# ── Categories : PUT, DELETE, reorder ────────────────────────────────────────
+
+@app.put("/api/categories/{category_id}")
+async def api_update_category(category_id: int, request: Request):
+    data = await request.json()
+    update_category(category_id, **data)
+    return {"ok": True}
+
+
+@app.delete("/api/categories/{category_id}")
+async def api_delete_category(category_id: int):
+    ok = delete_category(category_id)
+    return {"ok": ok}
+
+
+@app.post("/api/projects/{project_id}/categories/reorder")
+async def api_reorder_categories(project_id: int, request: Request):
+    data = await request.json()
+    ordered_ids = data.get("ordered_ids", [])
+    reorder_categories(project_id, ordered_ids)
+    return {"ok": True}
+
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+
+@app.get("/api/projects/{project_id}/resources")
+async def api_get_resources(project_id: int):
+    return get_resources(project_id)
+
+
+@app.post("/api/projects/{project_id}/resources")
+async def api_create_resource(project_id: int, request: Request):
+    data = await request.json()
+    rid  = create_resource(
+        project_id   = project_id,
+        acronym      = data.get("acronym", ""),
+        full_name    = data.get("full_name", ""),
+        is_external  = data.get("is_external", False),
+        max_fraction = float(data.get("max_fraction", 1.0)),
+        color        = data.get("color", "#1E90FF"),
+    )
+    return {"id": rid, "ok": True}
+
+
+@app.put("/api/resources/{resource_id}")
+async def api_update_resource(resource_id: int, request: Request):
+    data = await request.json()
+    update_resource(resource_id, **data)
+    return {"ok": True}
+
+
+@app.delete("/api/resources/{resource_id}")
+async def api_delete_resource(resource_id: int):
+    ok = delete_resource(resource_id)
+    return {"ok": ok}
+
+
+# ── Capacity ──────────────────────────────────────────────────────────────────
+
+@app.get("/api/projects/{project_id}/capacity")
+async def api_get_capacity(project_id: int, year: int | None = None):
+    from datetime import date
+    y = year or date.today().year
+    return get_capacity_matrix(project_id, y)
+
+
+@app.post("/api/projects/{project_id}/capacity")
+async def api_upsert_capacity(project_id: int, request: Request):
+    data = await request.json()
+    upsert_capacity(
+        project_id   = project_id,
+        resource_id  = data["resource_id"],
+        year         = data["year"],
+        week         = data["week"],
+        fraction     = float(data.get("fraction", 0.0)),
+        task_id      = data.get("task_id"),
+        category_id  = data.get("category_id"),
+    )
+    return {"ok": True}
+
+
+@app.post("/api/projects/{project_id}/capacity/bulk")
+async def api_bulk_capacity(project_id: int, request: Request):
+    """Sauvegarder plusieurs cellules capacity d un coup."""
+    data    = await request.json()
+    entries = data.get("entries", [])
+    for e in entries:
+        upsert_capacity(
+            project_id  = project_id,
+            resource_id = e["resource_id"],
+            year        = e["year"],
+            week        = e["week"],
+            fraction    = float(e.get("fraction", 0.0)),
+            task_id     = e.get("task_id"),
+            category_id = e.get("category_id"),
+        )
+    return {"ok": True, "saved": len(entries)}
+
+
+# ── Section capacity (dashboard) ──────────────────────────────────────────────
+
+@app.get("/section/capacity/{project_id}", response_class=HTMLResponse)
+async def section_capacity(request: Request, project_id: int):
+    from datetime import date
+    project   = get_project(project_id)
+    resources = get_resources(project_id)
+    categories = get_categories(project_id)
+    year      = date.today().year
+    matrix    = get_capacity_matrix(project_id, year)
+    return templates.TemplateResponse(
+        request=request,
+        name="capacity.html",
+        context={
+            "project":    project,
+            "resources":  resources,
+            "categories": categories,
+            "matrix":     matrix,
+            "year":       year,
+        },
+    )
 
 
 @app.get("/api/projects/{project_id}/export/pptx")
