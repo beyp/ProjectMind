@@ -22,13 +22,14 @@ from core.models import (
     STATUS_COLORS, STATUSES, KPI_ITEMS, get_fiscal_quarter, get_fiscal_year,
     get_db, delete_project
 )
-from ai.task_parser import TaskParser
+from ai.task_parser import TaskParser, VisionTaskParser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-task_parser  = TaskParser(GROQ_API_KEY)
+task_parser        = TaskParser(GROQ_API_KEY)
+vision_task_parser = VisionTaskParser(GROQ_API_KEY)
 
 TEMPLATES_DIR = Path("templates")
 templates     = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -351,6 +352,34 @@ async def api_ai_import(project_id: int, request: Request):
 
 
 # ── Export PowerPoint ─────────────────────────────────────────────────────────
+
+@app.post("/api/projects/{project_id}/ai/parse-image")
+async def api_ai_parse_image(project_id: int, request: Request):
+    """
+    Analyse une image via Groq llama-4-scout (vision) et extrait les tâches.
+    Body JSON : { image_data: base64, image_mime: str, text_context: str, language: str }
+    """
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(404, "Projet introuvable")
+
+    body      = await request.json()
+    image_data  = body.get("image_data", "")
+    image_mime  = body.get("image_mime", "image/jpeg")
+    text_context = body.get("text_context", "")
+    language    = body.get("language", project.get("language", "fr"))
+
+    if not image_data:
+        return JSONResponse({"error": "image_data manquant"}, status_code=400)
+
+    tasks = vision_task_parser.parse_image(
+        image_data   = image_data,
+        image_mime   = image_mime,
+        text_context = text_context,
+        language     = language,
+    )
+    return {"tasks": tasks, "count": len(tasks), "model": "llama-4-scout-17b"}
+
 
 @app.get("/api/projects/{project_id}/export/pptx")
 async def export_pptx(project_id: int):
