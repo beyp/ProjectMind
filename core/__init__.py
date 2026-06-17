@@ -1,1 +1,1 @@
-"""ProjectMind core."""
+"""ProjectMind core package."""
