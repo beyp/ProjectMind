@@ -1,66 +1,55 @@
 # ProjectMind
 
-**Gestionnaire de projets intelligent** — Premier Tech
+**AI-Powered Project Management**
 
-Intégré avec AION, Azure DevOps et Groq IA.
+ProjectMind est un gestionnaire de projets intelligent qui combine :
+- 📊 **Vue Weekly Status** — tableau de suivi par catégories et livrables
+- 📅 **Vue Gantt** — chronologie avec Fiscal Year (début 1er mars)
+- 🤖 **IA Groq** — structuration automatique des tâches par chat
+- 🔵 **Sync Azure DevOps** — liaison par ID item + project + area path
+- 📄 **Export PowerPoint** — one-pager weekly status automatique
+- 🌐 **Multi-projets** — gestion de plusieurs projets simultanément
+- 🇫🇷🇬🇧 **Multi-langues** — FR/EN par projet
 
-## Fonctionnalités
-
-- 📋 **Vue Weekly Status** — tableau par catégorie/livrable avec statuts colorés (FR/EN)
-- 🌳 **WBS + Gantt** — livrables → sous-tâches avec % avancement et Fiscal Year
-- 🤖 **Chat IA Groq** — coller du texte brut → structure automatique des tâches
-- 🔵 **Sync Azure DevOps** — liaison par item ID, projet et area path
-- 📊 **Export PowerPoint** — one-pager weekly status depuis template TMM
-- 🌐 **Multi-projets** — sélecteur + nouveau projet
-- 🐳 **Docker** port 8766
+## Stack technique
+- **Backend** : FastAPI + SQLite
+- **Frontend** : htmx + Jinja2
+- **IA** : Groq llama-3.3-70b-versatile
+- **Gantt** : dhtmlxGantt
+- **Export** : python-pptx
+- **Docker** : port 8766
 
 ## Démarrage rapide
 
 ```bash
-# Avec Docker
-docker-compose up -d
-# → http://localhost:8766
-
-# Sans Docker (dev)
-pip install -r requirements.txt
+# Copier et configurer l'environnement
 cp .env.example .env
-python main.py
+# Editer .env avec vos clés
+
+# Docker
+docker-compose up -d
+
+# Ou local
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8766 --reload
 ```
 
-## Structure
-
-```
-ProjectMind/
-├── main.py                 FastAPI entry point
-├── Dockerfile              Port 8766
-├── docker-compose.yml
-├── core/
-│   ├── models.py           Pydantic models
-│   ├── database.py         SQLite (aiosqlite)
-│   ├── fiscal_year.py      FY27-Q1 = 1 mars 2026
-│   ├── ado_sync.py         Azure DevOps sync
-│   └── pptx_generator.py   Export PowerPoint
-├── ai/
-│   └── task_parser.py      Groq text → tasks
-├── api/
-│   └── routes.py           All CRUD + AI + ADO routes
-└── templates/
-    ├── index.html           Project list
-    ├── weekly_status.html   Weekly status table
-    ├── gantt.html           Gantt view (dhtmlxGantt)
-    └── weekly_template.pptx TMM template (a ajouter manuellement)
-```
-
-## Variables d'environnement
-
-```env
-GROQ_API_KEY=gsk_...
-ADO_PAT=...
-ADO_ORG=Premiertech
-PORT=8766
-```
+## Accès
+- Dashboard : http://localhost:8766
+- API Docs  : http://localhost:8766/docs
 
 ## Fiscal Year
+- Début : 1er mars  
+- Fin : 28/29 février
+- Exemple : FY27-Q1 = 1 mars 2026 → 31 mai 2026
 
-- FY27-Q1 = 1 mars 2026 → 31 mai 2026
-- FY27-Q4 = 1 déc 2026 → 28 fév 2027
+## Statuts disponibles
+| FR | EN |
+|---|---|
+| En cours | In Progress |
+| Réalisé | Completed |
+| A planifier | To Plan |
+| Bloqué | Blocked |
+| Annulé | Cancelled |
+| En retard | Delayed |
+| En revue | In Review |
