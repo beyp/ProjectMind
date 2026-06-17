@@ -110,16 +110,16 @@ header h1{color:var(--accent);font-size:1.1rem;}
     <!-- KPIs -->
     <div class="sb-section">
       <div class="sb-title">KPIs</div>
-      {% set kpi_colors = {"G":"#92D050","Y":"#FFFF00","R":"#FF0000"} %}
+      {% macro kpi_color(val) %}{% if val == "G" %}#92D050{% elif val == "Y" %}#FFFF00{% elif val == "R" %}#FF0000{% else %}#92D050{% endif %}{% endmacro %}
       {% for kpi in kpis %}
       <div class="kpi-row">
         <span style="font-size:0.75rem;">{{ kpi.kpi_name }}</span>
         <div style="display:flex;gap:3px;">
           <span class="kpi-dot" title="Sem. prec."
-            style="background:{{ kpi_colors.get(kpi.prev_value,'#92D050') }};">
+            style="background:{{ kpi_color(kpi.prev_value) }};">
             {{ kpi.prev_value }}</span>
           <span class="kpi-dot" title="Aujourd hui"
-            style="background:{{ kpi_colors.get(kpi.curr_value,'#92D050') }};">
+            style="background:{{ kpi_color(kpi.curr_value) }};">
             {{ kpi.curr_value }}</span>
         </div>
       </div>
@@ -210,8 +210,8 @@ header h1{color:var(--accent);font-size:1.1rem;}
               </td>
               <td style="text-align:center;">
                 <span class="status-badge"
-                  style="background:{{ STATUS_COLORS[task.status] | default('#888888') }}22;
-                    color:{{ STATUS_COLORS[task.status] | default('#888888') }};">
+                  style="background:{{ STATUS_COLORS.get(task.status, '#888888') }}22;
+                    color:{{ STATUS_COLORS.get(task.status, '#888888') }};">
                   {{ task.status }}
                 </span>
               </td>
@@ -231,8 +231,8 @@ header h1{color:var(--accent);font-size:1.1rem;}
               {{ task.date_label or "" }}</td>
             <td style="text-align:center;">
               <span class="status-badge"
-                style="background:{{ STATUS_COLORS[task.status] | default('#888888') }}22;
-                  color:{{ STATUS_COLORS[task.status] | default('#888888') }};">
+                style="background:{{ STATUS_COLORS.get(task.status, '#888888') }}22;
+                  color:{{ STATUS_COLORS.get(task.status, '#888888') }};">
                 {{ task.status }}
               </span>
             </td>
@@ -387,7 +387,7 @@ header h1{color:var(--accent);font-size:1.1rem;}
               <td style="text-align:center;">
                 <select class="ks" data-k="{{ kpi.kpi_name }}" data-f="prev"
                   onchange="kpiChg(this)"
-                  style="background:#{{ {"G":"92D050","Y":"FFFF00","R":"FF0000"}.get(kpi.prev_value,"92D050") }};
+                  style="background:{% if kpi.prev_value == 'G' %}#92D050{% elif kpi.prev_value == 'Y' %}#FFFF00{% elif kpi.prev_value == 'R' %}#FF0000{% else %}#92D050{% endif %};
                     color:#000;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">
                   <option value="G" {{ "selected" if kpi.prev_value=="G" }}>G — Green</option>
                   <option value="Y" {{ "selected" if kpi.prev_value=="Y" }}>Y — Yellow</option>
@@ -397,7 +397,7 @@ header h1{color:var(--accent);font-size:1.1rem;}
               <td style="text-align:center;">
                 <select class="ks" data-k="{{ kpi.kpi_name }}" data-f="curr"
                   onchange="kpiChg(this)"
-                  style="background:#{{ {"G":"92D050","Y":"FFFF00","R":"FF0000"}.get(kpi.curr_value,"92D050") }};
+                  style="background:{% if kpi.curr_value == 'G' %}#92D050{% elif kpi.curr_value == 'Y' %}#FFFF00{% elif kpi.curr_value == 'R' %}#FF0000{% else %}#92D050{% endif %};
                     color:#000;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">
                   <option value="G" {{ "selected" if kpi.curr_value=="G" }}>G — Green</option>
                   <option value="Y" {{ "selected" if kpi.curr_value=="Y" }}>Y — Yellow</option>
