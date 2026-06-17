@@ -1,121 +1,341 @@
-"""Modeles de donnees ProjectMind."""
-from datetime import datetime
-from enum import Enum
-from typing import Optional
-from pydantic import BaseModel
+"""
+ProjectMind - Modeles de données SQLite.
+"""
+import sqlite3
+from datetime import datetime, date
+from pathlib import Path
+from typing import Any
 
+DB_PATH = Path("data/projectmind.db")
 
-class Language(str, Enum):
-    FR = "fr"
-    EN = "en"
-
-
-class Status(str, Enum):
-    IN_PROGRESS = "in_progress"
-    DONE        = "done"
-    TO_PLAN     = "to_plan"
-    BLOCKED     = "blocked"
-    LATE        = "late"
-    CANCELLED   = "cancelled"
-
-
-STATUS_LABELS = {
-    "fr": {
-        Status.IN_PROGRESS: "En cours",
-        Status.DONE:        "Realise",
-        Status.TO_PLAN:     "A planifier",
-        Status.BLOCKED:     "Bloque",
-        Status.LATE:        "En retard",
-        Status.CANCELLED:   "Annule",
-    },
-    "en": {
-        Status.IN_PROGRESS: "In Progress",
-        Status.DONE:        "Done",
-        Status.TO_PLAN:     "To Plan",
-        Status.BLOCKED:     "Blocked",
-        Status.LATE:        "Late",
-        Status.CANCELLED:   "Cancelled",
-    },
+# ── Statuts disponibles ────────────────────────────────────────────────────────
+STATUSES = {
+    "fr": ["En cours", "Réalisé", "A planifier", "Bloqué", "Annulé", "En retard", "En revue"],
+    "en": ["In Progress", "Completed", "To Plan", "Blocked", "Cancelled", "Delayed", "In Review"],
 }
 
 STATUS_COLORS = {
-    Status.IN_PROGRESS: "#FFA500",
-    Status.DONE:        "#4CAF50",
-    Status.TO_PLAN:     "#2196F3",
-    Status.BLOCKED:     "#F44336",
-    Status.LATE:        "#E91E63",
-    Status.CANCELLED:   "#9E9E9E",
+    "En cours":    "#1E90FF",
+    "In Progress": "#1E90FF",
+    "Réalisé":     "#41B449",
+    "Completed":   "#41B449",
+    "A planifier": "#888888",
+    "To Plan":     "#888888",
+    "Bloqué":      "#FF4444",
+    "Blocked":     "#FF4444",
+    "Annulé":      "#999999",
+    "Cancelled":   "#999999",
+    "En retard":   "#FF8C00",
+    "Delayed":     "#FF8C00",
+    "En revue":    "#9C27B0",
+    "In Review":   "#9C27B0",
 }
 
-STATUS_BG_COLORS = {
-    Status.IN_PROGRESS: "#FFF3E0",
-    Status.DONE:        "#E8F5E9",
-    Status.TO_PLAN:     "#E3F2FD",
-    Status.BLOCKED:     "#FFEBEE",
-    Status.LATE:        "#FCE4EC",
-    Status.CANCELLED:   "#F5F5F5",
+# KPI couleurs
+KPI_COLORS = {
+    "G": {"label": "Green",  "hex": "#92D050"},
+    "Y": {"label": "Yellow", "hex": "#FFFF00"},
+    "R": {"label": "Red",    "hex": "#FF0000"},
 }
 
-
-class KPIStatus(str, Enum):
-    GREEN  = "G"
-    YELLOW = "Y"
-    RED    = "R"
+KPI_ITEMS = ["COST", "SCOPE", "SCHEDULE", "RESOURCES", "RISK", "TRANSITION"]
 
 
-class ProjectCreate(BaseModel):
-    name:                    str
-    language:                Language = Language.FR
-    go_live_date:            Optional[str] = None
-    ado_project:             Optional[str] = None
-    ado_area_path:           Optional[str] = None
-    description:             Optional[str] = None
-    fiscal_year_start_month: int = 3
+def get_db() -> sqlite3.Connection:
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
-class CategoryCreate(BaseModel):
-    project_id: int
-    name:       str
-    order:      int = 0
-    color:      Optional[str] = None
+def init_db() -> None:
+    """Initialise la base de données avec toutes les tables."""
+    conn = get_db()
+    c = conn.cursor()
+
+    # ── Projects ──────────────────────────────────────────────────────────────
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            name        TEXT NOT NULL,
+            description TEXT,
+            language    TEXT DEFAULT 'fr',
+            go_live_date TEXT,
+            ado_project TEXT,
+            ado_area_path TEXT,
+            created_at  TEXT DEFAULT (datetime('now')),
+            updated_at  TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+    # ── KPIs par projet ────────────────────────────────────────────────────────
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS project_kpis (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            kpi_name    TEXT NOT NULL,
+            prev_value  TEXT DEFAULT 'G',
+            curr_value  TEXT DEFAULT 'G',
+            week_date   TEXT DEFAULT (date('now')),
+            UNIQUE(project_id, kpi_name, week_date)
+        )
+    """)
+
+    # ── Categories (livrables) ─────────────────────────────────────────────────
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS categories (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            name        TEXT NOT NULL,
+            name_en     TEXT,
+            color       TEXT DEFAULT '#041E42',
+            sort_order  INTEGER DEFAULT 0,
+            created_at  TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+    # ── Tasks (tâches/activités) ───────────────────────────────────────────────
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            category_id  INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+            title        TEXT NOT NULL,
+            title_en     TEXT,
+            description  TEXT,
+            status       TEXT DEFAULT 'A planifier',
+            date_label   TEXT,
+            start_date   TEXT,
+            end_date     TEXT,
+            progress     INTEGER DEFAULT 0,
+            ado_item_id  INTEGER,
+            ado_project  TEXT,
+            ado_area_path TEXT,
+            sort_order   INTEGER DEFAULT 0,
+            created_at   TEXT DEFAULT (datetime('now')),
+            updated_at   TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+    # ── Milestones (jalons 4 semaines) ────────────────────────────────────────
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS milestones (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id    INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            title         TEXT NOT NULL,
+            baseline_date TEXT,
+            current_date  TEXT,
+            status        TEXT DEFAULT 'In progress',
+            sort_order    INTEGER DEFAULT 0
+        )
+    """)
+
+    # ── Risks / Issues ────────────────────────────────────────────────────────
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS risks (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            risk_type   TEXT DEFAULT 'I',
+            description TEXT NOT NULL,
+            owner       TEXT,
+            status      TEXT DEFAULT 'Open',
+            created_at  TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+    # ── Weekly notes ──────────────────────────────────────────────────────────
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS weekly_notes (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id      INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            week_date       TEXT DEFAULT (date('now')),
+            summary         TEXT,
+            achievements    TEXT,
+            planned         TEXT,
+            watch_items     TEXT,
+            created_at      TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+    conn.commit()
+    conn.close()
 
 
-class DeliverableCreate(BaseModel):
-    project_id:     int
-    category_id:    int
-    title:          str
-    description:    Optional[str] = None
-    status:         Status = Status.TO_PLAN
-    due_date:       Optional[str] = None
-    completion_pct: int = 0
-    ado_item_id:    Optional[int] = None
-    order:          int = 0
+# ── CRUD helpers ──────────────────────────────────────────────────────────────
+
+def get_all_projects() -> list[dict]:
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM projects ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
-class TaskCreate(BaseModel):
-    deliverable_id: int
-    title:          str
-    description:    Optional[str] = None
-    status:         Status = Status.TO_PLAN
-    start_date:     Optional[str] = None
-    end_date:       Optional[str] = None
-    completion_pct: int = 0
-    assignee:       Optional[str] = None
-    ado_item_id:    Optional[int] = None
-    order:          int = 0
+def get_project(project_id: int) -> dict | None:
+    conn = get_db()
+    row = conn.execute("SELECT * FROM projects WHERE id=?", (project_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 
-class WeeklyReportCreate(BaseModel):
-    project_id:               int
-    report_date:              str
-    summary:                  Optional[str] = None
-    last_period_achievements: Optional[str] = None
-    planned_activities:       Optional[str] = None
-    watch_items:              Optional[str] = None
-    risks_issues:             Optional[str] = None
-    kpi_cost:       KPIStatus = KPIStatus.GREEN
-    kpi_scope:      KPIStatus = KPIStatus.GREEN
-    kpi_schedule:   KPIStatus = KPIStatus.GREEN
-    kpi_resources:  KPIStatus = KPIStatus.GREEN
-    kpi_risk:       KPIStatus = KPIStatus.GREEN
-    kpi_transition: KPIStatus = KPIStatus.GREEN
+def create_project(name: str, description: str = "", language: str = "fr",
+                   go_live_date: str = "", ado_project: str = "",
+                   ado_area_path: str = "") -> int:
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO projects (name, description, language, go_live_date, ado_project, ado_area_path)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (name, description, language, go_live_date, ado_project, ado_area_path))
+    project_id = c.lastrowid
+    # Initialiser les KPIs par défaut
+    for kpi in KPI_ITEMS:
+        c.execute("""
+            INSERT OR IGNORE INTO project_kpis (project_id, kpi_name)
+            VALUES (?, ?)
+        """, (project_id, kpi))
+    conn.commit()
+    conn.close()
+    return project_id
+
+
+def get_categories(project_id: int) -> list[dict]:
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM categories WHERE project_id=? ORDER BY sort_order, id",
+        (project_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def create_category(project_id: int, name: str, name_en: str = "",
+                    color: str = "#041E42") -> int:
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO categories (project_id, name, name_en, color)
+        VALUES (?, ?, ?, ?)
+    """, (project_id, name, name_en, color))
+    cat_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return cat_id
+
+
+def get_tasks(project_id: int, category_id: int | None = None) -> list[dict]:
+    conn = get_db()
+    if category_id:
+        rows = conn.execute(
+            "SELECT * FROM tasks WHERE project_id=? AND category_id=? ORDER BY sort_order, id",
+            (project_id, category_id)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM tasks WHERE project_id=? ORDER BY category_id, sort_order, id",
+            (project_id,)
+        ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def create_task(project_id: int, title: str, category_id: int | None = None,
+                status: str = "A planifier", date_label: str = "",
+                start_date: str = "", end_date: str = "",
+                description: str = "", ado_item_id: int | None = None) -> int:
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO tasks
+        (project_id, category_id, title, status, date_label,
+         start_date, end_date, description, ado_item_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (project_id, category_id, title, status, date_label,
+          start_date, end_date, description, ado_item_id))
+    task_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return task_id
+
+
+def update_task(task_id: int, **kwargs) -> None:
+    if not kwargs:
+        return
+    kwargs["updated_at"] = datetime.now().isoformat()
+    sets  = ", ".join(f"{k}=?" for k in kwargs)
+    vals  = list(kwargs.values()) + [task_id]
+    conn  = get_db()
+    conn.execute(f"UPDATE tasks SET {sets} WHERE id=?", vals)
+    conn.commit()
+    conn.close()
+
+
+def get_kpis(project_id: int) -> list[dict]:
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM project_kpis WHERE project_id=? ORDER BY id",
+        (project_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_weekly_note(project_id: int) -> dict | None:
+    conn = get_db()
+    row = conn.execute(
+        "SELECT * FROM weekly_notes WHERE project_id=? ORDER BY week_date DESC LIMIT 1",
+        (project_id,)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_milestones(project_id: int) -> list[dict]:
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM milestones WHERE project_id=? ORDER BY sort_order, id",
+        (project_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_risks(project_id: int) -> list[dict]:
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM risks WHERE project_id=? AND status='Open' ORDER BY id",
+        (project_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ── Fiscal Year helpers ────────────────────────────────────────────────────────
+
+def get_fiscal_year(d: date | None = None) -> str:
+    """Retourne le Fiscal Year pour une date (ex: FY27)."""
+    if d is None:
+        d = date.today()
+    # FY commence le 1er mars
+    if d.month >= 3:
+        fy = d.year + 1
+    else:
+        fy = d.year
+    return f"FY{str(fy)[2:]}"
+
+
+def get_fiscal_quarter(d: date | None = None) -> str:
+    """Retourne le quarter fiscal (ex: FY27-Q1)."""
+    if d is None:
+        d = date.today()
+    fy = get_fiscal_year(d)
+    month = d.month
+    # Q1: mars-mai, Q2: juin-août, Q3: sept-nov, Q4: déc-fév
+    if month in (3, 4, 5):
+        q = "Q1"
+    elif month in (6, 7, 8):
+        q = "Q2"
+    elif month in (9, 10, 11):
+        q = "Q3"
+    else:
+        q = "Q4"
+    return f"{fy}-{q}"
