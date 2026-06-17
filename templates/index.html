@@ -9,74 +9,58 @@
   --bg:#0f1117; --card:#1a1d27; --border:#2a2d3e; --text:#e0e0e0;
   --dim:#888; --accent:#1e90ff; --green:#4caf50; --red:#f44336; --hdr:#151821;
 }
-* { box-sizing:border-box; margin:0; padding:0; }
-body { font-family:"Segoe UI",sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
-header { background:var(--hdr); border-bottom:2px solid var(--accent);
-  padding:0 24px; height:56px; display:flex; align-items:center; gap:16px; }
-header h1 { color:var(--accent); font-size:1.4rem; }
-header span { color:var(--dim); font-size:0.85rem; }
-.main { max-width:1200px; margin:0 auto; padding:32px 24px; }
-.top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
-.top-bar h2 { font-size:1.3rem; }
-.fq { color:var(--dim); font-size:0.82rem; }
-.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:20px; }
-
-/* Card projet */
-.pcard-wrap { position:relative; }
-.pcard {
-  display:block; text-decoration:none; color:var(--text);
-  background:var(--card); border:1px solid var(--border); border-radius:12px;
-  padding:20px; transition:border-color 0.2s, transform 0.1s;
-  min-height:100px;
-}
-.pcard:hover { border-color:var(--accent); transform:translateY(-2px); }
-.pcard h2 { font-size:1.05rem; color:var(--accent); margin-bottom:10px; }
-.pcard .meta { font-size:0.82rem; color:var(--dim); display:flex; gap:10px; flex-wrap:wrap; }
-.badge { background:color-mix(in srgb,var(--accent) 15%,transparent);
-  color:var(--accent); padding:2px 8px; border-radius:10px; font-size:0.75rem; }
-
-/* Bouton delete */
-.del-btn {
-  display:none; position:absolute; top:8px; right:8px;
-  width:28px; height:28px; border-radius:50%;
-  background:color-mix(in srgb,var(--red) 20%,transparent);
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+header{background:var(--hdr);border-bottom:2px solid var(--accent);
+  padding:0 24px;height:56px;display:flex;align-items:center;gap:16px;}
+header h1{color:var(--accent);font-size:1.4rem;}
+header span{color:var(--dim);font-size:0.85rem;}
+.main{max-width:1200px;margin:0 auto;padding:32px 24px;}
+.top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;}
+.top-bar h2{font-size:1.3rem;}
+.fq{color:var(--dim);font-size:0.82rem;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;}
+.pcard-wrap{position:relative;}
+.pcard{display:block;text-decoration:none;color:var(--text);background:var(--card);
+  border:1px solid var(--border);border-radius:12px;padding:20px;
+  transition:border-color 0.2s,transform 0.1s;min-height:100px;}
+.pcard:hover{border-color:var(--accent);transform:translateY(-2px);}
+.pcard h2{font-size:1.05rem;color:var(--accent);margin-bottom:10px;}
+.pcard .meta{font-size:0.82rem;color:var(--dim);display:flex;gap:10px;flex-wrap:wrap;}
+.badge{background:color-mix(in srgb,var(--accent) 15%,transparent);
+  color:var(--accent);padding:2px 8px;border-radius:10px;font-size:0.75rem;}
+.del-btn{display:none;position:absolute;top:8px;right:8px;width:28px;height:28px;
+  border-radius:50%;background:color-mix(in srgb,var(--red) 20%,transparent);
   border:1px solid color-mix(in srgb,var(--red) 50%,transparent);
-  color:var(--red); font-size:1.1rem; line-height:26px; text-align:center;
-  cursor:pointer; z-index:10;
-}
-.pcard-wrap:hover .del-btn { display:block; }
-.del-btn:hover { background:var(--red); color:white; }
-
-/* New project */
-.new-card {
-  display:flex; align-items:center; justify-content:center; gap:10px;
-  background:transparent; border:2px dashed var(--border); border-radius:12px;
-  padding:20px; cursor:pointer; color:var(--dim); font-size:0.9rem;
-  min-height:100px; transition:border-color 0.2s, color 0.2s;
-}
-.new-card:hover { border-color:var(--accent); color:var(--accent); }
-
-/* Modal */
-.moverlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
-  z-index:1000; align-items:center; justify-content:center; }
-.moverlay.open { display:flex; }
-.mbox { background:var(--card); border:1px solid var(--border); border-radius:12px;
-  padding:28px; width:480px; max-width:95vw; }
-.mbox h2 { color:var(--accent); margin-bottom:20px; }
-.fg { margin-bottom:14px; }
-.fg label { display:block; font-size:0.82rem; color:var(--dim); margin-bottom:4px; }
-.fg input, .fg select, .fg textarea {
-  width:100%; background:#12141f; border:1px solid var(--border);
-  color:var(--text); padding:8px 12px; border-radius:6px; font-size:0.88rem; }
-.fg input:focus, .fg select:focus { outline:none; border-color:var(--accent); }
-.fg2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.btn-row { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
-.btn { padding:8px 20px; border-radius:6px; border:none; cursor:pointer; font-size:0.88rem; }
-.btn-p { background:var(--accent); color:white; }
-.btn-n { background:var(--border); color:var(--text); }
-.btn:hover { opacity:0.85; }
-::-webkit-scrollbar { width:6px; }
-::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+  color:var(--red);font-size:1.1rem;line-height:26px;text-align:center;
+  cursor:pointer;z-index:10;}
+.pcard-wrap:hover .del-btn{display:block;}
+.del-btn:hover{background:var(--red);color:white;}
+.new-card{display:flex;align-items:center;justify-content:center;gap:10px;
+  background:transparent;border:2px dashed var(--border);border-radius:12px;
+  padding:20px;cursor:pointer;color:var(--dim);font-size:0.9rem;
+  min-height:100px;transition:border-color 0.2s,color 0.2s;}
+.new-card:hover{border-color:var(--accent);color:var(--accent);}
+.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);
+  z-index:1000;align-items:center;justify-content:center;}
+.moverlay.open{display:flex;}
+.mbox{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:28px;width:480px;max-width:95vw;}
+.mbox h2{color:var(--accent);margin-bottom:20px;}
+.fg{margin-bottom:14px;}
+.fg label{display:block;font-size:0.82rem;color:var(--dim);margin-bottom:4px;}
+.fg input,.fg select,.fg textarea{width:100%;background:#12141f;
+  border:1px solid var(--border);color:var(--text);
+  padding:8px 12px;border-radius:6px;font-size:0.88rem;}
+.fg input:focus,.fg select:focus{outline:none;border-color:var(--accent);}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.btn-row{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+.btn{padding:8px 20px;border-radius:6px;border:none;cursor:pointer;font-size:0.88rem;}
+.btn-p{background:var(--accent);color:white;}
+.btn-n{background:var(--border);color:var(--text);}
+.btn:hover{opacity:0.85;}
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 </style>
 </head>
 <body>
@@ -106,16 +90,15 @@ header span { color:var(--dim); font-size:0.85rem; }
           {% endif %}
         </div>
       </a>
-      <button class="del-btn"
-        data-id="{{ p.id }}"
-        data-name="{{ p.name|replace('"', '&quot;') }}"
-        title="Supprimer ce projet">
+      <!-- data-id uniquement (entier, jamais de quote) -->
+      <!-- le nom est récupéré via le dict JS injecté ci-dessous -->
+      <button class="del-btn" data-id="{{ p.id }}" title="Supprimer">
         &times;
       </button>
     </div>
     {% endfor %}
 
-    <div class="new-card" onclick="document.getElementById('modal-new').classList.add('open')">
+    <div class="new-card" id="btn-new-project">
       <span style="font-size:1.4rem;">&#x2795;</span>
       <span>Nouveau projet</span>
     </div>
@@ -129,7 +112,7 @@ header span { color:var(--dim); font-size:0.85rem; }
     <div class="fg2">
       <div class="fg" style="grid-column:1/-1;">
         <label>Nom du projet *</label>
-        <input id="np-name" type="text" placeholder="PTG - TMM D2" autofocus>
+        <input id="np-name" type="text" placeholder="PTG - TMM D2">
       </div>
       <div class="fg" style="grid-column:1/-1;">
         <label>Description</label>
@@ -156,68 +139,90 @@ header span { color:var(--dim); font-size:0.85rem; }
       </div>
     </div>
     <div class="btn-row">
-      <button class="btn btn-n"
-        onclick="document.getElementById('modal-new').classList.remove('open')">
-        Annuler
-      </button>
-      <button class="btn btn-p" onclick="createProject()">Creer</button>
+      <button class="btn btn-n" id="btn-cancel-new">Annuler</button>
+      <button class="btn btn-p" id="btn-confirm-new">Creer</button>
     </div>
   </div>
 </div>
 
+<!-- Données projets injectées en JSON sécurisé via Jinja2 | tojson -->
+<!-- tojson gère toutes les quotes, caractères spéciaux, etc. -->
 <script>
-// Attacher les événements delete via addEventListener (pas onclick dans le HTML)
-// → évite le ReferenceError "delProject is not defined"
+var PM_PROJECTS = {{ projects | tojson }};
+
 document.addEventListener('DOMContentLoaded', function() {
+
+  // ── Boutons delete ─────────────────────────────────────────────────────────
   document.querySelectorAll('.del-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
-      e.stopPropagation();  // empêche de naviguer vers le projet
-      var id   = this.dataset.id;
-      var name = this.dataset.name;
+      e.stopPropagation();
+      var id      = parseInt(this.dataset.id);
+      var project = PM_PROJECTS.find(function(p) { return p.id === id; });
+      var name    = project ? project.name : 'ce projet';
       if (!confirm('Supprimer "' + name + '" ?
+
 Toutes les donnees seront perdues.')) return;
       fetch('/api/projects/' + id, { method: 'DELETE' })
       .then(function(r) { return r.json(); })
-      .then(function(d) { if (d.ok) location.reload(); });
+      .then(function(d) {
+        if (d.ok) {
+          // Animation de suppression
+          var wrap = btn.closest('.pcard-wrap');
+          if (wrap) {
+            wrap.style.transition = 'opacity 0.3s, transform 0.3s';
+            wrap.style.opacity    = '0';
+            wrap.style.transform  = 'scale(0.9)';
+            setTimeout(function() { location.reload(); }, 350);
+          } else {
+            location.reload();
+          }
+        } else {
+          alert('Erreur lors de la suppression.');
+        }
+      })
+      .catch(function(err) { alert('Erreur: ' + err); });
     });
   });
 
-  // Fermer modal en cliquant dehors
+  // ── Nouveau projet ─────────────────────────────────────────────────────────
+  document.getElementById('btn-new-project').addEventListener('click', function() {
+    document.getElementById('modal-new').classList.add('open');
+    setTimeout(function() { document.getElementById('np-name').focus(); }, 50);
+  });
+
+  document.getElementById('btn-cancel-new').addEventListener('click', function() {
+    document.getElementById('modal-new').classList.remove('open');
+  });
+
   document.getElementById('modal-new').addEventListener('click', function(e) {
     if (e.target === this) this.classList.remove('open');
   });
-});
 
-function createProject() {
-  var name = document.getElementById('np-name').value.trim();
-  if (!name) { alert('Nom obligatoire'); return; }
-  fetch('/api/projects', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name:          name,
-      description:   document.getElementById('np-desc').value.trim(),
-      language:      document.getElementById('np-lang').value,
-      go_live_date:  document.getElementById('np-golive').value.trim(),
-      ado_project:   document.getElementById('np-ado').value.trim(),
-      ado_area_path: document.getElementById('np-area').value.trim()
+  document.getElementById('btn-confirm-new').addEventListener('click', function() {
+    var name = document.getElementById('np-name').value.trim();
+    if (!name) { alert('Nom obligatoire'); return; }
+    fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:          name,
+        description:   document.getElementById('np-desc').value.trim(),
+        language:      document.getElementById('np-lang').value,
+        go_live_date:  document.getElementById('np-golive').value.trim(),
+        ado_project:   document.getElementById('np-ado').value.trim(),
+        ado_area_path: document.getElementById('np-area').value.trim()
+      })
     })
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(d) { if (d.ok) window.location.href = '/project/' + d.id; });
-}
+    .then(function(r) { return r.json(); })
+    .then(function(d) { if (d.ok) window.location.href = '/project/' + d.id; });
+  });
 
-function delProject(id, name) {
-  if (!confirm('Supprimer "' + name + '" ?
-Toutes les donnees seront perdues.')) return;
-  fetch('/api/projects/' + id, { method: 'DELETE' })
-  .then(function(r) { return r.json(); })
-  .then(function(d) { if (d.ok) location.reload(); });
-}
+  // Entree pour valider la création
+  document.getElementById('np-name').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('btn-confirm-new').click();
+  });
 
-document.getElementById('modal-new').addEventListener('click', function(e) {
-  if (e.target === this) this.classList.remove('open');
 });
 </script>
 </body>
