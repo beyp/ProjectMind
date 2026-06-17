@@ -210,8 +210,8 @@ header h1{color:var(--accent);font-size:1.1rem;}
               </td>
               <td style="text-align:center;">
                 <span class="status-badge"
-                  style="background:{{ STATUS_COLORS.get(task.status,'#888') }}22;
-                    color:{{ STATUS_COLORS.get(task.status,'#888') }};">
+                  style="background:{{ STATUS_COLORS[task.status] | default('#888888') }}22;
+                    color:{{ STATUS_COLORS[task.status] | default('#888888') }};">
                   {{ task.status }}
                 </span>
               </td>
@@ -231,8 +231,8 @@ header h1{color:var(--accent);font-size:1.1rem;}
               {{ task.date_label or "" }}</td>
             <td style="text-align:center;">
               <span class="status-badge"
-                style="background:{{ STATUS_COLORS.get(task.status,'#888') }}22;
-                  color:{{ STATUS_COLORS.get(task.status,'#888') }};">
+                style="background:{{ STATUS_COLORS[task.status] | default('#888888') }}22;
+                  color:{{ STATUS_COLORS[task.status] | default('#888888') }};">
                 {{ task.status }}
               </span>
             </td>
@@ -457,7 +457,8 @@ header h1{color:var(--accent);font-size:1.1rem;}
         </select></div>
       <div class="fg"><label>Statut</label>
         <select id="nt-s">
-          {% for s in STATUSES.get(project.language, STATUSES["fr"]) %}
+          {% set lang_statuses = STATUSES[project.language] if project.language in STATUSES else STATUSES["fr"] %}
+          {% for s in lang_statuses %}
           <option value="{{ s }}" {{ "selected" if s in ["A planifier","To Plan"] }}>
             {{ s }}</option>
           {% endfor %}
