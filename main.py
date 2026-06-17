@@ -38,7 +38,7 @@ templates.env.globals["STATUS_COLORS"]      = STATUS_COLORS
 templates.env.globals["STATUSES"]           = STATUSES
 templates.env.globals["KPI_ITEMS"]          = KPI_ITEMS
 templates.env.globals["get_fiscal_quarter"] = get_fiscal_quarter
-templates.env.globals["today"]              = date.today
+templates.env.globals["today"]              = date.today()  # valeur, pas callable
 
 # Filtre urlencode pour les URLs ADO
 from urllib.parse import quote as _url_quote
