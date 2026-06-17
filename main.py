@@ -121,6 +121,29 @@ async def project_view(request: Request, project_id: int):
     )
 
 
+@app.get("/capacity/{project_id}", response_class=HTMLResponse)
+async def capacity_view(request: Request, project_id: int):
+    from datetime import date
+    project   = get_project(project_id)
+    if not project:
+        raise HTTPException(404, "Projet introuvable")
+    resources  = get_resources(project_id)
+    categories = get_categories(project_id)
+    year       = date.today().year
+    matrix     = get_capacity_matrix(project_id, year)
+    return templates.TemplateResponse(
+        request=request,
+        name="capacity.html",
+        context={
+            "project":    project,
+            "resources":  resources,
+            "categories": categories,
+            "matrix":     matrix,
+            "year":       year,
+        },
+    )
+
+
 @app.get("/project/{project_id}/gantt", response_class=HTMLResponse)
 async def gantt_view(request: Request, project_id: int):
     project = get_project(project_id)
@@ -467,6 +490,19 @@ async def api_update_resource(resource_id: int, request: Request):
 async def api_delete_resource(resource_id: int):
     ok = delete_resource(resource_id)
     return {"ok": ok}
+
+
+@app.patch("/api/projects/{project_id}/resources")
+async def api_reorder_resources(project_id: int, request: Request):
+    data        = await request.json()
+    ordered_ids = data.get("ordered_ids", [])
+    conn        = get_db()
+    for idx, rid in enumerate(ordered_ids):
+        conn.execute("UPDATE resources SET sort_order=? WHERE id=? AND project_id=?",
+                     (idx, rid, project_id))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
 
 
 # ── Capacity ──────────────────────────────────────────────────────────────────
