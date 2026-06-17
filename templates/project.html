@@ -199,7 +199,7 @@ header h1{color:var(--accent);font-size:1.1rem;}
               <td>
                 • {{ task.title }}
                 {% if task.ado_item_id %}
-                <a href="https://dev.azure.com/Premiertech/{{ (project.ado_project or '')|urlencode }}/_workitems/edit/{{ task.ado_item_id }}"
+                <a href="https://dev.azure.com/Premiertech/{{ project.ado_project | default('') | replace(' ', '%20') }}/_workitems/edit/{{ task.ado_item_id }}"
                   target="_blank" style="color:var(--accent);font-size:0.72rem;
                   text-decoration:none;margin-left:6px;"
                   title="ADO #{{ task.ado_item_id }}">&#x1F535;#{{ task.ado_item_id }}</a>
