@@ -87,6 +87,7 @@ header h1{color:var(--accent);font-size:1.1rem;}
     {% endif %}
     <span style="color:var(--dim);font-size:0.82rem;">{{ fiscal_q }}</span>
     <a class="hbtn" href="/project/{{ project.id }}/gantt" target="_blank">Gantt</a>
+    <a class="hbtn" href="/capacity/{{ project.id }}" target="_blank">Capacity</a>
     <button class="hbtn" id="btn-ppt">Export PPT</button>
     <button class="hbtn primary" id="btn-add">+ Tache</button>
   </div>
@@ -127,6 +128,7 @@ header h1{color:var(--accent);font-size:1.1rem;}
       <button class="sb-btn" id="sb-risks">Risques</button>
       <button class="sb-btn" id="sb-kpis">KPIs</button>
       <button class="sb-btn" id="sb-cfg">Config</button>
+      <button class="sb-btn" id="sb-edit-cats" style="margin-top:8px;">Gerer categories</button>
     </div>
   </div>
 
@@ -164,11 +166,19 @@ header h1{color:var(--accent);font-size:1.1rem;}
                 <td class="cat-td" rowspan="{{ ct|length }}" style="background:{{ cat.color }};">{{ cat.name }}</td>
                 {% endif %}
                 <td>
-                  &bull; {{ task.title }}
+                  <span style="cursor:pointer;" class="task-title-click" data-id="{{ task.id }}">&bull; {{ task.title }}</span>
                   {% if task.ado_item_id %}
                   <a href="https://dev.azure.com/Premiertech/{{ project.ado_project|default('')|replace(' ','%20') }}/_workitems/edit/{{ task.ado_item_id }}"
                     target="_blank" style="color:var(--accent);font-size:0.72rem;text-decoration:none;margin-left:6px;">#{{ task.ado_item_id }}</a>
                   {% endif %}
+                  <button class="task-edit-btn" data-id="{{ task.id }}"
+                    style="background:none;border:none;color:var(--dim);cursor:pointer;
+                    font-size:0.75rem;margin-left:4px;padding:0 4px;"
+                    title="Editer">&#x270F;</button>
+                  <button class="task-del-btn" data-id="{{ task.id }}"
+                    style="background:none;border:none;color:var(--red);cursor:pointer;
+                    font-size:0.75rem;margin-left:2px;padding:0 4px;"
+                    title="Supprimer">&times;</button>
                 </td>
                 <td style="text-align:center;color:var(--dim);font-size:0.78rem;">{{ task.date_label or "" }}</td>
                 <td style="text-align:center;">
@@ -397,6 +407,79 @@ header h1{color:var(--accent);font-size:1.1rem;}
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px;">
       <button class="btn btn-n" id="btn-cancel-task">Annuler</button>
       <button class="btn btn-p" id="btn-confirm-task">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal édition tâche -->
+<div class="moverlay" id="modal-edit-task">
+  <div class="mbox">
+    <h3 style="color:var(--accent);margin-bottom:14px;">Editer la tache</h3>
+    <input type="hidden" id="et-id">
+    <div class="fg"><label>Titre *</label>
+      <input id="et-t" type="text"></div>
+    <div class="fg2">
+      <div class="fg"><label>Categorie</label>
+        <select id="et-c">
+          <option value="">-- Sans categorie --</option>
+          {% for cat in categories %}
+          <option value="{{ cat.id }}">{{ cat.name }}</option>
+          {% endfor %}
+        </select></div>
+      <div class="fg"><label>Statut</label>
+        <select id="et-s">
+          {% set lang = project.language if project.language in STATUSES else "fr" %}
+          {% for s in STATUSES[lang] %}
+          <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select></div>
+      <div class="fg"><label>Date / Periode</label>
+        <input id="et-d" type="text" placeholder="ex: 17/06 ou Juin"></div>
+      <div class="fg"><label>ID ADO</label>
+        <input id="et-a" type="number" placeholder="ex: 191614"></div>
+      <div class="fg"><label>Date debut Gantt</label>
+        <input id="et-sd" type="date"></div>
+      <div class="fg"><label>Date fin Gantt</label>
+        <input id="et-ed" type="date"></div>
+      <div class="fg"><label>Avancement (%)</label>
+        <input id="et-prog" type="number" min="0" max="100" step="5" placeholder="0"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px;">
+      <button class="btn btn-n" id="btn-cancel-edit-task">Annuler</button>
+      <button class="btn btn-p" id="btn-confirm-edit-task">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal édition catégorie -->
+<div class="moverlay" id="modal-edit-cat">
+  <div class="mbox">
+    <h3 style="color:var(--accent);margin-bottom:14px;">Gestion des categories</h3>
+    <div id="cat-edit-list" style="margin-bottom:12px;">
+      {% for cat in categories %}
+      <div class="cat-edit-item" data-id="{{ cat.id }}"
+        style="display:flex;align-items:center;gap:8px;padding:7px 10px;
+        border-radius:6px;background:color-mix(in srgb,var(--border) 40%,transparent);
+        margin-bottom:5px;cursor:grab;">
+        <span style="color:var(--dim);cursor:grab;">&#x22EE;</span>
+        <span style="width:10px;height:10px;border-radius:50%;
+          background:{{ cat.color }};flex-shrink:0;"></span>
+        <input type="text" value="{{ cat.name }}"
+          style="flex:1;background:#12141f;border:1px solid var(--border);
+          color:var(--text);padding:4px 8px;border-radius:4px;font-size:0.83rem;"
+          data-field="name" data-id="{{ cat.id }}">
+        <input type="color" value="{{ cat.color }}"
+          style="width:32px;height:32px;padding:0;border:none;cursor:pointer;border-radius:4px;"
+          data-field="color" data-id="{{ cat.id }}">
+        <button class="btn btn-r" data-id="{{ cat.id }}" id="del-cat-{{ cat.id }}">
+          &times;
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-n" id="btn-cancel-edit-cat">Fermer</button>
+      <button class="btn btn-p" id="btn-save-cats">Sauvegarder</button>
     </div>
   </div>
 </div>
@@ -794,6 +877,145 @@ document.getElementById('btn-add-risk').addEventListener('click', function() {
     body: JSON.stringify({ description: d, owner: document.getElementById('r-own').value, risk_type: document.getElementById('r-type').value })
   }).then(function() { location.reload(); });
 });
+
+// ── Edit tache ────────────────────────────────────────────────────────────────
+var TASKS_FLAT = {{ tasks_flat | tojson }};
+
+function openEditTask(taskId) {
+  var task = TASKS_FLAT.find(function(t) { return t.id === taskId; });
+  if (!task) return;
+  document.getElementById('et-id').value    = task.id;
+  document.getElementById('et-t').value     = task.title || '';
+  document.getElementById('et-c').value     = task.category_id || '';
+  document.getElementById('et-s').value     = task.status || '';
+  document.getElementById('et-d').value     = task.date_label || '';
+  document.getElementById('et-a').value     = task.ado_item_id || '';
+  document.getElementById('et-sd').value    = task.start_date || '';
+  document.getElementById('et-ed').value    = task.end_date || '';
+  document.getElementById('et-prog').value  = task.progress || 0;
+  document.getElementById('modal-edit-task').classList.add('open');
+  setTimeout(function() { document.getElementById('et-t').focus(); }, 50);
+}
+
+document.querySelectorAll('.task-edit-btn').forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    openEditTask(parseInt(this.dataset.id));
+  });
+});
+
+document.querySelectorAll('.task-title-click').forEach(function(span) {
+  span.addEventListener('dblclick', function() {
+    openEditTask(parseInt(this.dataset.id));
+  });
+});
+
+document.getElementById('btn-cancel-edit-task').addEventListener('click', function() {
+  document.getElementById('modal-edit-task').classList.remove('open');
+});
+document.getElementById('modal-edit-task').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+
+document.getElementById('btn-confirm-edit-task').addEventListener('click', function() {
+  var id = parseInt(document.getElementById('et-id').value);
+  if (!id) return;
+  var payload = {
+    title:       document.getElementById('et-t').value.trim(),
+    category_id: document.getElementById('et-c').value || null,
+    status:      document.getElementById('et-s').value,
+    date_label:  document.getElementById('et-d').value,
+    ado_item_id: document.getElementById('et-a').value ? parseInt(document.getElementById('et-a').value) : null,
+    start_date:  document.getElementById('et-sd').value,
+    end_date:    document.getElementById('et-ed').value,
+    progress:    parseInt(document.getElementById('et-prog').value) || 0,
+  };
+  fetch('/api/tasks/' + id, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) { document.getElementById('modal-edit-task').classList.remove('open'); location.reload(); }
+  });
+});
+
+// ── Delete tache ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.task-del-btn').forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var id = parseInt(this.dataset.id);
+    var task = TASKS_FLAT.find(function(t) { return t.id === id; });
+    var name = task ? task.title : 'cette tache';
+    if (!confirm('Supprimer "' + name + '" ?')) return;
+    fetch('/api/tasks/' + id, { method: 'DELETE' })
+    .then(function() { location.reload(); });
+  });
+});
+
+// ── Edit categories ───────────────────────────────────────────────────────────
+document.getElementById('sb-edit-cats').addEventListener('click', function() {
+  document.getElementById('modal-edit-cat').classList.add('open');
+});
+document.getElementById('btn-cancel-edit-cat').addEventListener('click', function() {
+  document.getElementById('modal-edit-cat').classList.remove('open');
+});
+document.getElementById('modal-edit-cat').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+
+// Sauvegarder les modifications de catégories
+document.getElementById('btn-save-cats').addEventListener('click', function() {
+  var inputs = document.querySelectorAll('#cat-edit-list [data-id]');
+  var updates = {};
+  inputs.forEach(function(inp) {
+    var id    = inp.dataset.id;
+    var field = inp.dataset.field;
+    if (!updates[id]) updates[id] = {};
+    updates[id][field] = inp.type === 'color' ? inp.value : inp.value.trim();
+  });
+  var promises = Object.keys(updates).map(function(id) {
+    return fetch('/api/categories/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates[id])
+    });
+  });
+  // Récupérer l ordre
+  var orderedIds = Array.from(document.querySelectorAll('#cat-edit-list .cat-edit-item'))
+    .map(function(el) { return parseInt(el.dataset.id); });
+  promises.push(
+    fetch('/api/projects/' + PID + '/categories/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ordered_ids: orderedIds })
+    })
+  );
+  Promise.all(promises).then(function() {
+    document.getElementById('modal-edit-cat').classList.remove('open');
+    location.reload();
+  });
+});
+
+// Supprimer une catégorie
+document.querySelectorAll('#cat-edit-list .btn-r[data-id]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var id = this.dataset.id;
+    if (!confirm('Supprimer cette categorie ?
+Les taches restent (sans categorie).')) return;
+    fetch('/api/categories/' + id, { method: 'DELETE' })
+    .then(function() { location.reload(); });
+  });
+});
+
+// Drag & drop categories
+if (window.Sortable && document.getElementById('cat-edit-list')) {
+  Sortable.create(document.getElementById('cat-edit-list'), {
+    handle: '.cat-edit-item > span:first-child',
+    animation: 150,
+  });
+}
 </script>
 </body>
 </html>
