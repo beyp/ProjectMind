@@ -1,0 +1,14 @@
+# docker-compose override pour integration avec AION
+# Utiliser : docker-compose -f docker-compose.yml -f docker-compose.aion.yml up -d
+
+version: "3.9"
+
+services:
+  projectmind:
+    networks:
+      - aion-network
+
+networks:
+  aion-network:
+    external: true
+    name: aion-network
