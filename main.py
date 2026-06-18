@@ -107,6 +107,7 @@ async def project_view(request: Request, project_id: int):
             "project":      project,
             "categories":   categories,
             "tasks_by_cat": tasks_by_cat,
+            "tasks_flat":   tasks,
             "kpis":         kpis,
             "milestones":   milestones,
             "risks":        risks,
@@ -295,6 +296,39 @@ async def api_create_risk(project_id: int, request: Request):
 
 
 # ── IA : parse texte → tâches ─────────────────────────────────────────────────
+
+@app.get("/api/tasks/{task_id}")
+async def api_get_task(task_id: int):
+    """Récupère une tâche par son ID."""
+    conn   = get_db()
+    row    = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Tache introuvable")
+    return dict(row)
+
+
+@app.put("/api/tasks/{task_id}")
+async def api_update_task_full(task_id: int, request: Request):
+    """Met à jour une tâche complètement."""
+    data = await request.json()
+    update_task(task_id, **data)
+    return {"ok": True}
+
+
+@app.delete("/api/tasks/{task_id}")
+async def api_delete_task(task_id: int):
+    """Supprime une tâche."""
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    if not deleted:
+        raise HTTPException(404)
+    return {"ok": True}
+
 
 @app.post("/api/projects/{project_id}/ai/parse")
 async def api_ai_parse(project_id: int, request: Request):
