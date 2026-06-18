@@ -480,7 +480,7 @@ Rules:
             GROQ_URL,
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model":    "llama-3.3-70b-versatile",
+                "model":    "meta-llama/llama-4-scout-17b-16e-instruct" if image_data else "llama-3.3-70b-versatile",
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user",   "content": user_content if image_data else text},
@@ -642,6 +642,25 @@ async def api_create_resource(project_id: int, request: Request):
 async def api_reorder_resources(project_id: int, request: Request):
     data = await request.json()
     reorder_resources(project_id, data.get("ordered_ids", []))
+    return {"ok": True}
+
+
+@app.get("/api/resources/{resource_id}")
+async def api_get_resource(resource_id: int):
+    """Récupère une ressource par son ID."""
+    conn = get_db()
+    row  = conn.execute("SELECT * FROM resources WHERE id=?", (resource_id,)).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404)
+    return dict(row)
+
+
+@app.put("/api/resources/{resource_id}")
+async def api_update_resource(resource_id: int, request: Request):
+    """Met à jour une ressource."""
+    data = await request.json()
+    update_resource(resource_id, **data)
     return {"ok": True}
 
 
