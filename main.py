@@ -21,6 +21,8 @@ from core.models import (
     get_kpis, get_weekly_note, get_milestones, get_risks,
     get_resources, create_resource, update_resource, delete_resource,
     reorder_resources, get_capacity, upsert_capacity, get_capacity_matrix,
+    get_task_assignments, get_project_assignments,
+    upsert_task_assignment, delete_task_assignment, compute_task_end_date,
     STATUS_COLORS, STATUSES, KPI_ITEMS, get_fiscal_quarter, get_fiscal_year,
     get_db, delete_project
 )
@@ -120,24 +122,37 @@ async def project_view(request: Request, project_id: int):
 
 @app.get("/project/{project_id}/gantt", response_class=HTMLResponse)
 async def gantt_view(request: Request, project_id: int):
+    from datetime import date as dt, timedelta
     project = get_project(project_id)
     if not project:
         raise HTTPException(404, "Projet introuvable")
     tasks      = get_tasks(project_id)
     categories = get_categories(project_id)
     cat_map    = {c["id"]: c["name"] for c in categories}
+
     # Construire les données Gantt
+    # Inclure TOUTES les tâches (pas seulement celles avec dates)
+    today_str = dt.today().isoformat()
     gantt_tasks = []
     for i, t in enumerate(tasks):
-        if t.get("start_date") or t.get("end_date"):
-            gantt_tasks.append({
-                "id":       t["id"],
-                "text":     t["title"],
-                "start_date": t.get("start_date", ""),
-                "end_date":   t.get("end_date", ""),
-                "progress":   (t.get("progress") or 0) / 100,
-                "category":   cat_map.get(t.get("category_id"), ""),
-            })
+        start = t.get("start_date") or ""
+        end   = t.get("end_date")   or ""
+        # Si pas de dates → tâche "flottante" à partir d'aujourd'hui
+        if not start:
+            start = today_str
+        if not end:
+            # Durée par défaut : 7 jours
+            from datetime import date as d2
+            end = (d2.fromisoformat(start) + timedelta(days=7)).isoformat()
+        gantt_tasks.append({
+            "id":         t["id"],
+            "text":       t["title"],
+            "start_date": start,
+            "end_date":   end,
+            "progress":   (t.get("progress") or 0) / 100,
+            "category":   cat_map.get(t.get("category_id"), ""),
+            "has_dates":  bool(t.get("start_date") or t.get("end_date")),
+        })
     return templates.TemplateResponse(
         request=request,
         name="gantt.html",
@@ -493,6 +508,45 @@ async def api_bulk_capacity(project_id: int, request: Request):
             fraction    = float(e.get("fraction", 0.0)),
         )
     return {"ok": True, "saved": len(entries)}
+
+
+# ── Task Assignments ─────────────────────────────────────────────────────────
+
+@app.get("/api/tasks/{task_id}/assignments")
+async def api_get_assignments(task_id: int):
+    from core.models import get_task_assignments
+    return get_task_assignments(task_id)
+
+
+@app.post("/api/tasks/{task_id}/assignments")
+async def api_upsert_assignment(task_id: int, request: Request):
+    from core.models import upsert_task_assignment, compute_task_end_date, update_task
+    data       = await request.json()
+    resource_id = int(data["resource_id"])
+    hours      = float(data.get("hours", 0))
+    fraction   = float(data.get("fraction", 0))
+    notes      = data.get("notes", "")
+    upsert_task_assignment(task_id, resource_id, hours, fraction, notes)
+    # Recalculer la date de fin si pas forcée
+    task = get_task(task_id) if hasattr(get_task, '__call__') else None
+    if task and not task.get("end_date"):
+        end = compute_task_end_date(task_id)
+        if end:
+            update_task(task_id, end_date=end)
+    return {"ok": True}
+
+
+@app.delete("/api/tasks/{task_id}/assignments/{resource_id}")
+async def api_delete_assignment(task_id: int, resource_id: int):
+    from core.models import delete_task_assignment
+    ok = delete_task_assignment(task_id, resource_id)
+    return {"ok": ok}
+
+
+@app.get("/api/projects/{project_id}/assignments")
+async def api_project_assignments(project_id: int):
+    from core.models import get_project_assignments
+    return get_project_assignments(project_id)
 
 
 @app.get("/api/projects/{project_id}/export/pptx")
