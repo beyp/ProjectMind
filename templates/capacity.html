@@ -693,41 +693,60 @@ function openEditRes(resId) {
   });
 }
 
-document.querySelectorAll('.res-edit-trigger').forEach(function(el) {
-  el.addEventListener('click', function() {
-    openEditRes(parseInt(this.dataset.id));
+// Edit resource — wrapped in DOMContentLoaded pour eviter null
+document.addEventListener('DOMContentLoaded', function() {
+  // Clic sur res-edit-trigger
+  document.querySelectorAll('.res-edit-trigger').forEach(function(el) {
+    el.addEventListener('click', function() {
+      openEditRes(parseInt(this.dataset.id));
+    });
   });
-});
 
-document.getElementById('er-cancel').addEventListener('click', function() {
-  document.getElementById('modal-edit-res').style.display = 'none';
-});
-document.getElementById('modal-edit-res').addEventListener('click', function(e) {
-  if (e.target === this) this.style.display = 'none';
-});
+  // Bouton Annuler
+  var erCancel = document.getElementById('er-cancel');
+  if (erCancel) {
+    erCancel.addEventListener('click', function() {
+      var m = document.getElementById('modal-edit-res');
+      if (m) m.style.display = 'none';
+    });
+  }
 
-document.getElementById('er-save').addEventListener('click', function() {
-  var id = parseInt(document.getElementById('er-id').value);
-  if (!id) return;
-  fetch('/api/resources/' + id, {
-    method:  'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      acronym:      document.getElementById('er-acro').value.trim().toUpperCase(),
-      full_name:    document.getElementById('er-name').value.trim(),
-      role:         document.getElementById('er-role').value.trim(),
-      max_fraction: parseFloat(document.getElementById('er-max').value) || 1.0,
-      is_external:  document.getElementById('er-ext').value === '1' ? 1 : 0,
-      color:        document.getElementById('er-color').value,
-    })
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(d) {
-    if (d.ok) {
-      document.getElementById('modal-edit-res').style.display = 'none';
-      location.reload();
-    }
-  });
+  // Fermer en cliquant dehors
+  var erModal = document.getElementById('modal-edit-res');
+  if (erModal) {
+    erModal.addEventListener('click', function(e) {
+      if (e.target === this) this.style.display = 'none';
+    });
+  }
+
+  // Bouton Sauvegarder
+  var erSave = document.getElementById('er-save');
+  if (erSave) {
+    erSave.addEventListener('click', function() {
+      var id = parseInt(document.getElementById('er-id').value);
+      if (!id) return;
+      fetch('/api/resources/' + id, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          acronym:      document.getElementById('er-acro').value.trim().toUpperCase(),
+          full_name:    document.getElementById('er-name').value.trim(),
+          role:         document.getElementById('er-role').value.trim(),
+          max_fraction: parseFloat(document.getElementById('er-max').value) || 1.0,
+          is_external:  document.getElementById('er-ext').value === '1' ? 1 : 0,
+          color:        document.getElementById('er-color').value,
+        })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok) {
+          var m = document.getElementById('modal-edit-res');
+          if (m) m.style.display = 'none';
+          location.reload();
+        }
+      });
+    });
+  }
 });
 
 </script>
