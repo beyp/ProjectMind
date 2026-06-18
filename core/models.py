@@ -244,18 +244,49 @@ def init_db() -> None:
         )
     """)
 
-    # Initialiser la palette par défaut si vide
-    existing = conn.execute("SELECT COUNT(*) FROM role_colors").fetchone()[0]
-    if existing == 0:
-        default_colors = [
-            ("PM", "#E74C3C"), ("BA", "#3498DB"), ("SME", "#27AE60"),
-            ("Lead", "#8E44AD"), ("Dev", "#1ABC9C"), ("Analyst", "#2980B9"),
-            ("OD Data CoreHR", "#F39C12"), ("OD Data WFM", "#E67E22"),
-            ("Architect", "#9B59B6"), ("QA", "#16A085"),
-            ("OCM", "#D35400"), ("Support", "#7F8C8D"),
-        ]
+    # Nettoyer et réinitialiser la palette (supprime données corrompues)
+    default_colors = [
+        ("PM", "#E74C3C"), ("BA", "#3498DB"), ("SME", "#27AE60"),
+        ("Lead", "#8E44AD"), ("Dev", "#1ABC9C"), ("Analyst", "#2980B9"),
+        ("OD Data CoreHR", "#F39C12"), ("OD Data WFM", "#E67E22"),
+        ("Architect", "#9B59B6"), ("QA", "#16A085"),
+        ("OCM", "#D35400"), ("Support", "#7F8C8D"),
+    ]
+    # Vérifier si la palette est corrompue (couleurs = #FFFFFF ou rôles = chiffres)
+    try:
+        existing_rows = conn.execute("SELECT role, color FROM role_colors").fetchall()
+        is_corrupted  = False
+        if existing_rows:
+            for row in existing_rows:
+                try:
+                    role  = row["role"]
+                    color = row["color"]
+                except Exception:
+                    role  = row[0]
+                    color = row[1]
+                if color in ("#FFFFFF", "", None) or role.isdigit():
+                    is_corrupted = True
+                    break
+        if is_corrupted or not existing_rows:
+            conn.execute("DELETE FROM role_colors")
+            for role, color in default_colors:
+                c.execute(
+                    "INSERT OR REPLACE INTO role_colors (role, color) VALUES (?, ?)",
+                    (role, color)
+                )
+        else:
+            # Juste insérer les manquants
+            for role, color in default_colors:
+                c.execute(
+                    "INSERT OR IGNORE INTO role_colors (role, color) VALUES (?, ?)",
+                    (role, color)
+                )
+    except Exception:
         for role, color in default_colors:
-            c.execute("INSERT OR IGNORE INTO role_colors (role, color) VALUES (?, ?)", (role, color))
+            c.execute(
+                "INSERT OR REPLACE INTO role_colors (role, color) VALUES (?, ?)",
+                (role, color)
+            )
 
     # Créer task_assignments si manquante
     c.execute("""
@@ -557,10 +588,33 @@ def compute_task_end_date(task_id: int) -> str | None:
 
 def get_role_colors() -> dict[str, str]:
     """Retourne la palette role → couleur depuis la DB."""
-    conn = get_db()
-    rows = conn.execute("SELECT role, color FROM role_colors ORDER BY role").fetchall()
-    conn.close()
-    return {r["role"]: r["color"] for r in rows}
+    DEFAULT = {
+        "PM": "#E74C3C", "BA": "#3498DB", "SME": "#27AE60",
+        "Lead": "#8E44AD", "Dev": "#1ABC9C", "Analyst": "#2980B9",
+        "OD Data CoreHR": "#F39C12", "OD Data WFM": "#E67E22",
+        "Architect": "#9B59B6", "QA": "#16A085",
+        "OCM": "#D35400", "Support": "#7F8C8D",
+    }
+    try:
+        conn = get_db()
+        rows = conn.execute("SELECT role, color FROM role_colors ORDER BY role").fetchall()
+        conn.close()
+        if not rows:
+            return DEFAULT
+        # row_factory = sqlite3.Row → accès par nom de colonne
+        result = {}
+        for r in rows:
+            try:
+                role  = r["role"]
+                color = r["color"]
+            except (IndexError, KeyError):
+                role  = r[0]
+                color = r[1]
+            if role and color and color != "#FFFFFF":
+                result[role] = color
+        return result if result else DEFAULT
+    except Exception:
+        return DEFAULT
 
 
 def upsert_role_color(role: str, color: str) -> None:
