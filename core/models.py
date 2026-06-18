@@ -158,6 +158,37 @@ def init_db() -> None:
     """)
 
     # ── Migration : CREATE TABLE si elles n existent pas (safe pour DB existante) ──
+    # role_colors
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS role_colors (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            role       TEXT NOT NULL UNIQUE,
+            color      TEXT NOT NULL DEFAULT '#1E90FF',
+            sort_order INTEGER DEFAULT 0
+        )
+    """)
+
+    # Insérer les rôles par défaut si la table est vide
+    default_roles = [
+        ("PM",             "#E74C3C"),
+        ("BA",             "#3498DB"),
+        ("SME",            "#27AE60"),
+        ("Lead",           "#8E44AD"),
+        ("Dev",            "#1ABC9C"),
+        ("Analyst",        "#2980B9"),
+        ("OD Data CoreHR", "#F39C12"),
+        ("OD Data WFM",    "#E67E22"),
+        ("Architect",      "#9B59B6"),
+        ("QA",             "#16A085"),
+        ("OCM",            "#D35400"),
+        ("Support",        "#7F8C8D"),
+    ]
+    for idx, (role, color) in enumerate(default_roles):
+        conn.execute("""
+            INSERT OR IGNORE INTO role_colors (role, color, sort_order)
+            VALUES (?, ?, ?)
+        """, (role, color, idx))
+
     # task_assignments
     c.execute("""
         CREATE TABLE IF NOT EXISTS task_assignments (
@@ -573,6 +604,43 @@ def get_capacity_matrix(project_id: int, year: int) -> dict:
         "matrix":    matrix,
         "resources": resources,
     }
+
+
+def get_role_colors() -> list[dict]:
+    """Retourne tous les rôles avec leurs couleurs."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM role_colors ORDER BY sort_order, role"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_role_colors_dict() -> dict[str, str]:
+    """Retourne {role: color} pour utilisation rapide."""
+    return {r["role"]: r["color"] for r in get_role_colors()}
+
+
+def upsert_role_color(role: str, color: str) -> None:
+    """Crée ou met à jour un rôle."""
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO role_colors (role, color)
+        VALUES (?, ?)
+        ON CONFLICT(role) DO UPDATE SET color=excluded.color
+    """, (role, color))
+    conn.commit()
+    conn.close()
+
+
+def delete_role_color(role: str) -> bool:
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("DELETE FROM role_colors WHERE role=?", (role,))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
 
 
 def get_fiscal_year(d: date | None = None) -> str:
