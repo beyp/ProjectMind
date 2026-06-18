@@ -23,6 +23,7 @@ from core.models import (
     reorder_resources, get_capacity, upsert_capacity, get_capacity_matrix,
     get_task_assignments, get_project_assignments,
     upsert_task_assignment, delete_task_assignment, compute_task_end_date,
+    get_role_colors, get_role_colors_dict, upsert_role_color, delete_role_color,
     STATUS_COLORS, STATUSES, KPI_ITEMS, get_fiscal_quarter, get_fiscal_year,
     get_db, delete_project
 )
@@ -475,6 +476,12 @@ Rules:
 - fraction: 0.25=25%=10h/sem, 0.5=50%=20h/sem, 1.0=100%=40h/sem
 - If resource doesn't exist, include create_resource first
 - Current year if not specified: 2026
+8. Create or update a role color:
+   {"type": "create_role", "role": "Tech Lead", "color": "#FF5733", "message": "Adding Tech Lead role"}
+
+9. Delete a role:
+   {"type": "delete_role", "role": "Support", "message": "Removing Support role"}
+
 - Reply ONLY with valid JSON array, no text before/after
 """
 
@@ -666,17 +673,19 @@ async def capacity_view(request: Request, project_id: int):
     project   = get_project(project_id)
     if not project:
         raise HTTPException(404)
-    resources = get_resources(project_id)
-    year      = dt.today().year
-    matrix    = get_capacity_matrix(project_id, year)
+    resources   = get_resources(project_id)
+    year        = dt.today().year
+    matrix      = get_capacity_matrix(project_id, year)
+    role_colors = get_role_colors()
     return templates.TemplateResponse(
         request=request,
         name="capacity.html",
         context={
-            "project":   project,
-            "resources": resources,
-            "matrix":    matrix,
-            "year":      year,
+            "project":     project,
+            "resources":   resources,
+            "matrix":      matrix,
+            "year":        year,
+            "role_colors": role_colors,
         },
     )
 
@@ -690,22 +699,15 @@ async def api_get_resources(project_id: int):
 async def api_create_resource(project_id: int, request: Request):
     data = await request.json()
     # Palette de couleurs par rôle (si pas de couleur fournie)
-    ROLE_COLORS = {
-        "PM":               "#E74C3C",  # Rouge foncé — Chef de projet
-        "BA":               "#3498DB",  # Bleu — Business Analyst
-        "SME":              "#27AE60",  # Vert — Subject Matter Expert
-        "Lead":             "#8E44AD",  # Violet — Lead technique
-        "Dev":              "#1ABC9C",  # Turquoise — Développeur
-        "Analyst":          "#2980B9",  # Bleu moyen — Analyste
-        "OD Data CoreHR":   "#F39C12",  # Orange — OD Data CoreHR
-        "OD Data WFM":      "#E67E22",  # Orange foncé — OD Data WFM
-        "Architect":        "#9B59B6",  # Violet clair — Architecte
-        "QA":               "#16A085",  # Vert foncé — QA
-        "OCM":              "#D35400",  # Brun — Change Management
-        "Support":          "#7F8C8D",  # Gris — Support
-    }
-    role  = data.get("role", "")
-    color = data.get("color", "") or ROLE_COLORS.get(role, "#1E90FF")
+    role        = data.get("role", "")
+    role_map    = get_role_colors_dict()
+    color       = data.get("color", "") or role_map.get(role, "#1E90FF")
+    # Si rôle inconnu et couleur non fournie → générer couleur aléatoire + sauvegarder
+    if role and role not in role_map and not data.get("color"):
+        import hashlib
+        h     = int(hashlib.md5(role.encode()).hexdigest()[:6], 16)
+        color = f"#{h:06X}"
+        upsert_role_color(role, color)
 
     rid  = create_resource(
         project_id   = project_id,
@@ -901,6 +903,33 @@ Règles :
 
     except Exception as exc:
         return JSONResponse({"error": str(exc)})
+
+
+@app.get("/api/role-colors")
+async def api_get_role_colors():
+    """Retourne tous les rôles et leurs couleurs."""
+    return get_role_colors()
+
+
+@app.post("/api/role-colors")
+async def api_upsert_role_color(request: Request):
+    """Crée ou met à jour un rôle."""
+    data  = await request.json()
+    role  = data.get("role", "").strip()
+    color = data.get("color", "#1E90FF")
+    if not role:
+        raise HTTPException(400, "role requis")
+    upsert_role_color(role, color)
+    return {"ok": True, "role": role, "color": color}
+
+
+@app.delete("/api/role-colors/{role}")
+async def api_delete_role_color(role: str):
+    """Supprime un rôle."""
+    from urllib.parse import unquote
+    role = unquote(role)
+    ok   = delete_role_color(role)
+    return {"ok": ok}
 
 
 @app.get("/api/projects/{project_id}/export/pptx")
