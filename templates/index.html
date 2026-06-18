@@ -160,9 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var id      = parseInt(this.dataset.id);
       var project = PM_PROJECTS.find(function(p) { return p.id === id; });
       var name    = project ? project.name : 'ce projet';
-      if (!confirm('Supprimer "' + name + '" ?
-
-Toutes les donnees seront perdues.')) return;
+      if (!confirm('Supprimer "' + name + '" ? Toutes les donnees seront perdues.')) return;
       fetch('/api/projects/' + id, { method: 'DELETE' })
       .then(function(r) { return r.json(); })
       .then(function(d) {
