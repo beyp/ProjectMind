@@ -27,6 +27,9 @@ header a:hover{color:#1e90ff;}
 .gantt_task_line{background:#1e90ff;border-color:#1570cc;}
 .gantt_task_progress{background:#0d5fa3;}
 .gantt_task_line.gantt_task_inline_color .gantt_task_progress{background:inherit;filter:brightness(0.7);}
+  .no-date-task .gantt_task_progress { background: rgba(255,255,255,0.2); }
+  .no-date-task { opacity: 0.6; border-style: dashed !important; }
+  .gantt_task_line { border-radius: 3px; }
 </style>
 </head>
 <body>
@@ -49,14 +52,18 @@ header a:hover{color:#1e90ff;}
 // Configuration Gantt
 gantt.config.date_format = "%Y-%m-%d";
 gantt.config.scale_unit  = "week";
-gantt.config.date_scale  = "Sem. %W";
+gantt.config.date_scale  = "S%W";
 gantt.config.subscales   = [
   {unit: "month", step: 1, date: "%F %Y"},
 ];
-gantt.config.show_progress = true;
-gantt.config.drag_progress = true;
-gantt.config.drag_resize   = true;
-gantt.config.drag_move     = true;
+gantt.config.show_progress    = true;
+gantt.config.drag_progress    = true;
+gantt.config.drag_resize      = true;
+gantt.config.drag_move        = true;
+gantt.config.fit_tasks        = true;
+gantt.config.open_tree_initially = true;
+gantt.config.row_height       = 28;
+gantt.config.bar_height       = 18;
 
 // Colonnes
 gantt.config.columns = [
@@ -86,6 +93,16 @@ var data  = {
     };
   }),
   links: []
+};
+
+// Colorer les tâches sans dates réelles (estimées)
+gantt.templates.task_class = function(start, end, task) {
+  return task.has_dates ? "" : "no-date-task";
+};
+gantt.templates.tooltip_text = function(start, end, task) {
+  var pct = Math.round((task.progress||0)*100);
+  var flag = task.has_dates ? "" : " [dates estimees]";
+  return "<b>"+task.text+"</b>"+flag+"<br>Cat: "+(task.category||"-")+"<br>Avancement: "+pct+"%";
 };
 
 gantt.init("gantt_here");
