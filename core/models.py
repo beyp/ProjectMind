@@ -270,11 +270,15 @@ def update_task(task_id: int, **kwargs) -> None:
 
 
 def get_kpis(project_id: int) -> list[dict]:
+    """Retourne UN seul enregistrement par KPI (le plus recent)."""
     conn = get_db()
-    rows = conn.execute(
-        "SELECT * FROM project_kpis WHERE project_id=? ORDER BY id",
-        (project_id,)
-    ).fetchall()
+    rows = conn.execute("""
+        SELECT * FROM project_kpis
+        WHERE project_id=?
+        GROUP BY kpi_name
+        HAVING MAX(week_date)
+        ORDER BY id
+    """, (project_id,)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
