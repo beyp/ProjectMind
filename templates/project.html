@@ -165,7 +165,11 @@ header h1{color:var(--accent);font-size:1.1rem;}
                 <td class="cat-td" rowspan="{{ ct|length }}" style="background:{{ cat.color }};">{{ cat.name }}</td>
                 {% endif %}
                 <td>
-                  &bull; {{ task.title }}
+                  <span class="task-lnk" data-id="{{ task.id }}"
+                    style="cursor:pointer;"
+                    title="Cliquer pour editer">
+                    &bull; {{ task.title }}
+                  </span>
                   {% if task.ado_item_id %}
                   <a href="https://dev.azure.com/Premiertech/{{ project.ado_project|default('')|replace(' ','%20') }}/_workitems/edit/{{ task.ado_item_id }}"
                     target="_blank" style="color:var(--accent);font-size:0.72rem;text-decoration:none;margin-left:6px;">#{{ task.ado_item_id }}</a>
@@ -183,7 +187,7 @@ header h1{color:var(--accent);font-size:1.1rem;}
           {% for task in unc %}
           <tr>
             {% if loop.first %}<td class="cat-td" rowspan="{{ unc|length }}" style="background:#444;">-</td>{% endif %}
-            <td>&bull; {{ task.title }}</td>
+            <td><span class="task-lnk" data-id="{{ task.id }}" style="cursor:pointer;" title="Cliquer pour editer">&bull; {{ task.title }}</span></td>
             <td style="text-align:center;color:var(--dim);font-size:0.78rem;">{{ task.date_label or "" }}</td>
             <td style="text-align:center;">
               <span class="sbadge" style="background:{{ STATUS_COLORS.get(task.status,'#888888') }}22;color:{{ STATUS_COLORS.get(task.status,'#888888') }};">{{ task.status }}</span>
@@ -403,10 +407,59 @@ header h1{color:var(--accent);font-size:1.1rem;}
 </div>
 
 <!-- Tout le JS est ici, APRÈS le DOM complet -->
+<!-- Modal édition tâche -->
+<div class="moverlay" id="modal-edit">
+  <div class="mbox">
+    <h3 style="color:var(--accent);margin-bottom:14px;">Modifier la tache</h3>
+    <input type="hidden" id="et-id">
+    <div class="fg"><label>Titre *</label>
+      <input id="et-t" type="text"></div>
+    <div class="fg2">
+      <div class="fg"><label>Categorie</label>
+        <select id="et-c">
+          <option value="">-- Sans categorie --</option>
+          {% for cat in categories %}
+          <option value="{{ cat.id }}">{{ cat.name }}</option>
+          {% endfor %}
+        </select></div>
+      <div class="fg"><label>Statut</label>
+        <select id="et-s">
+          {% set lang = project.language if project.language in STATUSES else "fr" %}
+          {% for s in STATUSES[lang] %}
+          <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select></div>
+      <div class="fg"><label>Date / Periode</label>
+        <input id="et-d" type="text" placeholder="ex: 17/06 ou Juin"></div>
+      <div class="fg"><label>ID ADO</label>
+        <input id="et-a" type="number" placeholder="ex: 191614"></div>
+      <div class="fg"><label>Date debut</label>
+        <input id="et-sd" type="date"></div>
+      <div class="fg"><label>Date fin</label>
+        <input id="et-ed" type="date"></div>
+      <div class="fg"><label>Avancement %</label>
+        <input id="et-prog" type="range" min="0" max="100" step="5" value="0"
+          oninput="document.getElementById('et-prog-val').textContent=this.value+'%'">
+        <span id="et-prog-val" style="color:var(--accent);font-size:0.82rem;">0%</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:space-between;margin-top:10px;">
+      <button class="btn btn-r" id="btn-del-task" style="padding:7px 14px;">
+        Supprimer
+      </button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-n" id="btn-cancel-edit">Annuler</button>
+        <button class="btn btn-p" id="btn-save-edit">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Données projet ────────────────────────────────────────────────────────────
-var PID  = {{ project.id }};
-var LANG = "{{ project.language }}";
+var PID       = {{ project.id }};
+var LANG      = "{{ project.language }}";
+var TASKS_ALL = {{ tasks_flat | tojson }};
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 function showTab(name) {
