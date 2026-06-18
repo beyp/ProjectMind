@@ -102,6 +102,8 @@ async def project_view(request: Request, project_id: int):
         cat_id = task.get("category_id") or 0
         tasks_by_cat.setdefault(cat_id, []).append(task)
 
+    resources = get_resources(project_id)
+
     return templates.TemplateResponse(
         request=request,
         name="project.html",
@@ -114,6 +116,7 @@ async def project_view(request: Request, project_id: int):
             "milestones":   milestones,
             "risks":        risks,
             "weekly_note":  weekly_note,
+            "resources":    resources,
             "today":        date.today(),
             "fiscal_q":     get_fiscal_quarter(),
         },
