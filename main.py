@@ -450,58 +450,29 @@ async def api_ai_capacity(project_id: int, request: Request):
     # !! IMPORTANT : utiliser """ non-f-string pour le system_prompt
     # pour éviter ValueError avec les accolades JSON dans les exemples
     system_prompt = (
-        "You are a project capacity planning assistant.
-"
-        "Project: " + project.get('name', '') + "
-"
-        "Existing resources: " + res_list + "
-"
-        "Existing tasks: " + task_list + "
-
-"
-        "Analyze the instructions and return a JSON array of actions.
-
-"
-        "Available actions:
-
-"
-        '1. Create resource: {"type":"create_resource","acronym":"SAMC4","full_name":"Sam C.","role":"BA","max_fraction":1.0,"is_external":false}
-'
-        '2. Delete resource: {"type":"delete_resource","acronym":"SAMC4"}
-'
-        '3. Update resource (color, role, etc.): {"type":"update_resource","acronym":"SAMC4","color":"#3498DB","role":"BA"}
-'
-        '4. Reset colors by role: {"type":"reset_colors_by_role","message":"Resetting all resource colors based on their roles"}
-'
-        '5. Set capacity: {"type":"set_capacity","acronym":"SAMC4","fraction":0.5,"weeks":[23,24,25,26],"year":2026}
-'
-        '6. Clear capacity: {"type":"clear_capacity","acronym":"SAMC4","weeks":[23,24],"year":2026}
-'
-        '7. Assign to task: {"type":"assign_resource","acronym":"SAMC4","task_id":5,"hours":20,"fraction":0.5}
-'
-        '8. Remove assignment: {"type":"remove_assignment","acronym":"SAMC4","task_id":5}
-'
-        '9. Message: {"type":"message","text":"Done."}
-
-'
-        "Color palette by role:
-"
-        "PM=#E74C3C, BA=#3498DB, SME=#27AE60, Lead=#8E44AD, Dev=#1ABC9C,
-"
-        "Analyst=#2980B9, OD Data CoreHR=#F39C12, OD Data WFM=#E67E22,
-"
-        "Architect=#9B59B6, QA=#16A085, OCM=#D35400, Support=#7F8C8D
-
-"
-        "Rules:
-"
-        "- ALWAYS include at least one message action
-"
-        "- Use exact acronyms from existing resources
-"
-        "- fraction: 0.25=25%=10h/w, 0.5=50%=20h/w, 1.0=100%=40h/w
-"
-        "- Reply ONLY with valid JSON array"
+        "You are a project capacity planning assistant.\n"
+        "Project: " + project.get('name', '') + "\n"
+        "Existing resources: " + res_list + "\n"
+        "Existing tasks: " + task_list + "\n\n"
+        "Analyze the instructions and return a JSON array of actions.\n\n"
+        "Available actions:\n\n"
+        '1. Create resource: {"type":"create_resource","acronym":"SAMC4","full_name":"Sam C.","role":"BA","max_fraction":1.0}\n'
+        '2. Delete resource: {"type":"delete_resource","acronym":"SAMC4"}\n'
+        '3. Update resource: {"type":"update_resource","acronym":"SAMC4","color":"#3498DB","role":"BA"}\n'
+        '4. Reset all colors by role: {"type":"reset_colors_by_role"}\n'
+        '5. Set capacity: {"type":"set_capacity","acronym":"SAMC4","fraction":0.5,"weeks":[23,24,25,26],"year":2026}\n'
+        '6. Clear capacity: {"type":"clear_capacity","acronym":"SAMC4","weeks":[23,24],"year":2026}\n'
+        '7. Assign to task: {"type":"assign_resource","acronym":"SAMC4","task_id":5,"hours":20,"fraction":0.5}\n'
+        '8. Remove assignment: {"type":"remove_assignment","acronym":"SAMC4","task_id":5}\n'
+        '9. Message: {"type":"message","text":"Done."}\n\n'
+        "Color palette by role: PM=#E74C3C, BA=#3498DB, SME=#27AE60, Lead=#8E44AD,\n"
+        "Dev=#1ABC9C, Analyst=#2980B9, OD Data CoreHR=#F39C12, OD Data WFM=#E67E22,\n"
+        "Architect=#9B59B6, QA=#16A085, OCM=#D35400, Support=#7F8C8D\n\n"
+        "Rules:\n"
+        "- ALWAYS include at least one message action\n"
+        "- Use exact acronyms from existing resources\n"
+        "- fraction: 0.25=25%=10h/w, 0.5=50%=20h/w, 1.0=100%=40h/w\n"
+        "- Reply ONLY with valid JSON array, no text before/after"
     )
 
     # Build user message
