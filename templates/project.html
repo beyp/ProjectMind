@@ -41,10 +41,24 @@ header h1{color:var(--accent);font-size:1.1rem;}
 .tab-content{display:none;}
 .tab-content.active{display:block;}
 .wt{width:100%;border-collapse:collapse;background:var(--card);
-  border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:0.83rem;}
-.wt th{background:#041E42;color:#fff;padding:8px 12px;text-align:left;}
-.wt td{padding:7px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:0.83rem;
+  table-layout:fixed;}
+.wt th{background:#041E42;color:#fff;padding:8px 12px;text-align:left;
+  position:relative;user-select:none;}
+.wt td{padding:7px 12px;border-bottom:1px solid var(--border);vertical-align:middle;
+  overflow:hidden;text-overflow:ellipsis;}
 .wt tr:last-child td{border-bottom:none;}
+/* Handle de redimensionnement */
+.wt th.resizable::after{
+  content:'';position:absolute;right:0;top:0;bottom:0;width:5px;
+  cursor:col-resize;background:transparent;z-index:1;}
+.wt th.resizable:hover::after{background:rgba(30,144,255,0.4);}
+/* Barre de progression */
+.prog-bar{position:relative;height:18px;background:var(--border);
+  border-radius:3px;overflow:hidden;min-width:40px;}
+.prog-fill{position:absolute;left:0;top:0;height:100%;transition:width 0.3s;}
+.prog-lbl{position:absolute;width:100%;text-align:center;font-size:0.7rem;
+  line-height:18px;color:#fff;font-weight:600;}
 .cat-td{font-weight:700;color:#fff;text-align:center;font-size:0.82rem;}
 .sbadge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.73rem;font-weight:600;}
 .fg{margin-bottom:10px;}
@@ -146,13 +160,15 @@ header h1{color:var(--accent);font-size:1.1rem;}
       <div style="margin-bottom:12px;">
         <button class="btn btn-p" id="tc-add-btn">+ Ajouter une tache</button>
       </div>
-      <table class="wt">
+      <table class="wt" id="weekly-table">
         <thead>
           <tr>
-            <th style="width:130px;">Categorie</th>
-            <th>Activites</th>
-            <th style="width:80px;text-align:center;">Date</th>
-            <th style="width:115px;text-align:center;">Statut</th>
+            <th class="resizable" style="width:130px;min-width:80px;">Categorie</th>
+            <th class="resizable">Activites</th>
+            <th class="resizable" style="width:120px;min-width:80px;text-align:center;">Semaines</th>
+            <th class="resizable" style="width:80px;min-width:60px;text-align:center;">%</th>
+            <th class="resizable" style="width:80px;min-width:60px;text-align:center;">Date</th>
+            <th class="resizable" style="width:115px;min-width:90px;text-align:center;">Statut</th>
           </tr>
         </thead>
         <tbody>
@@ -1008,6 +1024,72 @@ openEditTask = function(taskId) {
   _oedit(taskId);
   loadAssignments(taskId);
 };
+
+// ── Resize colonnes Weekly Status ─────────────────────────────────────────────
+(function() {
+  var table = document.getElementById('weekly-table');
+  if (!table) return;
+
+  var ths     = table.querySelectorAll('th.resizable');
+  var STORAGE = 'pm_weekly_col_widths_' + PID;
+
+  // Restaurer largeurs sauvegardées
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(STORAGE) || '{}'); } catch(e) {}
+  ths.forEach(function(th, i) {
+    if (saved[i]) th.style.width = saved[i];
+  });
+
+  // Resize via drag
+  ths.forEach(function(th, i) {
+    var startX, startW;
+
+    th.addEventListener('mousedown', function(e) {
+      // Seulement sur les 5px de droite
+      if (e.offsetX < th.offsetWidth - 5) return;
+      startX = e.pageX;
+      startW = th.offsetWidth;
+      e.preventDefault();
+
+      function onMove(e) {
+        var newW = Math.max(50, startW + e.pageX - startX);
+        th.style.width = newW + 'px';
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        // Sauvegarder
+        var widths = {};
+        ths.forEach(function(t, j) { widths[j] = t.style.width; });
+        try { localStorage.setItem(STORAGE, JSON.stringify(widths)); } catch(e) {}
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    // Curseur resize sur hover bord droit
+    th.addEventListener('mousemove', function(e) {
+      th.style.cursor = e.offsetX > th.offsetWidth - 5 ? 'col-resize' : '';
+    });
+    th.addEventListener('mouseleave', function() {
+      th.style.cursor = '';
+    });
+  });
+
+  // Double-clic sur séparateur = reset largeur
+  ths.forEach(function(th, i) {
+    th.addEventListener('dblclick', function(e) {
+      if (e.offsetX > th.offsetWidth - 8) {
+        th.style.width = '';
+        var widths = {};
+        try { widths = JSON.parse(localStorage.getItem(STORAGE) || '{}'); } catch(e) {}
+        delete widths[i];
+        try { localStorage.setItem(STORAGE, JSON.stringify(widths)); } catch(e) {}
+      }
+    });
+  });
+})();
+
 </script>
 </body>
 </html>
