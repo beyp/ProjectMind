@@ -469,17 +469,75 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Ajouter ressource
+  // Palette couleurs par rôle (sync avec server)
+  var ROLE_COLORS = {
+    "PM":             "#E74C3C",
+    "BA":             "#3498DB",
+    "SME":            "#27AE60",
+    "Lead":           "#8E44AD",
+    "Dev":            "#1ABC9C",
+    "Analyst":        "#2980B9",
+    "OD Data CoreHR": "#F39C12",
+    "OD Data WFM":    "#E67E22",
+    "Architect":      "#9B59B6",
+    "QA":             "#16A085",
+    "OCM":            "#D35400",
+    "Support":        "#7F8C8D"
+  };
+
+  // Auto-couleur quand on saisit un rôle
+  var roleInput = document.getElementById('r-role');
+  if (roleInput) {
+    roleInput.addEventListener('input', function() {
+      var role  = this.value.trim();
+      var color = ROLE_COLORS[role];
+      if (color) {
+        var colorInput = document.getElementById('r-color');
+        if (colorInput) colorInput.value = color;
+      }
+    });
+    roleInput.addEventListener('change', function() {
+      var role  = this.value.trim();
+      var color = ROLE_COLORS[role];
+      if (color) {
+        var colorInput = document.getElementById('r-color');
+        if (colorInput) colorInput.value = color;
+      }
+    });
+  }
+
+  // Idem pour le modal d édition
+  var erRoleInput = document.getElementById('er-role');
+  if (erRoleInput) {
+    function updateEditColor() {
+      var role  = erRoleInput.value.trim();
+      var color = ROLE_COLORS[role];
+      if (color) {
+        var colorInput = document.getElementById('er-color');
+        if (colorInput) colorInput.value = color;
+      }
+    }
+    erRoleInput.addEventListener('input',  updateEditColor);
+    erRoleInput.addEventListener('change', updateEditColor);
+  }
+
   document.getElementById('btn-add-res').addEventListener('click', function() {
     var acro = document.getElementById('r-acro').value.trim().toUpperCase();
     if (!acro) { alert('Acronyme obligatoire'); return; }
+    var role  = document.getElementById('r-role') ? document.getElementById('r-role').value.trim() : '';
+    var color = document.getElementById('r-color').value;
+    // Si couleur par défaut (#1E90FF) et rôle connu → appliquer couleur du rôle
+    if (color === '#1E90FF' && ROLE_COLORS[role]) {
+      color = ROLE_COLORS[role];
+    }
     fetch('/api/projects/'+PID+'/resources', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         acronym:      acro,
         full_name:    document.getElementById('r-name').value.trim(),
-        role:         document.getElementById('r-role') ? document.getElementById('r-role').value.trim() : '',
+        role:         role,
         max_fraction: parseFloat(document.getElementById('r-max').value)||1.0,
-        color:        document.getElementById('r-color').value,
+        color:        color,
         is_external:  document.getElementById('r-ext').value==='1'
       })
     }).then(function(){location.reload();});
