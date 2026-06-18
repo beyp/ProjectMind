@@ -97,7 +97,7 @@ header h1{color:var(--accent);font-size:1.05rem;}
         <div class="res-item" data-id="{{ res.id }}">
           <span class="res-handle" title="Glisser pour reordonner">&#x22EE;</span>
           <span class="res-badge" style="background:{{ res.color }};">{{ res.acronym }}</span>
-          <span style="flex:1;{% if res.is_external %}font-style:italic;{% endif %}color:var(--dim);font-size:0.78rem;">
+          <span class="res-edit-trigger" data-id="{{ res.id }}" title="Cliquer pour editer" style="flex:1;cursor:pointer;{% if res.is_external %}font-style:italic;{% endif %}color:var(--dim);font-size:0.78rem;">
             {% if res.full_name %}{{ res.full_name }}{% if res.is_external %} (ext){% endif %}{% endif %}{% if res.role %} <span style="background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);padding:1px 5px;border-radius:6px;font-size:0.68rem;">{{ res.role }}</span>{% endif %}
           </span>
           <span style="font-size:0.72rem;color:var(--dim);">
