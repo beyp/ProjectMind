@@ -444,15 +444,15 @@ def get_resources(project_id: int) -> list[dict]:
 
 
 def create_resource(project_id: int, acronym: str, full_name: str = "",
-                    is_external: bool = False, max_fraction: float = 1.0,
-                    color: str = "#1E90FF") -> int:
+                    role: str = "", is_external: bool = False,
+                    max_fraction: float = 1.0, color: str = "#1E90FF") -> int:
     conn = get_db()
     c    = conn.cursor()
     c.execute("""
         INSERT INTO resources
-        (project_id, acronym, full_name, is_external, max_fraction, color)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (project_id, acronym, full_name, int(is_external), max_fraction, color))
+        (project_id, acronym, full_name, role, is_external, max_fraction, color)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (project_id, acronym, full_name, role, int(is_external), max_fraction, color))
     rid = c.lastrowid
     conn.commit()
     conn.close()
