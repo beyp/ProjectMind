@@ -925,13 +925,30 @@ window.ROLE_COLORS_DB = {};
 function loadPalette() {
   fetch('/api/role-colors')
   .then(function(r) { return r.json(); })
-  .then(function(palette) {
+  .then(function(raw) {
+    // Normaliser : s assurer que palette est un dict {role: colorString}
+    var palette = {};
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      Object.keys(raw).forEach(function(key) {
+        var val = raw[key];
+        // val peut être une string "#E74C3C" ou un objet {"color": "#E74C3C"}
+        if (typeof val === 'string') {
+          palette[key] = val;
+        } else if (val && typeof val === 'object' && val.color) {
+          palette[key] = val.color;
+        }
+      });
+    }
     window.ROLE_COLORS_DB = palette;
     var list = document.getElementById('palette-list');
     if (!list) return;
     list.innerHTML = '';
     Object.keys(palette).sort().forEach(function(role) {
       var color = palette[role];
+      // S assurer que color est bien une string hex valide
+      if (!color || typeof color !== 'string' || !color.startsWith('#')) {
+        color = '#1E90FF';
+      }
       var div   = document.createElement('div');
       div.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0;font-size:0.78rem;';
       div.innerHTML =
