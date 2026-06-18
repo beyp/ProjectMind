@@ -497,46 +497,32 @@ document.addEventListener('DOMContentLoaded', function() {
   loadCap(CY);
 });
 
-// ── IA Capacity ────────────────────────────────────────────────────────────
+// ── IA Capacity ───────────────────────────────────────────────────────────────
 var _capImg = null;
 
-// Image drop handlers
-var capImgInput = document.getElementById('cap-img-input');
-var capDrop     = document.getElementById('cap-drop');
-var capImgClear = document.getElementById('cap-img-clear');
-
-if (capImgInput) {
-  capImgInput.addEventListener('change', function() {
-    if (this.files && this.files[0]) loadCapImg(this.files[0]);
-  });
-}
-if (capDrop) {
-  capDrop.addEventListener('click', function(e) {
-    if (e.target.id !== 'cap-img-clear') {
-      var inp = document.getElementById('cap-img-input');
-      if (inp) inp.click();
-    }
-  });
-  capDrop.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    this.style.borderColor = 'var(--accent)';
-  });
-  capDrop.addEventListener('dragleave', function() {
-    this.style.borderColor = '';
-  });
-  capDrop.addEventListener('drop', function(e) {
-    e.preventDefault();
-    this.style.borderColor = '';
-    if (e.dataTransfer.files[0]) loadCapImg(e.dataTransfer.files[0]);
-  });
-}
-if (capImgClear) {
-  capImgClear.addEventListener('click', function(e) {
-    e.stopPropagation();
-    clearCapImg();
-  });
-}
-
+// Image handling
+document.getElementById('cap-img-input').addEventListener('change', function() {
+  if (this.files && this.files[0]) loadCapImg(this.files[0]);
+});
+document.getElementById('cap-drop').addEventListener('click', function(e) {
+  if (e.target.id !== 'cap-img-clear') document.getElementById('cap-img-input').click();
+});
+document.getElementById('cap-drop').addEventListener('dragover', function(e) {
+  e.preventDefault();
+  this.style.borderColor = 'var(--accent)';
+});
+document.getElementById('cap-drop').addEventListener('dragleave', function() {
+  this.style.borderColor = '';
+});
+document.getElementById('cap-drop').addEventListener('drop', function(e) {
+  e.preventDefault();
+  this.style.borderColor = '';
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) loadCapImg(e.dataTransfer.files[0]);
+});
+document.getElementById('cap-img-clear').addEventListener('click', function(e) {
+  e.stopPropagation();
+  clearCapImg();
+});
 document.addEventListener('paste', function(e) {
   var items = e.clipboardData && e.clipboardData.items;
   if (!items) return;
@@ -552,189 +538,121 @@ function loadCapImg(file) {
   var reader = new FileReader();
   reader.onload = function(e) {
     _capImg = { data: e.target.result.split(',')[1], mime: file.type, name: file.name };
-    var el = document.getElementById('cap-img-el');
-    var pv = document.getElementById('cap-img-preview');
-    var lb = document.getElementById('cap-drop-lbl');
-    if (el) el.src = e.target.result;
-    if (pv) pv.style.display = 'block';
-    if (lb) lb.style.display = 'none';
-    if (capDrop) capDrop.style.borderColor = '#9C27B0';
+    document.getElementById('cap-img-el').src = e.target.result;
+    document.getElementById('cap-img-preview').style.display = 'block';
+    document.getElementById('cap-drop-lbl').style.display = 'none';
+    document.getElementById('cap-drop').style.borderColor = '#9C27B0';
   };
   reader.readAsDataURL(file);
 }
 
 function clearCapImg() {
   _capImg = null;
-  var pv = document.getElementById('cap-img-preview');
-  var lb = document.getElementById('cap-drop-lbl');
-  var in2 = document.getElementById('cap-img-input');
-  if (pv)  pv.style.display  = 'none';
-  if (lb)  lb.style.display  = 'block';
-  if (in2) in2.value         = '';
-  if (capDrop) capDrop.style.borderColor = '';
+  document.getElementById('cap-img-preview').style.display = 'none';
+  document.getElementById('cap-drop-lbl').style.display = 'block';
+  document.getElementById('cap-img-input').value = '';
+  document.getElementById('cap-drop').style.borderColor = '';
 }
 
-// Bouton Analyser IA
-var capIaSend = document.getElementById('cap-ia-send');
-if (capIaSend) {
-  capIaSend.addEventListener('click', function() {
-    var text   = document.getElementById('cap-ia-input').value.trim();
-    var hasImg = !!_capImg;
-    var hist   = document.getElementById('cap-ia-hist');
+// ── Envoyer à l IA Capacity ────────────────────────────────────────────────────
+document.getElementById('cap-ia-send').addEventListener('click', sendToCapacityAI);
 
-    if (!text && !hasImg) {
-      alert('Entrez du texte ou deposez une image.');
+document.getElementById('cap-ia-input').addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === 'Enter') sendToCapacityAI();
+});
+
+function sendToCapacityAI() {
+  var text   = document.getElementById('cap-ia-input').value.trim();
+  var hasImg = !!_capImg;
+  var hist   = document.getElementById('cap-ia-hist');
+
+  if (!text && !hasImg) {
+    alert('Entrez du texte ou deposez une image.');
+    return;
+  }
+
+  // Afficher le message
+  hist.insertAdjacentHTML('beforeend',
+    '<div style="color:#1e90ff;margin-top:6px;font-size:0.78rem;">' +
+    (hasImg ? '[Image] ' : '') + (text || '') + '</div>');
+  hist.insertAdjacentHTML('beforeend',
+    '<div id="cap-load" style="color:#888;font-size:0.75rem;">Groq analyse...</div>');
+  hist.scrollTop = hist.scrollHeight;
+
+  // Préparer le payload
+  var payload = { language: 'fr' };
+  if (hasImg) {
+    payload.image_data  = _capImg.data;
+    payload.image_mime  = _capImg.mime;
+    payload.text        = text;
+  } else {
+    payload.text = text;
+  }
+
+  // Appeler la route IA capacity dédiée
+  fetch('/api/projects/' + PID + '/ai/capacity', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var ld = document.getElementById('cap-load');
+    if (ld) ld.remove();
+
+    if (data.error) {
+      hist.insertAdjacentHTML('beforeend',
+        '<div style="color:#f44336;font-size:0.75rem;">Erreur: ' + data.error + '</div>');
       return;
     }
 
-    // Construire le contexte ressources
-    var resCtx = RESOURCES.map(function(r) {
-      return r.acronym + (r.full_name ? ' (' + r.full_name + ', max ' + r.max_fraction + ')' : '');
-    }).join(', ');
+    var actions  = data.actions || [];
+    var messages = actions.filter(function(a) { return a.type === 'message'; });
+    var executed = actions.filter(function(a) { return a.type !== 'message'; });
 
-    hist.insertAdjacentHTML('beforeend',
-      '<div style="color:#1e90ff;margin-top:6px;">'
-      + (hasImg ? '[Image] ' : '')
-      + (text ? text.slice(0, 80) : '')
-      + '</div>'
-    );
-    hist.insertAdjacentHTML('beforeend',
-      '<div id="cap-load" style="color:#888;">Groq analyse...</div>'
-    );
-    hist.scrollTop = hist.scrollHeight;
-
-    var url;
-    var payload;
-
-    if (hasImg) {
-      url = '/api/projects/' + PID + '/ai/parse-image';
-      payload = {
-        image_data:   _capImg.data,
-        image_mime:   _capImg.mime,
-        text_context: text,
-        language:     'fr'
-      };
-    } else {
-      url = '/api/projects/' + PID + '/ai/capacity-parse';
-      payload = {
-        text:      text,
-        resources: resCtx,
-        language:  'fr'
-      };
-    }
-
-    fetch(url, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload)
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      var ld = document.getElementById('cap-load');
-      if (ld) ld.remove();
-
-      if (data.error) {
-        hist.insertAdjacentHTML('beforeend',
-          '<div style="color:#f44336;">Erreur: ' + data.error + '</div>');
-        return;
-      }
-
-      var actions = data.actions || [];
-      var html = '<div style="background:#1a1d27;border:1px solid #2a2d3e;'
-               + 'border-radius:5px;padding:8px;margin-top:6px;">';
-      html += '<b style="color:#4caf50;font-size:0.78rem;">'
-            + actions.length + ' action(s) suggeree(s) :</b><br>';
-
-      actions.forEach(function(a) {
-        var icon = a.type === 'add_resource'   ? '&#x2795;'
-                 : a.type === 'set_capacity'   ? '&#x1F4CA;'
-                 : a.type === 'assign_task'     ? '&#x1F517;'
-                 : '&#x2139;';
-        html += '<div style="font-size:0.75rem;padding:3px 0;border-bottom:1px solid #2a2d3e;">';
-        html += '<span style="color:#ff9800;">' + icon + '</span> ';
-        html += '<b>' + (a.type || '') + '</b> ';
-        if (a.acronym)  html += '<span style="color:#1e90ff;">' + a.acronym + '</span> ';
-        if (a.fraction) html += '<span style="color:#4caf50;">' + (a.fraction * 100).toFixed(0) + '%</span> ';
-        if (a.hours)    html += '<span style="color:#4caf50;">' + a.hours + 'h</span> ';
-        if (a.message)  html += '<span style="color:#888;">' + a.message + '</span>';
-        html += '</div>';
-      });
-
-      if (data.applied) {
-        html += '<div style="color:#4caf50;font-size:0.75rem;margin-top:4px;">Applied: ' + data.applied + ' action(s)</div>';
-      } else if (actions.length > 0) {
-        html += '<button class="btn btn-p" id="btn-apply-cap" '
-              + 'style="font-size:0.75rem;margin-top:6px;padding:4px 10px;">Appliquer</button>';
-      }
-      html += '</div>';
-
-      hist.insertAdjacentHTML('beforeend', html);
-      hist.scrollTop = hist.scrollHeight;
-      document.getElementById('cap-ia-input').value = '';
-      if (hasImg) clearCapImg();
-
-      // Bouton Appliquer
-      var applyBtn = document.getElementById('btn-apply-cap');
-      if (applyBtn) {
-        window._pendingActions = actions;
-        applyBtn.addEventListener('click', function() {
-          applyCapacityActions(actions);
-        });
-      }
-    })
-    .catch(function(err) {
-      var ld = document.getElementById('cap-load');
-      if (ld) ld.remove();
+    // Afficher le message IA
+    messages.forEach(function(m) {
       hist.insertAdjacentHTML('beforeend',
-        '<div style="color:#f44336;">Erreur reseau: ' + err + '</div>');
+        '<div style="color:#4caf50;margin-top:4px;font-size:0.78rem;">' + m.text + '</div>');
     });
-  });
-}
 
-// Appliquer les actions suggérées par l'IA
-function applyCapacityActions(actions) {
-  var promises = actions.map(function(a) {
-    if (a.type === 'add_resource') {
-      return fetch('/api/projects/' + PID + '/resources', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          acronym:      a.acronym || '',
-          full_name:    a.full_name || '',
-          max_fraction: a.max_fraction || 1.0,
-          color:        a.color || '#1E90FF',
-          is_external:  a.is_external || false
-        })
-      }).then(function(r) { return r.json(); });
-    }
-    if (a.type === 'set_capacity') {
-      return fetch('/api/projects/' + PID + '/capacity/bulk', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: a.entries || [] })
-      }).then(function(r) { return r.json(); });
-    }
-    return Promise.resolve({ ok: true });
-  });
+    // Afficher les actions exécutées
+    if (executed.length > 0) {
+      var html = '<div style="background:#1a1d27;border:1px solid #2a2d3e;border-radius:5px;' +
+                 'padding:8px;margin-top:6px;font-size:0.75rem;">';
+      html += '<b style="color:#4caf50;">' + executed.length + ' action(s) executee(s) :</b><br>';
+      executed.forEach(function(a) {
+        var icon  = a.executed ? '✅' : '⚠️';
+        var label = a.type + (a.acronym ? ' ' + a.acronym : '') + (a.note ? ' (' + a.note + ')' : '');
+        html += '<div style="padding:2px 0;">' + icon + ' ' + label + '</div>';
+      });
+      html += '</div>';
+      hist.insertAdjacentHTML('beforeend', html);
 
-  Promise.all(promises).then(function() {
-    var hist = document.getElementById('cap-ia-hist');
+      // Recharger la page après 2s si des ressources ont été créées ou capacity modifiée
+      var needsReload = executed.some(function(a) {
+        return (a.type === 'create_resource' || a.type === 'set_capacity') && a.executed;
+      });
+      if (needsReload) {
+        setTimeout(function() {
+          hist.insertAdjacentHTML('beforeend',
+            '<div style="color:#888;font-size:0.72rem;">Rechargement...</div>');
+          location.reload();
+        }, 2000);
+      }
+    }
+
+    hist.scrollTop = hist.scrollHeight;
+    document.getElementById('cap-ia-input').value = '';
+    if (hasImg) clearCapImg();
+  })
+  .catch(function(err) {
+    var ld = document.getElementById('cap-load');
+    if (ld) ld.remove();
     hist.insertAdjacentHTML('beforeend',
-      '<div style="color:#4caf50;font-size:0.75rem;margin-top:4px;">Actions appliquees ! Rechargement...</div>');
-    setTimeout(function() { location.reload(); }, 1200);
+      '<div style="color:#f44336;font-size:0.75rem;">Erreur reseau: ' + err + '</div>');
   });
 }
-
-var capIaInput = document.getElementById('cap-ia-input');
-if (capIaInput) {
-  capIaInput.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && e.key === 'Enter') {
-      var btn = document.getElementById('cap-ia-send');
-      if (btn) btn.click();
-    }
-  });
-}
-
 </script>
 </body>
 </html>
