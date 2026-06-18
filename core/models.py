@@ -157,12 +157,29 @@ def init_db() -> None:
         )
     """)
 
-    # ── Migration : ajouter la colonne role si elle n existe pas
-    try:
-        conn.execute("ALTER TABLE resources ADD COLUMN role TEXT DEFAULT ''")
-        conn.commit()
-    except Exception:
-        pass  # Colonne deja presente
+    # ── Migration : CREATE TABLE si elles n existent pas (safe pour DB existante) ──
+    # task_assignments
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS task_assignments (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id     INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+            resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+            hours       REAL    DEFAULT 0.0,
+            fraction    REAL    DEFAULT 0.0,
+            notes       TEXT    DEFAULT '',
+            UNIQUE(task_id, resource_id)
+        )
+    """)
+
+    # ── Migration : ajouter colonnes si elles n existent pas (ALTER TABLE) ────
+    _alter_migrations = [
+        "ALTER TABLE resources ADD COLUMN role TEXT DEFAULT ''",
+    ]
+    for _m in _alter_migrations:
+        try:
+            conn.execute(_m)
+        except Exception:
+            pass  # Colonne deja presente
 
     conn.commit()
     conn.close()
