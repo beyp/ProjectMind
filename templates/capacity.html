@@ -150,6 +150,11 @@ header h1{color:var(--accent);font-size:1.05rem;}
         <button class="btn btn-p" id="btn-add-res" style="width:100%;margin-top:4px;">
           + Ajouter ressource
         </button>
+        <button class="btn btn-n" id="btn-reset-colors"
+          style="width:100%;margin-top:6px;font-size:0.78rem;"
+          title="Remet les couleurs selon la palette de roles">
+          &#x1F3A8; Reset couleurs par role
+        </button>
       </div>
     </div>
 
@@ -536,6 +541,24 @@ document.addEventListener('DOMContentLoaded', function() {
   refreshRoleDatalist('roles-list-edit');
 
   // Ajouter ressource
+  // Reset couleurs par rôle
+  var btnResetColors = document.getElementById('btn-reset-colors');
+  if (btnResetColors) {
+    btnResetColors.addEventListener('click', function() {
+      if (!confirm('Remettre les couleurs de toutes les ressources selon leur role ?')) return;
+      fetch('/api/projects/' + PID + '/resources/reset-colors', { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok) {
+          btnResetColors.textContent = d.message;
+          btnResetColors.style.background = 'var(--green)';
+          btnResetColors.style.color = 'white';
+          setTimeout(function() { location.reload(); }, 1500);
+        }
+      });
+    });
+  }
+
   document.getElementById('btn-add-res').addEventListener('click', function() {
     var acro = document.getElementById('r-acro').value.trim().toUpperCase();
     if (!acro) { alert('Acronyme obligatoire'); return; }
