@@ -412,8 +412,6 @@ async def api_ai_import(project_id: int, request: Request):
 async def api_ai_capacity(project_id: int, request: Request):
     """
     IA capacity planning - gestion complète des ressources et allocations.
-    Supporte : créer/supprimer ressources, allouer par semaine, assigner aux tâches,
-               effacer capacity, avec ou sans image.
     """
     import os, json as _json
     from ai.task_parser import GROQ_URL, GROQ_VISION_MODEL
@@ -431,61 +429,82 @@ async def api_ai_capacity(project_id: int, request: Request):
     if not groq_key:
         return {"error": "GROQ_API_KEY non configurée", "actions": []}
 
+    # Palette couleurs par rôle
+    ROLE_COLORS = {
+        "PM": "#E74C3C", "BA": "#3498DB", "SME": "#27AE60",
+        "Lead": "#8E44AD", "Dev": "#1ABC9C", "Analyst": "#2980B9",
+        "OD Data CoreHR": "#F39C12", "OD Data WFM": "#E67E22",
+        "Architect": "#9B59B6", "QA": "#16A085",
+        "OCM": "#D35400", "Support": "#7F8C8D",
+    }
+
     res_list  = ", ".join(
-        f"{r['acronym']} (id:{r['id']}, max:{r['max_fraction']}, role:{r.get('role','')})"
+        f"{r['acronym']} (id:{r['id']}, max:{r['max_fraction']}, role:{r.get('role','')}, color:{r.get('color','')})"
         for r in resources
-    ) or "aucune"
+    ) or "none"
     task_list = ", ".join(
         f"#{t['id']} {t['title'][:30]}"
         for t in tasks[:20]
-    ) or "aucune"
+    ) or "none"
 
-    system_prompt = f"""You are a project capacity planning assistant.
-Project: {project.get('name', '')}
-Existing resources (acronym, id, max_fraction, role): {res_list}
-Existing tasks: {task_list}
+    # !! IMPORTANT : utiliser """ non-f-string pour le system_prompt
+    # pour éviter ValueError avec les accolades JSON dans les exemples
+    system_prompt = (
+        "You are a project capacity planning assistant.
+"
+        "Project: " + project.get('name', '') + "
+"
+        "Existing resources: " + res_list + "
+"
+        "Existing tasks: " + task_list + "
 
-Analyze the instructions and return a JSON array of actions to perform.
+"
+        "Analyze the instructions and return a JSON array of actions.
 
-Available action types:
+"
+        "Available actions:
 
-1. Create resource:
-   {{"type": "create_resource", "acronym": "SAMC4", "full_name": "Sam C.", "role": "BA", "max_fraction": 1.0, "is_external": false, "color": "#1E90FF"}}
+"
+        '1. Create resource: {"type":"create_resource","acronym":"SAMC4","full_name":"Sam C.","role":"BA","max_fraction":1.0,"is_external":false}
+'
+        '2. Delete resource: {"type":"delete_resource","acronym":"SAMC4"}
+'
+        '3. Update resource (color, role, etc.): {"type":"update_resource","acronym":"SAMC4","color":"#3498DB","role":"BA"}
+'
+        '4. Reset colors by role: {"type":"reset_colors_by_role","message":"Resetting all resource colors based on their roles"}
+'
+        '5. Set capacity: {"type":"set_capacity","acronym":"SAMC4","fraction":0.5,"weeks":[23,24,25,26],"year":2026}
+'
+        '6. Clear capacity: {"type":"clear_capacity","acronym":"SAMC4","weeks":[23,24],"year":2026}
+'
+        '7. Assign to task: {"type":"assign_resource","acronym":"SAMC4","task_id":5,"hours":20,"fraction":0.5}
+'
+        '8. Remove assignment: {"type":"remove_assignment","acronym":"SAMC4","task_id":5}
+'
+        '9. Message: {"type":"message","text":"Done."}
 
-2. Delete resource:
-   {{"type": "delete_resource", "acronym": "SAMC4", "message": "reason"}}
+'
+        "Color palette by role:
+"
+        "PM=#E74C3C, BA=#3498DB, SME=#27AE60, Lead=#8E44AD, Dev=#1ABC9C,
+"
+        "Analyst=#2980B9, OD Data CoreHR=#F39C12, OD Data WFM=#E67E22,
+"
+        "Architect=#9B59B6, QA=#16A085, OCM=#D35400, Support=#7F8C8D
 
-3. Set capacity (allocation per week):
-   {{"type": "set_capacity", "acronym": "SAMC4", "fraction": 0.5, "weeks": [23,24,25,26], "year": 2026}}
+"
+        "Rules:
+"
+        "- ALWAYS include at least one message action
+"
+        "- Use exact acronyms from existing resources
+"
+        "- fraction: 0.25=25%=10h/w, 0.5=50%=20h/w, 1.0=100%=40h/w
+"
+        "- Reply ONLY with valid JSON array"
+    )
 
-4. Clear capacity (reset to 0):
-   {{"type": "clear_capacity", "acronym": "SAMC4", "weeks": [23,24], "year": 2026}}
-
-5. Assign resource to task:
-   {{"type": "assign_resource", "acronym": "SAMC4", "task_id": 5, "hours": 20, "fraction": 0.5}}
-
-6. Remove assignment:
-   {{"type": "remove_assignment", "acronym": "SAMC4", "task_id": 5}}
-
-7. Reply message:
-   {{"type": "message", "text": "Done. I have created SAMC4 and allocated 25% on weeks 23-26."}}
-
-Rules:
-- ALWAYS include at least one "message" action
-- Use exact acronyms from existing resources when possible
-- fraction: 0.25=25%=10h/sem, 0.5=50%=20h/sem, 1.0=100%=40h/sem
-- If resource doesn't exist, include create_resource first
-- Current year if not specified: 2026
-8. Create or update a role color:
-   {"type": "create_role", "role": "Tech Lead", "color": "#FF5733", "message": "Adding Tech Lead role"}
-
-9. Delete a role:
-   {"type": "delete_role", "role": "Support", "message": "Removing Support role"}
-
-- Reply ONLY with valid JSON array, no text before/after
-"""
-
-    # Build user message (with image if present)
+    # Build user message
     if image_data:
         user_msg = [
             {"type": "text", "text": text or "Analyze this capacity planning data"},
@@ -532,21 +551,21 @@ Rules:
     for action in actions:
         atype = action.get("type", "")
 
-        # ── create_resource ─────────────────────────────────────────────────
+        # ── create_resource ──────────────────────────────────────────────────
         if atype == "create_resource":
-            acro = action.get("acronym", "").upper()
+            acro   = action.get("acronym", "").upper()
+            _role  = action.get("role", "")
+            _color = action.get("color", "") or ROLE_COLORS.get(_role, "#1E90FF")
             if acro in res_map:
                 action["executed"] = False
                 action["note"]     = f"{acro} already exists"
             else:
                 rid = create_resource(
-                    project_id   = project_id,
-                    acronym      = acro,
-                    full_name    = action.get("full_name", ""),
-                    role         = action.get("role", ""),
-                    is_external  = action.get("is_external", False),
-                    max_fraction = float(action.get("max_fraction", 1.0)),
-                    color        = action.get("color", "#1E90FF"),
+                    project_id=project_id, acronym=acro,
+                    full_name=action.get("full_name", ""), role=_role,
+                    is_external=action.get("is_external", False),
+                    max_fraction=float(action.get("max_fraction", 1.0)),
+                    color=_color,
                 )
                 action["executed"] = True
                 action["id"]       = rid
@@ -554,7 +573,7 @@ Rules:
                 res_map   = {r["acronym"].upper(): r for r in resources}
             executed.append(action)
 
-        # ── delete_resource ─────────────────────────────────────────────────
+        # ── delete_resource ──────────────────────────────────────────────────
         elif atype == "delete_resource":
             acro = action.get("acronym", "").upper()
             res  = res_map.get(acro)
@@ -566,6 +585,43 @@ Rules:
             else:
                 action["executed"] = False
                 action["note"]     = f"{acro} not found"
+            executed.append(action)
+
+        # ── update_resource (couleur, rôle, etc.) ────────────────────────────
+        elif atype == "update_resource":
+            acro = action.get("acronym", "").upper()
+            res  = res_map.get(acro)
+            if res:
+                updates = {}
+                if "color"        in action: updates["color"]        = action["color"]
+                if "role"         in action: updates["role"]         = action["role"]
+                if "full_name"    in action: updates["full_name"]    = action["full_name"]
+                if "max_fraction" in action: updates["max_fraction"] = float(action["max_fraction"])
+                if updates:
+                    update_resource(res["id"], **updates)
+                    resources = get_resources(project_id)
+                    res_map   = {r["acronym"].upper(): r for r in resources}
+                action["executed"] = True
+            else:
+                action["executed"] = False
+                action["note"]     = f"{acro} not found"
+            executed.append(action)
+
+        # ── reset_colors_by_role — reset toutes les couleurs selon rôle ──────
+        elif atype == "reset_colors_by_role":
+            reset_count = 0
+            for res in resources:
+                role  = res.get("role", "")
+                color = ROLE_COLORS.get(role)
+                if color and color != res.get("color", ""):
+                    update_resource(res["id"], color=color)
+                    reset_count += 1
+            if reset_count > 0:
+                resources = get_resources(project_id)
+                res_map   = {r["acronym"].upper(): r for r in resources}
+            action["executed"]     = True
+            action["reset_count"]  = reset_count
+            action["text"]         = f"Colors reset for {reset_count} resource(s) based on role palette."
             executed.append(action)
 
         # ── set_capacity ─────────────────────────────────────────────────────
@@ -607,11 +663,10 @@ Rules:
             tid  = action.get("task_id")
             if res and tid:
                 upsert_task_assignment(
-                    task_id     = int(tid),
-                    resource_id = res["id"],
-                    hours       = float(action.get("hours", 0)),
-                    fraction    = float(action.get("fraction", 0)),
-                    notes       = action.get("notes", ""),
+                    task_id=int(tid), resource_id=res["id"],
+                    hours=float(action.get("hours", 0)),
+                    fraction=float(action.get("fraction", 0)),
+                    notes=action.get("notes", ""),
                 )
                 action["executed"] = True
             else:
