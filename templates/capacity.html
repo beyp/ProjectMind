@@ -173,10 +173,7 @@ header h1{color:var(--accent);font-size:1.05rem;}
     </div>
 
     <div class="card">
-      <div class="card-ttl">Assistant IA
-        <span style="font-size:0.7rem;color:var(--dim);text-transform:none;
-          letter-spacing:0;margin-left:4px;">Groq vision</span>
-      </div>
+      <div class="acc-header open" id="acc-ia-hdr" onclick="toggleAcc('acc-ia')"><span class="acc-title">Assistant IA</span><span class="acc-arrow">&#x25BC;</span></div><div class="acc-body" id="acc-ia-body">
       <p style="color:var(--dim);font-size:0.78rem;margin-bottom:8px;">
         Decrivez vos besoins ou deposez une image (planning, screenshot) —
         l IA suggerera les ressources et allocations.
@@ -223,12 +220,7 @@ header h1{color:var(--accent);font-size:1.05rem;}
     </div>
 
     <div class="card">
-      <div class="card-ttl">Palette roles
-        <button class="btn btn-n" id="btn-refresh-palette"
-          style="font-size:0.72rem;padding:3px 8px;margin-left:auto;">
-          &#x21BA; Refresh
-        </button>
-      </div>
+      <div class="acc-header " id="acc-palette-hdr" onclick="toggleAcc('acc-palette')"><span class="acc-title">Palette roles</span><span class="acc-arrow">&#x25BC;</span></div><div class="acc-body closed" id="acc-palette-body">
       <div id="palette-list" style="margin-bottom:10px;">
         <!-- Chargé dynamiquement -->
       </div>
