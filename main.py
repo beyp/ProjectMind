@@ -669,9 +669,9 @@ async def api_ai_capacity(project_id: int, request: Request):
             if role and color:
                 upsert_role_color(role, color)
                 try:
-                ROLE_COLORS = get_role_colors() or {}
-            except Exception:
-                ROLE_COLORS = {}
+                    ROLE_COLORS = get_role_colors() or {}
+                except Exception:
+                    ROLE_COLORS = {}
                 action["executed"] = True
             else:
                 action["executed"] = False
