@@ -933,6 +933,81 @@ document.getElementById('btn-del-task').addEventListener('click', function() {
   fetch('/api/tasks/' + id, { method: 'DELETE' })
   .then(function() { document.getElementById('modal-edit').classList.remove('open'); location.reload(); });
 });
+
+
+// ── Ressources assignees aux taches ──────────────────────────────────────────
+var _RES = {{ resources | tojson }};
+
+function loadAssignments(taskId) {
+  var sel = document.getElementById('et-res');
+  if (sel) {
+    sel.innerHTML = '<option value="">-- Choisir --</option>';
+    _RES.forEach(function(r) {
+      var o = document.createElement('option');
+      o.value = r.id;
+      o.textContent = r.acronym + (r.full_name ? ' - '+r.full_name : '');
+      sel.appendChild(o);
+    });
+  }
+  var box = document.getElementById('et-assignments');
+  if (!box) return;
+  box.innerHTML = '<div style="color:var(--dim);font-size:0.75rem;">Chargement...</div>';
+  fetch('/api/tasks/'+taskId+'/assignments')
+  .then(function(r) { return r.json(); })
+  .then(function(list) {
+    if (!list.length) {
+      box.innerHTML = '<div style="color:var(--dim);font-size:0.75rem;">Aucune ressource assignee.</div>';
+      return;
+    }
+    var h = '';
+    list.forEach(function(a) {
+      h += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:5px;'+
+           'background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:3px;font-size:0.78rem;">';
+      h += '<span style="background:'+(a.color||'#1E90FF')+';color:#fff;padding:1px 7px;border-radius:8px;font-size:0.72rem;font-weight:700;">'+a.acronym+'</span>';
+      if (a.full_name) h += '<span style="color:var(--dim);">'+a.full_name+'</span>';
+      if (a.hours  > 0) h += '<span style="color:var(--accent);font-size:0.75rem;">'+a.hours+'h</span>';
+      if (a.fraction > 0) h += '<span style="color:var(--green);font-size:0.75rem;">'+(a.fraction*100).toFixed(0)+'%</span>';
+      h += '<span style="flex:1;"></span>';
+      h += '<button style="background:none;border:none;color:var(--red);cursor:pointer;" '+
+           'data-tid="'+a.task_id+'" data-rid="'+a.resource_id+'" class="da-btn">&times;</button>';
+      h += '</div>';
+    });
+    box.innerHTML = h;
+    box.querySelectorAll('.da-btn').forEach(function(b) {
+      b.addEventListener('click', function() {
+        fetch('/api/tasks/'+this.dataset.tid+'/assignments/'+this.dataset.rid,{method:'DELETE'})
+        .then(function(){loadAssignments(taskId);});
+      });
+    });
+  });
+}
+
+var _btnadd = document.getElementById('btn-add-assign');
+if (_btnadd) {
+  _btnadd.addEventListener('click', function() {
+    var tid = parseInt(document.getElementById('et-id').value);
+    var rid = parseInt(document.getElementById('et-res').value);
+    if (!tid||!rid) { alert('Choisissez une ressource.'); return; }
+    var hours = parseFloat(document.getElementById('et-hours').value)||0;
+    var frac  = parseFloat(document.getElementById('et-frac').value)||0;
+    fetch('/api/tasks/'+tid+'/assignments',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({resource_id:rid,hours:hours,fraction:frac})
+    }).then(function(){
+      document.getElementById('et-hours').value='';
+      document.getElementById('et-frac').value='';
+      document.getElementById('et-res').value='';
+      loadAssignments(tid);
+    });
+  });
+}
+
+// Surcharger openEditTask pour charger aussi les assignations
+var _oedit = openEditTask;
+openEditTask = function(taskId) {
+  _oedit(taskId);
+  loadAssignments(taskId);
+};
 </script>
 </body>
 </html>
