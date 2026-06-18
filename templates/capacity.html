@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Capacity Planning — {{ project.name }}</title>
+<title>Capacity — {{ project.name }}</title>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <style>
 :root {
   --bg:#0f1117;--card:#1a1d27;--border:#2a2d3e;--text:#e0e0e0;
   --dim:#888;--accent:#1e90ff;--green:#4caf50;--orange:#ff9800;
-  --red:#f44336;--yellow:#ffff00;--hdr:#151821;
+  --red:#f44336;--hdr:#151821;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:"Segoe UI",sans-serif;background:var(--bg);color:var(--text);}
@@ -22,522 +22,430 @@ header h1{color:var(--accent);font-size:1.05rem;}
 .hbtn{background:var(--card);border:1px solid var(--border);color:var(--text);
   padding:5px 12px;border-radius:6px;cursor:pointer;font-size:0.82rem;text-decoration:none;}
 .hbtn:hover,.hbtn.primary{background:var(--accent);color:white;border-color:var(--accent);}
-.main{padding:20px;}
-.card{background:var(--card);border:1px solid var(--border);border-radius:8px;
-  padding:16px;margin-bottom:16px;}
+.main{padding:20px;display:grid;grid-template-columns:300px 1fr;gap:16px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;}
 .card-ttl{color:var(--accent);font-size:0.88rem;text-transform:uppercase;
-  letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  letter-spacing:1px;margin-bottom:12px;}
 .fg{margin-bottom:10px;}
 .fg label{display:block;font-size:0.75rem;color:var(--dim);margin-bottom:3px;}
 .fg input,.fg select{width:100%;background:#12141f;border:1px solid var(--border);
   color:var(--text);padding:6px 10px;border-radius:6px;font-size:0.83rem;}
 .fg input:focus,.fg select:focus{outline:none;border-color:var(--accent);}
-.fg2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .btn{padding:7px 16px;border-radius:6px;border:none;cursor:pointer;font-size:0.83rem;}
 .btn-p{background:var(--accent);color:white;}
 .btn-g{background:var(--green);color:white;}
-.btn-r{background:var(--red);color:white;padding:3px 8px;font-size:0.75rem;}
+.btn-r{background:color-mix(in srgb,var(--red) 20%,transparent);border:1px solid color-mix(in srgb,var(--red) 40%,transparent);color:var(--red);padding:3px 8px;font-size:0.75rem;border-radius:4px;cursor:pointer;}
 .btn-n{background:var(--border);color:var(--text);}
 .btn:hover{opacity:0.85;}
-
-/* Capacity table */
-.cap-wrap{overflow-x:auto;}
-.cap-table{border-collapse:collapse;font-size:0.78rem;min-width:800px;}
-.cap-table th,.cap-table td{border:1px solid var(--border);padding:4px 6px;
-  text-align:center;white-space:nowrap;}
-.cap-table th{background:#041E42;color:#fff;font-size:0.72rem;}
-.cap-table .th-res{background:#1a1d27;text-align:left;min-width:120px;}
-.cap-table .th-info{background:#1a1d27;min-width:80px;font-size:0.7rem;color:var(--dim);}
-.cap-cell{width:52px;padding:2px;}
-.cap-input{width:48px;background:#0a0c14;border:1px solid var(--border);
-  color:var(--text);padding:2px 4px;border-radius:3px;font-size:0.75rem;text-align:center;}
-.cap-input:focus{outline:none;border-color:var(--accent);background:#12141f;}
-.cap-total{background:#12141f;font-weight:600;color:var(--accent);}
-.cap-over{background:color-mix(in srgb,var(--red) 20%,transparent) !important;color:var(--red) !important;}
-.cap-warn{background:color-mix(in srgb,var(--orange) 20%,transparent) !important;color:var(--orange) !important;}
-.cap-ok{background:color-mix(in srgb,var(--green) 10%,transparent);color:var(--green);}
-.res-badge{display:inline-block;padding:2px 8px;border-radius:10px;
-  font-size:0.75rem;font-weight:700;color:#fff;}
-.res-ext{font-style:italic;}
-
-/* Ressources list */
-.res-item{display:flex;align-items:center;gap:10px;padding:8px 10px;
+/* Ressources */
+.res-item{display:flex;align-items:center;gap:8px;padding:7px 10px;
   border-radius:6px;background:color-mix(in srgb,var(--border) 40%,transparent);
-  margin-bottom:5px;font-size:0.83rem;cursor:grab;}
-.res-item:hover{background:color-mix(in srgb,var(--accent) 8%,transparent);}
-.res-handle{color:var(--dim);cursor:grab;font-size:1rem;}
-
-/* FY quarters nav */
-.quarter-nav{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+  margin-bottom:5px;font-size:0.82rem;}
+.res-handle{color:var(--dim);cursor:grab;font-size:1rem;padding:0 2px;}
+.res-badge{display:inline-block;padding:2px 8px;border-radius:10px;
+  font-size:0.75rem;font-weight:700;color:#fff;white-space:nowrap;}
+/* Capacity table */
+.cap-wrap{overflow-x:auto;margin-top:8px;}
+.ctable{border-collapse:collapse;font-size:0.78rem;}
+.ctable th,.ctable td{border:1px solid var(--border);padding:4px 6px;text-align:center;white-space:nowrap;}
+.ctable th{background:#041E42;color:#fff;font-size:0.72rem;}
+.ctable .th-l{text-align:left;min-width:130px;background:#1a1d27;}
+.ctable .th-m{min-width:70px;background:#1a1d27;font-size:0.7rem;color:var(--dim);}
+.cinput{width:50px;background:#0a0c14;border:1px solid var(--border);
+  color:var(--text);padding:2px 4px;border-radius:3px;font-size:0.75rem;text-align:center;}
+.cinput:focus{outline:none;border-color:var(--accent);background:#12141f;}
+.c-ok  {background:color-mix(in srgb,var(--green) 10%,transparent);}
+.c-warn{background:color-mix(in srgb,var(--orange) 20%,transparent);}
+.c-over{background:color-mix(in srgb,var(--red) 20%,transparent);}
+.c-tot {background:#12141f;font-weight:600;color:var(--accent);}
+/* Quarter nav */
+.qnav{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
 .qbtn{padding:4px 12px;border-radius:5px;border:1px solid var(--border);
   background:var(--card);color:var(--dim);cursor:pointer;font-size:0.8rem;}
 .qbtn.active{background:var(--accent);color:white;border-color:var(--accent);}
-.qbtn:hover:not(.active){border-color:var(--accent);color:var(--accent);}
-
-::-webkit-scrollbar{height:6px;width:5px;}
+.qbtn:hover:not(.active){border-color:var(--accent);color:var(--text);}
+/* Légende */
+.leg{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:0.78rem;}
+.leg-dot{width:14px;height:14px;border-radius:3px;flex-shrink:0;}
+::-webkit-scrollbar{height:5px;width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 </style>
 </head>
 <body>
-
 <header>
   <a href="/project/{{ project.id }}">&larr; {{ project.name }}</a>
   <h1>Capacity Planning</h1>
   <div class="hmeta">
-    <select id="year-select" class="hbtn" style="width:90px;">
+    <select id="year-sel" class="hbtn" style="width:85px;cursor:pointer;">
       {% for y in range(year-1, year+3) %}
       <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
       {% endfor %}
     </select>
-    <button class="hbtn primary" id="btn-save-cap">Sauvegarder</button>
-    <button class="hbtn" id="btn-export-excel">Export Excel</button>
+    <button class="hbtn primary" id="btn-save">Sauvegarder</button>
+    <button class="hbtn" id="btn-export">Export CSV</button>
   </div>
 </header>
 
 <div class="main">
-  <div style="display:grid;grid-template-columns:300px 1fr;gap:16px;">
-
-    <!-- Panneau gauche : gestion ressources -->
-    <div>
-      <div class="card">
-        <div class="card-ttl">Ressources</div>
-        <div id="res-list">
-          {% for res in resources %}
-          <div class="res-item" data-id="{{ res.id }}">
-            <span class="res-handle">&#x22EE;</span>
-            <span class="res-badge"
-              style="background:{{ res.color }};">{{ res.acronym }}</span>
-            {% if res.full_name %}
-            <span style="flex:1;font-size:0.8rem;" class="{% if res.is_external %}res-ext{% endif %}">
-              {{ res.full_name }}{% if res.is_external %} (ext.){% endif %}
-            </span>
-            {% else %}
-            <span style="flex:1;"></span>
-            {% endif %}
-            <span style="color:var(--dim);font-size:0.75rem;">
-              max {{ res.max_fraction }}
-              ({{ (res.max_fraction * 40)|int }}h)
-            </span>
-            <button class="btn btn-r"
-              data-id="{{ res.id }}" id="del-res-{{ res.id }}">
-              &times;
-            </button>
-          </div>
-          {% endfor %}
-          {% if not resources %}
-          <div style="color:var(--dim);font-size:0.82rem;padding:8px;">
-            Aucune ressource. Ajoutez-en ci-dessous.
-          </div>
-          {% endif %}
+  <!-- Panneau gauche -->
+  <div>
+    <div class="card">
+      <div class="card-ttl">Ressources</div>
+      <div id="res-list">
+        {% for res in resources %}
+        <div class="res-item" data-id="{{ res.id }}">
+          <span class="res-handle" title="Glisser pour reordonner">&#x22EE;</span>
+          <span class="res-badge" style="background:{{ res.color }};">{{ res.acronym }}</span>
+          <span style="flex:1;{% if res.is_external %}font-style:italic;{% endif %}color:var(--dim);font-size:0.78rem;">
+            {% if res.full_name %}{{ res.full_name }}{% if res.is_external %} (ext){% endif %}{% endif %}
+          </span>
+          <span style="font-size:0.72rem;color:var(--dim);">
+            {{ res.max_fraction }} / {{ (res.max_fraction * 40)|int }}h
+          </span>
+          <button class="btn-r del-res-btn" data-id="{{ res.id }}">&times;</button>
         </div>
-        <!-- Ajouter ressource -->
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
-          <div class="fg2">
-            <div class="fg">
-              <label>Acronyme *</label>
-              <input id="r-acro" type="text" placeholder="LOZN" maxlength="8">
-            </div>
-            <div class="fg">
-              <label>Nom complet</label>
-              <input id="r-name" type="text" placeholder="Laurent Ozn">
-            </div>
-            <div class="fg">
-              <label>Max fraction</label>
-              <input id="r-max" type="number" value="1.0" min="0.1" max="2.0" step="0.05">
-            </div>
-          </div>
-          <div class="fg2" style="grid-template-columns:1fr 1fr;">
-            <div class="fg">
-              <label>Couleur</label>
-              <input id="r-color" type="color" value="#1E90FF">
-            </div>
-            <div class="fg">
-              <label>Type</label>
-              <select id="r-ext">
-                <option value="0">Interne</option>
-                <option value="1">Externe</option>
-              </select>
-            </div>
-          </div>
-          <button class="btn btn-p" id="btn-add-res" style="width:100%;">
-            + Ajouter ressource
-          </button>
-        </div>
+        {% endfor %}
+        {% if not resources %}
+        <p style="color:var(--dim);font-size:0.82rem;padding:6px;">Aucune ressource.</p>
+        {% endif %}
       </div>
-
-      <!-- Legende -->
-      <div class="card">
-        <div class="card-ttl">Legende</div>
-        <div style="font-size:0.78rem;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-            <span style="width:16px;height:16px;border-radius:3px;background:color-mix(in srgb,var(--green) 10%,transparent);border:1px solid var(--green);display:inline-block;"></span>
-            OK (dans les limites)
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-            <span style="width:16px;height:16px;border-radius:3px;background:color-mix(in srgb,var(--orange) 20%,transparent);border:1px solid var(--orange);display:inline-block;"></span>
-            Attention (80-100% du max)
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="width:16px;height:16px;border-radius:3px;background:color-mix(in srgb,var(--red) 20%,transparent);border:1px solid var(--red);display:inline-block;"></span>
-            Surcharge (&gt; max)
-          </div>
-          <div style="margin-top:8px;color:var(--dim);">
-            1.0 = 100% = 40h/sem<br>
-            0.5 = 50% = 20h/sem
-          </div>
+      <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;">
+        <div class="fg2">
+          <div class="fg"><label>Acronyme *</label>
+            <input id="r-acro" type="text" placeholder="LOZN" maxlength="8"></div>
+          <div class="fg"><label>Nom / Societe</label>
+            <input id="r-name" type="text" placeholder="Laurent O."></div>
         </div>
+        <div class="fg2">
+          <div class="fg"><label>Max (fraction)</label>
+            <input id="r-max" type="number" value="1.0" min="0.1" max="2" step="0.05"></div>
+          <div class="fg"><label>Type</label>
+            <select id="r-ext">
+              <option value="0">Interne</option>
+              <option value="1">Externe</option>
+            </select></div>
+        </div>
+        <div class="fg"><label>Couleur</label>
+          <input id="r-color" type="color" value="#1E90FF" style="height:32px;padding:2px;cursor:pointer;"></div>
+        <button class="btn btn-p" id="btn-add-res" style="width:100%;margin-top:4px;">
+          + Ajouter ressource
+        </button>
       </div>
     </div>
 
-    <!-- Tableau capacity -->
     <div class="card">
-      <div class="card-ttl">
-        Capacity Planning
-        <span id="cap-year-label" style="color:var(--dim);font-size:0.8rem;margin-left:4px;text-transform:none;letter-spacing:0;">
-          {{ year }}
-        </span>
+      <div class="card-ttl">Legende</div>
+      <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);"></div>Dans les limites</div>
+      <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--orange) 20%,transparent);border:1px solid var(--orange);"></div>Attention (80-100%)</div>
+      <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--red) 20%,transparent);border:1px solid var(--red);"></div>Surcharge (&gt; max)</div>
+      <div style="margin-top:8px;font-size:0.75rem;color:var(--dim);">
+        1.0 = 100% = 40h/sem<br>
+        0.5 = 50% = 20h/sem<br>
+        0.1 = 10% = 4h/sem
       </div>
+    </div>
+  </div>
 
-      <!-- Navigation Quarters FY -->
-      <div class="quarter-nav" id="quarter-nav">
-        <!-- Généré par JS -->
-      </div>
-
-      <div class="cap-wrap">
-        <table class="cap-table" id="cap-table">
-          <!-- Généré par JS -->
-        </table>
-      </div>
-      <div style="margin-top:10px;color:var(--dim);font-size:0.78rem;">
-        Entree directe dans les cellules. Ctrl+S ou bouton Sauvegarder pour enregistrer.
-      </div>
+  <!-- Tableau capacity -->
+  <div class="card" style="overflow:hidden;">
+    <div class="card-ttl">
+      Grille Capacity
+      <span id="year-lbl" style="color:var(--dim);font-size:0.8rem;
+        text-transform:none;letter-spacing:0;margin-left:4px;">{{ year }}</span>
+    </div>
+    <div class="qnav" id="qnav"></div>
+    <div class="cap-wrap">
+      <table class="ctable" id="ctable"></table>
+    </div>
+    <div style="margin-top:8px;color:var(--dim);font-size:0.75rem;">
+      Ctrl+S = sauvegarder &nbsp;|&nbsp; Tab = cellule suivante
     </div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 var PID       = {{ project.id }};
-var CURR_YEAR = {{ year }};
+var CY        = {{ year }};
 var RESOURCES = {{ resources | tojson }};
-var CAP_DATA  = {};   // { "res_id:year:week": fraction }
-var DIRTY     = {};   // cellules modifiées
+var CAP       = {};   // "rid:year:week" -> fraction
+var DIRTY     = {};   // entrées modifiées à sauvegarder
 
-// ── Fiscal Year helpers ───────────────────────────────────────────────────────
-function getFiscalYear(year, month) {
-  // FY commence en mars
-  return month >= 3 ? year + 1 : year;
-}
+// ── Fiscal Year ───────────────────────────────────────────────────────────────
+function fy(yr, mo) { return mo >= 3 ? yr + 1 : yr; }
 
-function getFiscalQuarters(year) {
-  // Retourne les quarters FY pour l année affichée
-  // FY27 = mars 2026 → fév 2027
-  var fy = getFiscalYear(year, 6); // année courante → FY
-  var quarters = [
-    { label: 'FY' + String(fy).slice(-2) + '-Q1', startWeek: getWeekOfDate(year, 3, 1),  endWeek: getWeekOfDate(year, 5, 31) },
-    { label: 'FY' + String(fy).slice(-2) + '-Q2', startWeek: getWeekOfDate(year, 6, 1),  endWeek: getWeekOfDate(year, 8, 31) },
-    { label: 'FY' + String(fy).slice(-2) + '-Q3', startWeek: getWeekOfDate(year, 9, 1),  endWeek: getWeekOfDate(year, 11, 30) },
-    { label: 'FY' + String(fy).slice(-2) + '-Q4', startWeek: getWeekOfDate(year, 12, 1), endWeek: getWeekOfDate(year+1, 2, 28) },
-  ];
-  return quarters;
-}
-
-function getWeekOfDate(year, month, day) {
-  var d = new Date(year, month-1, day);
-  var jan1 = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
-}
-
-function getWeeksForRange(startWeek, endWeek) {
-  if (startWeek <= endWeek) {
-    var weeks = [];
-    for (var w = startWeek; w <= endWeek; w++) weeks.push(w);
-    return weeks;
+function getQuarters(year) {
+  var f  = fy(year, 6);
+  var fs = String(f).slice(-2);
+  function wk(y, m, d) {
+    var dt   = new Date(y, m-1, d);
+    var jan1 = new Date(dt.getFullYear(), 0, 1);
+    return Math.ceil(((dt - jan1) / 86400000 + jan1.getDay() + 1) / 7);
   }
-  // Cas Q4 : chevauche 2 années
-  var weeks = [];
-  for (var w = startWeek; w <= 53; w++) weeks.push(w);
-  for (var w = 1; w <= endWeek; w++) weeks.push(w);
-  return weeks;
+  return [
+    { lbl:'FY'+fs+'-Q1', sw:wk(year,3,1),    ew:wk(year,5,31)   },
+    { lbl:'FY'+fs+'-Q2', sw:wk(year,6,1),    ew:wk(year,8,31)   },
+    { lbl:'FY'+fs+'-Q3', sw:wk(year,9,1),    ew:wk(year,11,30)  },
+    { lbl:'FY'+fs+'-Q4', sw:wk(year,12,1),   ew:wk(year+1,2,28) },
+  ];
 }
 
-// ── Charger capacity depuis l API ─────────────────────────────────────────────
-function loadCapacity(year) {
-  CURR_YEAR = year;
-  document.getElementById('cap-year-label').textContent = year;
+function weeks(sw, ew) {
+  var w = [];
+  if (sw <= ew) { for (var i=sw;i<=ew;i++) w.push(i); }
+  else { for (var i=sw;i<=53;i++) w.push(i); for (var i=1;i<=ew;i++) w.push(i); }
+  return w;
+}
 
+function curWeek() {
+  var d = new Date();
+  var j = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil(((d-j)/86400000 + j.getDay() + 1)/7);
+}
+
+// ── Charger capacity ──────────────────────────────────────────────────────────
+function loadCap(year) {
+  CY = year;
+  document.getElementById('year-lbl').textContent = year;
   fetch('/api/projects/' + PID + '/capacity?year=' + year)
   .then(function(r) { return r.json(); })
   .then(function(data) {
-    CAP_DATA = {};
-    // Reconstruire depuis data.matrix
-    var matrix = data.matrix || {};
-    Object.keys(matrix).forEach(function(rid) {
-      Object.keys(matrix[rid]).forEach(function(week) {
-        var key = rid + ':' + year + ':' + week;
-        CAP_DATA[key] = matrix[rid][week];
+    CAP = {};
+    var mat = data.matrix || {};
+    Object.keys(mat).forEach(function(rid) {
+      Object.keys(mat[rid]).forEach(function(w) {
+        CAP[rid+':'+year+':'+w] = mat[rid][w];
       });
     });
-    renderQuarterNav(year);
-    // Afficher le quarter courant
-    var today    = new Date();
-    var quarters = getFiscalQuarters(year);
-    var todayWeek = getWeekOfDate(today.getFullYear(), today.getMonth()+1, today.getDate());
-    var activeQ  = 0;
-    quarters.forEach(function(q, i) {
-      var weeks = getWeeksForRange(q.startWeek, q.endWeek);
-      if (weeks.indexOf(todayWeek) !== -1) activeQ = i;
-    });
-    renderCapTable(quarters[activeQ], year);
-    document.querySelectorAll('.qbtn')[activeQ].classList.add('active');
+    buildQNav(year);
   });
 }
 
-// ── Render navigation quarters ────────────────────────────────────────────────
-function renderQuarterNav(year) {
-  var nav      = document.getElementById('quarter-nav');
-  var quarters = getFiscalQuarters(year);
+function buildQNav(year) {
+  var nav = document.getElementById('qnav');
   nav.innerHTML = '';
-  quarters.forEach(function(q, i) {
-    var btn = document.createElement('button');
-    btn.className = 'qbtn';
-    btn.textContent = q.label;
-    btn.addEventListener('click', function() {
-      document.querySelectorAll('.qbtn').forEach(function(b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      renderCapTable(q, year);
+  var qs   = getQuarters(year);
+  var now  = curWeek();
+  var actI = 0;
+  qs.forEach(function(q, i) {
+    if (weeks(q.sw, q.ew).indexOf(now) !== -1) actI = i;
+    var b = document.createElement('button');
+    b.className = 'qbtn';
+    b.textContent = q.lbl;
+    b.addEventListener('click', function() {
+      nav.querySelectorAll('.qbtn').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active');
+      renderTable(q, year);
     });
-    nav.appendChild(btn);
+    nav.appendChild(b);
   });
-  // Bouton "Année complète"
-  var btnAll = document.createElement('button');
-  btnAll.className = 'qbtn';
-  btnAll.textContent = 'Annee complete';
-  btnAll.addEventListener('click', function() {
-    document.querySelectorAll('.qbtn').forEach(function(b) { b.classList.remove('active'); });
-    btnAll.classList.add('active');
-    renderCapTable({ startWeek: 1, endWeek: 52, label: 'Annee' }, year);
+  // Bouton année complète
+  var ba = document.createElement('button');
+  ba.className  = 'qbtn';
+  ba.textContent = 'Annee';
+  ba.addEventListener('click', function() {
+    nav.querySelectorAll('.qbtn').forEach(function(x){x.classList.remove('active');});
+    ba.classList.add('active');
+    renderTable({sw:1,ew:52}, year);
   });
-  nav.appendChild(btnAll);
+  nav.appendChild(ba);
+
+  nav.querySelectorAll('.qbtn')[actI].classList.add('active');
+  renderTable(qs[actI], year);
 }
 
-// ── Render tableau capacity ────────────────────────────────────────────────────
-function renderCapTable(quarter, year) {
-  var weeks = getWeeksForRange(quarter.startWeek, quarter.endWeek);
-  var table = document.getElementById('cap-table');
-
-  var html = '<thead><tr>';
-  html += '<th class="th-res">Ressource</th>';
-  html += '<th class="th-info">Max (h)</th>';
-  weeks.forEach(function(w) {
-    html += '<th>S' + w + '</th>';
-  });
-  html += '<th class="cap-total">Total</th>';
+// ── Render tableau ────────────────────────────────────────────────────────────
+function renderTable(q, year) {
+  var ws    = weeks(q.sw, q.ew);
+  var table = document.getElementById('ctable');
+  var html  = '<thead><tr>';
+  html += '<th class="th-l">Ressource</th>';
+  html += '<th class="th-m">Max</th>';
+  ws.forEach(function(w) { html += '<th>S'+w+'</th>'; });
+  html += '<th class="c-tot" style="min-width:55px;">Total</th>';
   html += '</tr></thead><tbody>';
 
   RESOURCES.forEach(function(res) {
-    var rowTotal = 0;
+    var tot = 0;
     html += '<tr>';
     html += '<td style="text-align:left;">';
-    html += '<span class="res-badge" style="background:' + res.color + ';">' + res.acronym + '</span>';
-    if (res.full_name) html += ' <span style="font-size:0.75rem;color:var(--dim);">' + res.full_name + '</span>';
+    html += '<span class="res-badge" style="background:'+res.color+';">'+res.acronym+'</span>';
+    if (res.full_name) html += ' <span style="font-size:0.72rem;color:var(--dim);">'+res.full_name+'</span>';
     html += '</td>';
-    html += '<td class="th-info">' + res.max_fraction + ' (' + (res.max_fraction*40).toFixed(0) + 'h)</td>';
-
-    weeks.forEach(function(w) {
-      var key = res.id + ':' + year + ':' + w;
-      var val = CAP_DATA[key] || 0;
-      rowTotal += val;
-      var maxWeek = res.max_fraction;
-      var pct     = maxWeek > 0 ? val / maxWeek : 0;
-      var cls     = val === 0 ? '' : pct > 1.0 ? 'cap-over' : pct >= 0.8 ? 'cap-warn' : 'cap-ok';
-      html += '<td class="cap-cell ' + cls + '">';
-      html += '<input class="cap-input" type="number"';
-      html += ' data-res="' + res.id + '"';
-      html += ' data-year="' + year + '"';
-      html += ' data-week="' + w + '"';
-      html += ' value="' + (val > 0 ? val.toFixed(2) : '') + '"';
-      html += ' min="0" max="2" step="0.05"';
-      html += ' placeholder="0">';
+    html += '<td class="th-m">'+res.max_fraction+'<br><span style="font-size:0.65rem;">'+(res.max_fraction*40).toFixed(0)+'h</span></td>';
+    ws.forEach(function(w) {
+      var key = res.id+':'+year+':'+w;
+      var val = CAP[key] || 0;
+      tot += val;
+      var pct = res.max_fraction > 0 ? val/res.max_fraction : 0;
+      var cls = val===0 ? '' : pct>1.0 ? 'c-over' : pct>=0.8 ? 'c-warn' : 'c-ok';
+      html += '<td class="'+cls+'">';
+      html += '<input class="cinput" type="number"';
+      html += ' data-rid="'+res.id+'"';
+      html += ' data-yr="'+year+'"';
+      html += ' data-wk="'+w+'"';
+      html += ' value="'+(val>0 ? val.toFixed(2) : '')+'"';
+      html += ' min="0" max="2" step="0.05" placeholder="0">';
       html += '</td>';
     });
-
-    var totalPct = weeks.length > 0 ? rowTotal / weeks.length / res.max_fraction : 0;
-    var totalCls = rowTotal === 0 ? '' : totalPct > 1.0 ? 'cap-over' : totalPct >= 0.8 ? 'cap-warn' : '';
-    html += '<td class="cap-total ' + totalCls + '">' + rowTotal.toFixed(2) + '</td>';
+    var tc  = ws.length>0 ? tot/ws.length/res.max_fraction : 0;
+    var tcl = tot===0 ? '' : tc>1.0 ? 'c-over' : tc>=0.8 ? 'c-warn' : '';
+    html += '<td class="c-tot '+tcl+'">'+(tot>0?tot.toFixed(2):'')+'</td>';
     html += '</tr>';
   });
 
-  // Ligne totaux par semaine
+  // Ligne totaux
   if (RESOURCES.length > 0) {
-    html += '<tr style="background:#1a1d27;">';
-    html += '<td colspan="2" style="text-align:left;font-weight:600;color:var(--accent);padding:4px 8px;">TOTAL</td>';
-    weeks.forEach(function(w) {
-      var weekTotal = RESOURCES.reduce(function(sum, res) {
-        var key = res.id + ':' + year + ':' + w;
-        return sum + (CAP_DATA[key] || 0);
+    html += '<tr>';
+    html += '<td colspan="2" style="text-align:left;font-weight:600;color:var(--accent);padding:4px 8px;font-size:0.75rem;">TOTAL</td>';
+    ws.forEach(function(w) {
+      var wt = RESOURCES.reduce(function(s,r){
+        return s + (CAP[r.id+':'+year+':'+w]||0);
       }, 0);
-      html += '<td class="cap-total">' + (weekTotal > 0 ? weekTotal.toFixed(2) : '') + '</td>';
+      html += '<td class="c-tot">'+(wt>0?wt.toFixed(2):'')+'</td>';
     });
-    html += '<td class="cap-total"></td>';
-    html += '</tr>';
+    html += '<td class="c-tot"></td></tr>';
   }
-
   html += '</tbody>';
   table.innerHTML = html;
 
-  // Attacher les événements sur les inputs
-  table.querySelectorAll('.cap-input').forEach(function(inp) {
+  // Events sur inputs
+  table.querySelectorAll('.cinput').forEach(function(inp) {
     inp.addEventListener('change', function() {
-      var res  = this.dataset.res;
-      var yr   = this.dataset.year;
-      var week = this.dataset.week;
-      var val  = parseFloat(this.value) || 0;
-      var key  = res + ':' + yr + ':' + week;
-      CAP_DATA[key] = val;
-      DIRTY[key]    = { resource_id: parseInt(res), year: parseInt(yr), week: parseInt(week), fraction: val };
-      // Mettre à jour la couleur de la cellule
-      var maxRes = RESOURCES.find(function(r) { return r.id === parseInt(res); });
-      var max    = maxRes ? maxRes.max_fraction : 1.0;
-      var pct    = max > 0 ? val / max : 0;
-      var cell   = this.parentElement;
-      cell.className = 'cap-cell ' + (val === 0 ? '' : pct > 1.0 ? 'cap-over' : pct >= 0.8 ? 'cap-warn' : 'cap-ok');
+      var rid = this.dataset.rid;
+      var yr  = this.dataset.yr;
+      var wk  = this.dataset.wk;
+      var val = parseFloat(this.value) || 0;
+      var key = rid+':'+yr+':'+wk;
+      CAP[key]   = val;
+      DIRTY[key] = { resource_id:parseInt(rid), year:parseInt(yr), week:parseInt(wk), fraction:val };
+      // Couleur cellule
+      var res = RESOURCES.find(function(r){return r.id===parseInt(rid);});
+      var max = res ? res.max_fraction : 1.0;
+      var pct = max>0 ? val/max : 0;
+      var td  = this.parentElement;
+      td.className = val===0 ? '' : pct>1.0 ? 'c-over' : pct>=0.8 ? 'c-warn' : 'c-ok';
     });
     inp.addEventListener('keydown', function(e) {
       if (e.key === 'Tab') {
         e.preventDefault();
-        // Naviguer à la prochaine cellule
-        var inputs = Array.from(table.querySelectorAll('.cap-input'));
-        var idx    = inputs.indexOf(this);
-        if (idx + 1 < inputs.length) inputs[idx+1].focus();
+        var all = Array.from(table.querySelectorAll('.cinput'));
+        var idx = all.indexOf(this);
+        if (idx+1 < all.length) all[idx+1].focus();
       }
     });
   });
 }
 
 // ── Sauvegarder ───────────────────────────────────────────────────────────────
-function saveCapacity() {
+function doSave() {
   var entries = Object.values(DIRTY);
-  if (entries.length === 0) { alert('Aucune modification a sauvegarder.'); return; }
-
-  fetch('/api/projects/' + PID + '/capacity/bulk', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ entries: entries })
+  if (!entries.length) { alert('Aucune modification.'); return; }
+  fetch('/api/projects/'+PID+'/capacity/bulk', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({entries:entries})
   })
-  .then(function(r) { return r.json(); })
+  .then(function(r){return r.json();})
   .then(function(d) {
     if (d.ok) {
       DIRTY = {};
-      var btn = document.getElementById('btn-save-cap');
+      var btn = document.getElementById('btn-save');
+      var orig = btn.textContent;
       btn.textContent = d.saved + ' cellule(s) sauvegardee(s) !';
       btn.style.background = 'var(--green)';
-      setTimeout(function() {
-        btn.textContent = 'Sauvegarder';
+      setTimeout(function(){
+        btn.textContent = orig;
         btn.style.background = '';
       }, 2500);
     }
   });
 }
 
-// Ctrl+S pour sauvegarder
+// Ctrl+S
 document.addEventListener('keydown', function(e) {
-  if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveCapacity(); }
+  if (e.ctrlKey && e.key==='s') { e.preventDefault(); doSave(); }
 });
 
-// ── Ajouter ressource ─────────────────────────────────────────────────────────
+// ── Export CSV ────────────────────────────────────────────────────────────────
+function doExport() {
+  var ws = []; for (var i=1;i<=52;i++) ws.push(i);
+  var rows = [['Ressource','Nom','Max','Max h/sem'].concat(ws.map(function(w){return 'S'+w;})).concat(['Total'])];
+  RESOURCES.forEach(function(res) {
+    var tot = 0;
+    var vals = ws.map(function(w) {
+      var v = CAP[res.id+':'+CY+':'+w] || 0;
+      tot += v;
+      return v>0 ? v.toFixed(2) : '0';
+    });
+    rows.push([res.acronym, res.full_name||'', res.max_fraction, (res.max_fraction*40).toFixed(0)+'h']
+      .concat(vals).concat([tot.toFixed(2)]));
+  });
+  var csv  = rows.map(function(r){return r.join(';');}).join('\n');
+  var blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  var a    = document.createElement('a');
+  a.href   = URL.createObjectURL(blob);
+  a.download = 'capacity_'+CY+'_{{ project.name }}'.replace(/[^a-z0-9]/gi,'_')+'.csv';
+  a.click();
+}
+
+// ── DOMContentLoaded ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
 
-  document.getElementById('btn-save-cap').addEventListener('click', saveCapacity);
+  document.getElementById('btn-save').addEventListener('click', doSave);
+  document.getElementById('btn-export').addEventListener('click', doExport);
 
+  document.getElementById('year-sel').addEventListener('change', function() {
+    loadCap(parseInt(this.value));
+  });
+
+  // Ajouter ressource
   document.getElementById('btn-add-res').addEventListener('click', function() {
     var acro = document.getElementById('r-acro').value.trim().toUpperCase();
     if (!acro) { alert('Acronyme obligatoire'); return; }
-    fetch('/api/projects/' + PID + '/resources', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    fetch('/api/projects/'+PID+'/resources', {
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         acronym:      acro,
         full_name:    document.getElementById('r-name').value.trim(),
-        max_fraction: parseFloat(document.getElementById('r-max').value) || 1.0,
+        max_fraction: parseFloat(document.getElementById('r-max').value)||1.0,
         color:        document.getElementById('r-color').value,
-        is_external:  document.getElementById('r-ext').value === '1'
+        is_external:  document.getElementById('r-ext').value==='1'
       })
-    }).then(function() { location.reload(); });
+    }).then(function(){location.reload();});
   });
 
   // Supprimer ressource
-  document.querySelectorAll('.btn-r[data-id]').forEach(function(btn) {
+  document.querySelectorAll('.del-res-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var id = this.dataset.id;
       if (!confirm('Supprimer cette ressource ?')) return;
-      fetch('/api/resources/' + id, { method: 'DELETE' })
-      .then(function() { location.reload(); });
+      fetch('/api/resources/'+id, {method:'DELETE'})
+      .then(function(){location.reload();});
     });
   });
 
   // Drag & drop ressources
-  var resList = document.getElementById('res-list');
-  if (resList && window.Sortable) {
-    Sortable.create(resList, {
-      handle: '.res-handle',
-      animation: 150,
+  var rl = document.getElementById('res-list');
+  if (rl && window.Sortable) {
+    Sortable.create(rl, {
+      handle: '.res-handle', animation:150,
       onEnd: function() {
-        var orderedIds = Array.from(resList.querySelectorAll('.res-item'))
-          .map(function(el) { return parseInt(el.dataset.id); });
-        fetch('/api/projects/' + PID + '/resources', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ordered_ids: orderedIds })
+        var ids = Array.from(rl.querySelectorAll('.res-item'))
+          .map(function(el){return parseInt(el.dataset.id);});
+        fetch('/api/projects/'+PID+'/resources/reorder', {
+          method:'PATCH', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ordered_ids:ids})
         });
-        RESOURCES = orderedIds.map(function(id) {
-          return RESOURCES.find(function(r) { return r.id === id; });
+        RESOURCES = ids.map(function(id){
+          return RESOURCES.find(function(r){return r.id===id;});
         }).filter(Boolean);
       }
     });
   }
 
-  // Changement d année
-  document.getElementById('year-select').addEventListener('change', function() {
-    loadCapacity(parseInt(this.value));
-  });
-
-  // Export Excel (simulation → CSV lisible)
-  document.getElementById('btn-export-excel').addEventListener('click', function() {
-    exportCapacityCSV();
-  });
-
-  // Charger les données
-  loadCapacity(CURR_YEAR);
+  // Charger
+  loadCap(CY);
 });
-
-// ── Export CSV/Excel ──────────────────────────────────────────────────────────
-function exportCapacityCSV() {
-  var weeks = [];
-  for (var w = 1; w <= 52; w++) weeks.push(w);
-
-  var rows  = [['Ressource', 'Nom', 'Max fraction', 'Max h/sem'].concat(weeks.map(function(w) { return 'S'+w; })).concat(['Total'])];
-
-  RESOURCES.forEach(function(res) {
-    var total = 0;
-    var vals  = weeks.map(function(w) {
-      var key = res.id + ':' + CURR_YEAR + ':' + w;
-      var v   = CAP_DATA[key] || 0;
-      total  += v;
-      return v > 0 ? v.toFixed(2) : '0';
-    });
-    rows.push([res.acronym, res.full_name || '', res.max_fraction, (res.max_fraction*40).toFixed(0)+'h'].concat(vals).concat([total.toFixed(2)]));
-  });
-
-  var csv  = rows.map(function(r) { return r.join(';'); }).join('\n');
-  var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  var url  = URL.createObjectURL(blob);
-  var a    = document.createElement('a');
-  a.href   = url;
-  a.download = 'capacity_' + CURR_YEAR + '_' + '{{ project.name }}'.replace(/[^a-z0-9]/gi, '_') + '.csv';
-  a.click();
-  URL.revokeObjectURL(url);
-}
 </script>
 </body>
 </html>
