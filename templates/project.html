@@ -158,17 +158,17 @@ header h1{color:var(--accent);font-size:1.1rem;}
 
     <div class="tab-content active" id="tc-status">
       <div style="margin-bottom:12px;">
-        <button class="btn btn-p" id="tc-add-btn">+ Ajouter une tache</button>
+        <button class="btn btn-p" id="tc-add-btn">{% if project.language == "en" %}+ Add task{% else %}+ Ajouter une tache{% endif %}</button>
       </div>
       <table class="wt" id="weekly-table">
         <thead>
           <tr>
-            <th class="resizable" style="width:130px;min-width:80px;">Categorie</th>
-            <th class="resizable">Activites</th>
-            <th class="resizable" style="width:120px;min-width:80px;text-align:center;">Semaines</th>
+            <th class="resizable" style="width:130px;min-width:80px;">{% if project.language == "en" %}Category{% else %}Categorie{% endif %}</th>
+            <th class="resizable">{% if project.language == "en" %}Activities{% else %}Activites{% endif %}</th>
+            <th class="resizable" style="width:110px;min-width:70px;text-align:center;">{% if project.language == "en" %}Weeks{% else %}Semaines{% endif %}</th>
             <th class="resizable" style="width:80px;min-width:60px;text-align:center;">%</th>
             <th class="resizable" style="width:80px;min-width:60px;text-align:center;">Date</th>
-            <th class="resizable" style="width:115px;min-width:90px;text-align:center;">Statut</th>
+            <th class="resizable" style="width:115px;min-width:90px;text-align:center;">{% if project.language == "en" %}Status{% else %}Statut{% endif %}</th>
           </tr>
         </thead>
         <tbody>
