@@ -157,6 +157,37 @@ def init_db() -> None:
         )
     """)
 
+    # ── Table role_colors — palette de couleurs par rôle ─────────────────────
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS role_colors (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            role       TEXT NOT NULL UNIQUE,
+            color      TEXT NOT NULL DEFAULT '#1E90FF',
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+    # Initialiser la palette par défaut si vide
+    default_colors = [
+        ("PM",             "#E74C3C"),
+        ("BA",             "#3498DB"),
+        ("SME",            "#27AE60"),
+        ("Lead",           "#8E44AD"),
+        ("Dev",            "#1ABC9C"),
+        ("Analyst",        "#2980B9"),
+        ("OD Data CoreHR", "#F39C12"),
+        ("OD Data WFM",    "#E67E22"),
+        ("Architect",      "#9B59B6"),
+        ("QA",             "#16A085"),
+        ("OCM",            "#D35400"),
+        ("Support",        "#7F8C8D"),
+    ]
+    for role, color in default_colors:
+        c.execute(
+            "INSERT OR IGNORE INTO role_colors (role, color) VALUES (?, ?)",
+            (role, color)
+        )
+
     # ── Migration : CREATE TABLE si elles n existent pas (safe pour DB existante) ──
     # role_colors
     c.execute("""
@@ -486,6 +517,36 @@ def compute_task_end_date(task_id: int) -> str | None:
         return end.isoformat()
     except Exception:
         return None
+
+
+def get_role_colors() -> dict[str, str]:
+    """Retourne la palette role → couleur depuis la DB."""
+    conn = get_db()
+    rows = conn.execute("SELECT role, color FROM role_colors ORDER BY role").fetchall()
+    conn.close()
+    return {r["role"]: r["color"] for r in rows}
+
+
+def upsert_role_color(role: str, color: str) -> None:
+    """Crée ou met à jour la couleur d un rôle."""
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO role_colors (role, color) VALUES (?, ?) "
+        "ON CONFLICT(role) DO UPDATE SET color=excluded.color",
+        (role, color)
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_role_color(role: str) -> bool:
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("DELETE FROM role_colors WHERE role=?", (role,))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
 
 
 def get_resources(project_id: int) -> list[dict]:
