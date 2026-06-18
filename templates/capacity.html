@@ -545,8 +545,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // Auto-couleur formulaire ajout
   var roleInput = document.getElementById('r-role');
   if (roleInput) {
-    roleInput.addEventListener('input',  function() { applyRoleColor(this.value.trim(), 'r-color'); });
-    roleInput.addEventListener('change', function() { applyRoleColor(this.value.trim(), 'r-color'); });
+    roleInput.addEventListener('input',  function() { applyRoleColorFromDB(this.value.trim(), 'r-color'); });
+    roleInput.addEventListener('change', function() { applyRoleColorFromDB(this.value.trim(), 'r-color'); });
   }
 
   // Mettre à jour datalists avec les rôles de la DB
@@ -917,6 +917,93 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+
+// ── Palette roles/couleurs depuis la DB ─────────────────────────────────────
+window.ROLE_COLORS_DB = {};
+
+function loadPalette() {
+  fetch('/api/role-colors')
+  .then(function(r) { return r.json(); })
+  .then(function(palette) {
+    window.ROLE_COLORS_DB = palette;
+    var list = document.getElementById('palette-list');
+    if (!list) return;
+    list.innerHTML = '';
+    Object.keys(palette).sort().forEach(function(role) {
+      var color = palette[role];
+      var div   = document.createElement('div');
+      div.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0;font-size:0.78rem;';
+      div.innerHTML =
+        '<span style="width:14px;height:14px;border-radius:3px;background:' + color +
+        ';flex-shrink:0;display:inline-block;"></span>' +
+        '<span style="flex:1;color:var(--dim);">' + role + '</span>' +
+        '<input type="color" value="' + color + '" data-role="' + role +
+        '" class="role-color-picker" style="width:26px;height:22px;padding:1px;' +
+        'border:1px solid var(--border);border-radius:3px;cursor:pointer;">' +
+        '<button class="del-role-btn" data-role="' + role +
+        '" style="background:none;border:none;color:var(--red);cursor:pointer;' +
+        'font-size:0.85rem;padding:0 2px;">&times;</button>';
+      list.appendChild(div);
+    });
+
+    list.querySelectorAll('.role-color-picker').forEach(function(inp) {
+      inp.addEventListener('change', function() {
+        fetch('/api/role-colors/' + encodeURIComponent(this.dataset.role), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ color: this.value })
+        }).then(function() { loadPalette(); });
+      });
+    });
+
+    list.querySelectorAll('.del-role-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var role = this.dataset.role;
+        if (!confirm('Supprimer "' + role + '" de la palette ?')) return;
+        fetch('/api/role-colors/' + encodeURIComponent(role), { method: 'DELETE' })
+        .then(function() { loadPalette(); });
+      });
+    });
+  });
+}
+
+// Ajouter un rôle
+document.addEventListener('DOMContentLoaded', function() {
+  loadPalette();
+
+  var btnRefresh = document.getElementById('btn-refresh-palette');
+  if (btnRefresh) btnRefresh.addEventListener('click', loadPalette);
+
+  var btnAddRole = document.getElementById('btn-add-role');
+  if (btnAddRole) {
+    btnAddRole.addEventListener('click', function() {
+      var role  = (document.getElementById('new-role') || {}).value || '';
+      var color = (document.getElementById('new-role-color') || {}).value || '#1E90FF';
+      role = role.trim();
+      if (!role) { alert('Nom du role obligatoire'); return; }
+      fetch('/api/role-colors/' + encodeURIComponent(role), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ color: color })
+      }).then(function() {
+        var inp = document.getElementById('new-role');
+        if (inp) inp.value = '';
+        loadPalette();
+      });
+    });
+  }
+});
+
+// Auto-couleur depuis DB quand on choisit un rôle
+function applyRoleColorFromDB(role, colorInputId) {
+  var palette = window.ROLE_COLORS_DB || {};
+  var color   = palette[role];
+  if (color) {
+    var inp = document.getElementById(colorInputId);
+    if (inp) inp.value = color;
+  }
+}
 
 </script>
 <!-- Modal édition ressource -->
