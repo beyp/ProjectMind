@@ -19,6 +19,8 @@ from core.models import (
     init_db, get_all_projects, get_project, create_project,
     get_categories, create_category, get_tasks, create_task, update_task,
     get_kpis, get_weekly_note, get_milestones, get_risks,
+    get_resources, create_resource, update_resource, delete_resource,
+    reorder_resources, get_capacity, upsert_capacity, get_capacity_matrix,
     STATUS_COLORS, STATUSES, KPI_ITEMS, get_fiscal_quarter, get_fiscal_year,
     get_db, delete_project
 )
@@ -379,6 +381,84 @@ async def api_ai_parse_image(project_id: int, request: Request):
         language     = language,
     )
     return {"tasks": tasks, "count": len(tasks), "model": "llama-4-scout-17b"}
+
+
+@app.get("/capacity/{project_id}", response_class=HTMLResponse)
+async def capacity_view(request: Request, project_id: int):
+    """Page Capacity Planning."""
+    from datetime import date as dt
+    project   = get_project(project_id)
+    if not project:
+        raise HTTPException(404)
+    resources = get_resources(project_id)
+    year      = dt.today().year
+    matrix    = get_capacity_matrix(project_id, year)
+    return templates.TemplateResponse(
+        request=request,
+        name="capacity.html",
+        context={
+            "project":   project,
+            "resources": resources,
+            "matrix":    matrix,
+            "year":      year,
+        },
+    )
+
+
+@app.get("/api/projects/{project_id}/resources")
+async def api_get_resources(project_id: int):
+    return get_resources(project_id)
+
+
+@app.post("/api/projects/{project_id}/resources")
+async def api_create_resource(project_id: int, request: Request):
+    data = await request.json()
+    rid  = create_resource(
+        project_id   = project_id,
+        acronym      = data.get("acronym", "").upper(),
+        full_name    = data.get("full_name", ""),
+        is_external  = data.get("is_external", False),
+        max_fraction = float(data.get("max_fraction", 1.0)),
+        color        = data.get("color", "#1E90FF"),
+    )
+    return {"id": rid, "ok": True}
+
+
+@app.patch("/api/projects/{project_id}/resources/reorder")
+async def api_reorder_resources(project_id: int, request: Request):
+    data = await request.json()
+    reorder_resources(project_id, data.get("ordered_ids", []))
+    return {"ok": True}
+
+
+@app.delete("/api/resources/{resource_id}")
+async def api_delete_resource(resource_id: int):
+    ok = delete_resource(resource_id)
+    return {"ok": ok}
+
+
+@app.get("/api/projects/{project_id}/capacity")
+async def api_get_capacity(project_id: int, year: int | None = None):
+    from datetime import date as dt
+    y      = year or dt.today().year
+    matrix = get_capacity_matrix(project_id, y)
+    return matrix
+
+
+@app.post("/api/projects/{project_id}/capacity/bulk")
+async def api_bulk_capacity(project_id: int, request: Request):
+    """Sauvegarder plusieurs cellules capacity d un coup."""
+    data    = await request.json()
+    entries = data.get("entries", [])
+    for e in entries:
+        upsert_capacity(
+            project_id  = project_id,
+            resource_id = int(e["resource_id"]),
+            year        = int(e["year"]),
+            week        = int(e["week"]),
+            fraction    = float(e.get("fraction", 0.0)),
+        )
+    return {"ok": True, "saved": len(entries)}
 
 
 @app.get("/api/projects/{project_id}/export/pptx")
