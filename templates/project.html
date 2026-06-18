@@ -443,6 +443,33 @@ header h1{color:var(--accent);font-size:1.1rem;}
         <span id="et-prog-val" style="color:var(--accent);font-size:0.82rem;">0%</span>
       </div>
     </div>
+    <!-- Ressources assignées -->
+    <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;">
+      <div style="font-size:0.82rem;color:var(--accent);text-transform:uppercase;
+        letter-spacing:1px;margin-bottom:8px;">Ressources assignees</div>
+      <div id="et-assignments" style="margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select id="et-res" style="background:#12141f;border:1px solid var(--border);
+          color:var(--text);padding:5px 8px;border-radius:5px;font-size:0.82rem;flex:1;">
+          <option value="">-- Choisir ressource --</option>
+        </select>
+        <input id="et-hours" type="number" min="0" step="0.5"
+          placeholder="Heures" title="Heures estimees"
+          style="width:80px;background:#12141f;border:1px solid var(--border);
+          color:var(--text);padding:5px 8px;border-radius:5px;font-size:0.82rem;">
+        <input id="et-frac" type="number" min="0" max="1" step="0.1"
+          placeholder="Fraction" title="Fraction (0.5=50%)"
+          style="width:80px;background:#12141f;border:1px solid var(--border);
+          color:var(--text);padding:5px 8px;border-radius:5px;font-size:0.82rem;">
+        <button class="btn btn-p" id="btn-add-assign" style="padding:5px 12px;font-size:0.8rem;">
+          + Assigner
+        </button>
+      </div>
+      <div style="color:var(--dim);font-size:0.72rem;margin-top:4px;">
+        Fraction = part du temps (0.5 = 50% = 20h/sem) | Heures = total estime
+      </div>
+    </div>
+
     <div style="display:flex;gap:10px;justify-content:space-between;margin-top:10px;">
       <button class="btn btn-r" id="btn-del-task" style="padding:7px 14px;">
         Supprimer
