@@ -429,14 +429,8 @@ async def api_ai_capacity(project_id: int, request: Request):
     if not groq_key:
         return {"error": "GROQ_API_KEY non configurée", "actions": []}
 
-    # Palette couleurs par rôle
-    ROLE_COLORS = {
-        "PM": "#E74C3C", "BA": "#3498DB", "SME": "#27AE60",
-        "Lead": "#8E44AD", "Dev": "#1ABC9C", "Analyst": "#2980B9",
-        "OD Data CoreHR": "#F39C12", "OD Data WFM": "#E67E22",
-        "Architect": "#9B59B6", "QA": "#16A085",
-        "OCM": "#D35400", "Support": "#7F8C8D",
-    }
+    # Palette couleurs depuis la DB (pas hardcodée !)
+    ROLE_COLORS = get_role_colors()
 
     res_list  = ", ".join(
         f"{r['acronym']} (id:{r['id']}, max:{r['max_fraction']}, role:{r.get('role','')}, color:{r.get('color','')})"
@@ -464,10 +458,8 @@ async def api_ai_capacity(project_id: int, request: Request):
         '6. Clear capacity: {"type":"clear_capacity","acronym":"SAMC4","weeks":[23,24],"year":2026}\n'
         '7. Assign to task: {"type":"assign_resource","acronym":"SAMC4","task_id":5,"hours":20,"fraction":0.5}\n'
         '8. Remove assignment: {"type":"remove_assignment","acronym":"SAMC4","task_id":5}\n'
-        '9. Message: {"type":"message","text":"Done."}\n\n'
-        "Color palette by role: PM=#E74C3C, BA=#3498DB, SME=#27AE60, Lead=#8E44AD,\n"
-        "Dev=#1ABC9C, Analyst=#2980B9, OD Data CoreHR=#F39C12, OD Data WFM=#E67E22,\n"
-        "Architect=#9B59B6, QA=#16A085, OCM=#D35400, Support=#7F8C8D\n\n"
+        '9. Update role color in palette: {"type":"update_role_color","role":"Lead","color":"#FF5733"}\n''10. Message: {"type":"message","text":"Done."}\n\n'
+        "Color palette by role (from DB): " + ", ".join(f"{r}={c}" for r, c in ROLE_COLORS.items()) + "\n\n"
         "Rules:\n"
         "- ALWAYS include at least one message action\n"
         "- Use exact acronyms from existing resources\n"
@@ -659,6 +651,19 @@ async def api_ai_capacity(project_id: int, request: Request):
                 action["note"]     = f"Resource {acro} or task {tid} not found"
             executed.append(action)
 
+        # ── update_role_color — modifier palette en DB ────────────────────
+        elif atype == "update_role_color":
+            role  = action.get("role", "")
+            color = action.get("color", "")
+            if role and color:
+                upsert_role_color(role, color)
+                ROLE_COLORS = get_role_colors()  # refresh
+                action["executed"] = True
+            else:
+                action["executed"] = False
+                action["note"]     = "role and color required"
+            executed.append(action)
+
         # ── message ──────────────────────────────────────────────────────────
         elif atype == "message":
             executed.append(action)
@@ -754,16 +759,32 @@ async def api_reorder_resources(project_id: int, request: Request):
     return {"ok": True}
 
 
+@app.get("/api/role-colors")
+async def api_get_role_colors():
+    """Retourne la palette de couleurs par rôle depuis la DB."""
+    return get_role_colors()
+
+
+@app.put("/api/role-colors/{role}")
+async def api_upsert_role_color(role: str, request: Request):
+    """Crée ou met à jour la couleur d un rôle."""
+    data  = await request.json()
+    color = data.get("color", "#1E90FF")
+    upsert_role_color(role, color)
+    return {"ok": True, "role": role, "color": color}
+
+
+@app.delete("/api/role-colors/{role}")
+async def api_delete_role_color(role: str):
+    """Supprime un rôle de la palette."""
+    ok = delete_role_color(role)
+    return {"ok": ok}
+
+
 @app.post("/api/projects/{project_id}/resources/reset-colors")
 async def api_reset_resource_colors(project_id: int):
     """Remet les couleurs de toutes les ressources selon leur rôle."""
-    ROLE_COLORS = {
-        "PM": "#E74C3C", "BA": "#3498DB", "SME": "#27AE60",
-        "Lead": "#8E44AD", "Dev": "#1ABC9C", "Analyst": "#2980B9",
-        "OD Data CoreHR": "#F39C12", "OD Data WFM": "#E67E22",
-        "Architect": "#9B59B6", "QA": "#16A085",
-        "OCM": "#D35400", "Support": "#7F8C8D",
-    }
+    ROLE_COLORS = get_role_colors()
     resources   = get_resources(project_id)
     reset_count = 0
     for res in resources:
