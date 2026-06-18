@@ -157,6 +157,13 @@ def init_db() -> None:
         )
     """)
 
+    # ── Migration : ajouter la colonne role si elle n existe pas
+    try:
+        conn.execute("ALTER TABLE resources ADD COLUMN role TEXT DEFAULT ''")
+        conn.commit()
+    except Exception:
+        pass  # Colonne deja presente
+
     conn.commit()
     conn.close()
 
