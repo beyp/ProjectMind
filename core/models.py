@@ -234,6 +234,42 @@ def init_db() -> None:
     """)
 
     # ── Migration : ajouter colonnes si elles n existent pas (ALTER TABLE) ────
+    # Créer les tables manquantes si elles n existent pas (migration safe)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS role_colors (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            role       TEXT NOT NULL UNIQUE,
+            color      TEXT NOT NULL DEFAULT '#1E90FF',
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+    # Initialiser la palette par défaut si vide
+    existing = conn.execute("SELECT COUNT(*) FROM role_colors").fetchone()[0]
+    if existing == 0:
+        default_colors = [
+            ("PM", "#E74C3C"), ("BA", "#3498DB"), ("SME", "#27AE60"),
+            ("Lead", "#8E44AD"), ("Dev", "#1ABC9C"), ("Analyst", "#2980B9"),
+            ("OD Data CoreHR", "#F39C12"), ("OD Data WFM", "#E67E22"),
+            ("Architect", "#9B59B6"), ("QA", "#16A085"),
+            ("OCM", "#D35400"), ("Support", "#7F8C8D"),
+        ]
+        for role, color in default_colors:
+            c.execute("INSERT OR IGNORE INTO role_colors (role, color) VALUES (?, ?)", (role, color))
+
+    # Créer task_assignments si manquante
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS task_assignments (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id     INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+            resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+            hours       REAL    DEFAULT 0.0,
+            fraction    REAL    DEFAULT 0.0,
+            notes       TEXT    DEFAULT '',
+            UNIQUE(task_id, resource_id)
+        )
+    """)
+
     _alter_migrations = [
         "ALTER TABLE resources ADD COLUMN role TEXT DEFAULT ''",
     ]
