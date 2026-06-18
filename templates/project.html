@@ -848,6 +848,61 @@ document.getElementById('btn-add-risk').addEventListener('click', function() {
     body: JSON.stringify({ description: d, owner: document.getElementById('r-own').value, risk_type: document.getElementById('r-type').value })
   }).then(function() { location.reload(); });
 });
+
+// ── Edition tache (clic sur titre) ────────────────────────────────────────────
+function openEditTask(taskId) {
+  var t = TASKS_ALL.find(function(x) { return x.id === taskId; });
+  if (!t) return;
+  document.getElementById('et-id').value   = t.id;
+  document.getElementById('et-t').value    = t.title || '';
+  document.getElementById('et-c').value    = t.category_id || '';
+  document.getElementById('et-s').value    = t.status || '';
+  document.getElementById('et-d').value    = t.date_label || '';
+  document.getElementById('et-a').value    = t.ado_item_id || '';
+  document.getElementById('et-sd').value   = t.start_date || '';
+  document.getElementById('et-ed').value   = t.end_date || '';
+  var prog = t.progress || 0;
+  document.getElementById('et-prog').value = prog;
+  document.getElementById('et-prog-val').textContent = prog + '%';
+  document.getElementById('modal-edit').classList.add('open');
+  setTimeout(function() { document.getElementById('et-t').focus(); }, 50);
+}
+document.querySelectorAll('.task-lnk').forEach(function(el) {
+  el.addEventListener('click', function() { openEditTask(parseInt(this.dataset.id)); });
+});
+document.getElementById('btn-cancel-edit').addEventListener('click', function() {
+  document.getElementById('modal-edit').classList.remove('open');
+});
+document.getElementById('modal-edit').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+document.getElementById('btn-save-edit').addEventListener('click', function() {
+  var id = parseInt(document.getElementById('et-id').value);
+  if (!id) return;
+  fetch('/api/tasks/' + id, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title:       document.getElementById('et-t').value.trim(),
+      category_id: document.getElementById('et-c').value || null,
+      status:      document.getElementById('et-s').value,
+      date_label:  document.getElementById('et-d').value,
+      ado_item_id: document.getElementById('et-a').value ? parseInt(document.getElementById('et-a').value) : null,
+      start_date:  document.getElementById('et-sd').value,
+      end_date:    document.getElementById('et-ed').value,
+      progress:    parseInt(document.getElementById('et-prog').value) || 0,
+    })
+  }).then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) { document.getElementById('modal-edit').classList.remove('open'); location.reload(); }
+  });
+});
+document.getElementById('btn-del-task').addEventListener('click', function() {
+  var id   = parseInt(document.getElementById('et-id').value);
+  var task = TASKS_ALL.find(function(x) { return x.id === id; });
+  if (!confirm('Supprimer "' + (task ? task.title : '?') + '" ?')) return;
+  fetch('/api/tasks/' + id, { method: 'DELETE' })
+  .then(function() { document.getElementById('modal-edit').classList.remove('open'); location.reload(); });
+});
 </script>
 </body>
 </html>
