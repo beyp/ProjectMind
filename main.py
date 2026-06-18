@@ -798,10 +798,18 @@ async def api_delete_role_color(role: str):
 @app.post("/api/projects/{project_id}/resources/reset-colors")
 async def api_reset_resource_colors(project_id: int):
     """Remet les couleurs de toutes les ressources selon leur rôle."""
+    _DEFAULT = {
+        "PM": "#E74C3C", "BA": "#3498DB", "SME": "#27AE60",
+        "Lead": "#8E44AD", "Dev": "#1ABC9C", "Analyst": "#2980B9",
+        "OD Data CoreHR": "#F39C12", "OD Data WFM": "#E67E22",
+        "Architect": "#9B59B6", "QA": "#16A085",
+        "OCM": "#D35400", "Support": "#7F8C8D",
+    }
     try:
-        ROLE_COLORS = get_role_colors() or {}
+        _rc         = get_role_colors()
+        ROLE_COLORS = _rc if isinstance(_rc, dict) and _rc else _DEFAULT
     except Exception:
-        ROLE_COLORS = {}
+        ROLE_COLORS = _DEFAULT
     resources   = get_resources(project_id)
     reset_count = 0
     for res in resources:
