@@ -429,8 +429,19 @@ async def api_ai_capacity(project_id: int, request: Request):
     if not groq_key:
         return {"error": "GROQ_API_KEY non configurée", "actions": []}
 
-    # Palette couleurs depuis la DB (pas hardcodée !)
-    ROLE_COLORS = get_role_colors()
+    # Palette couleurs depuis la DB avec fallback hardcodé si table vide/manquante
+    _DEFAULT_COLORS = {
+        "PM": "#E74C3C", "BA": "#3498DB", "SME": "#27AE60",
+        "Lead": "#8E44AD", "Dev": "#1ABC9C", "Analyst": "#2980B9",
+        "OD Data CoreHR": "#F39C12", "OD Data WFM": "#E67E22",
+        "Architect": "#9B59B6", "QA": "#16A085",
+        "OCM": "#D35400", "Support": "#7F8C8D",
+    }
+    try:
+        _db_colors = get_role_colors()
+        ROLE_COLORS = _db_colors if isinstance(_db_colors, dict) and _db_colors else _DEFAULT_COLORS
+    except Exception:
+        ROLE_COLORS = _DEFAULT_COLORS
 
     res_list  = ", ".join(
         f"{r['acronym']} (id:{r['id']}, max:{r['max_fraction']}, role:{r.get('role','')}, color:{r.get('color','')})"
@@ -657,7 +668,10 @@ async def api_ai_capacity(project_id: int, request: Request):
             color = action.get("color", "")
             if role and color:
                 upsert_role_color(role, color)
-                ROLE_COLORS = get_role_colors()  # refresh
+                try:
+                ROLE_COLORS = get_role_colors() or {}
+            except Exception:
+                ROLE_COLORS = {}
                 action["executed"] = True
             else:
                 action["executed"] = False
@@ -784,7 +798,10 @@ async def api_delete_role_color(role: str):
 @app.post("/api/projects/{project_id}/resources/reset-colors")
 async def api_reset_resource_colors(project_id: int):
     """Remet les couleurs de toutes les ressources selon leur rôle."""
-    ROLE_COLORS = get_role_colors()
+    try:
+        ROLE_COLORS = get_role_colors() or {}
+    except Exception:
+        ROLE_COLORS = {}
     resources   = get_resources(project_id)
     reset_count = 0
     for res in resources:
