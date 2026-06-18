@@ -29,9 +29,9 @@ header h1{color:var(--accent);font-size:1.1rem;}
   color:var(--dim);margin-bottom:8px;}
 .sb-btn{display:block;width:100%;text-align:left;background:var(--border);
   border:none;color:var(--text);padding:7px 10px;border-radius:5px;
-  cursor:pointer;font-size:0.8rem;margin-bottom:5px;}
-.sb-btn:hover{background:var(--accent);color:white;}
-.sb-btn.primary{background:var(--accent);color:white;}
+  cursor:pointer;font-size:0.8rem;margin-bottom:5px;transition:background 0.15s;}
+.sb-btn:hover{background:color-mix(in srgb,var(--accent) 20%,var(--border));color:var(--text);}
+.sb-btn.active{background:var(--accent);color:white;}
 .main{flex:1;overflow-y:auto;padding:18px;}
 .tabs{display:flex;gap:3px;border-bottom:1px solid var(--border);margin-bottom:16px;}
 .tab{padding:7px 14px;cursor:pointer;border-radius:6px 6px 0 0;
@@ -122,7 +122,7 @@ header h1{color:var(--accent);font-size:1.1rem;}
     </div>
     <div class="sb-sec" style="flex:1;">
       <div class="sb-ttl">Actions</div>
-      <button class="sb-btn primary" id="sb-ai">IA Chat</button>
+      <button class="sb-btn" id="sb-ai">IA Chat</button>
       <button class="sb-btn" id="sb-weekly">Notes hebdo</button>
       <button class="sb-btn" id="sb-ms">Jalons</button>
       <button class="sb-btn" id="sb-risks">Risques</button>
@@ -465,10 +465,13 @@ var TASKS_ALL = {{ tasks_flat | tojson }};
 function showTab(name) {
   document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
   document.querySelectorAll('.tab').forEach(function(el) { el.classList.remove('active'); });
-  var tc  = document.getElementById('tc-' + name);
-  var tab = document.getElementById('tab-' + name);
-  if (tc)  tc.classList.add('active');
-  if (tab) tab.classList.add('active');
+  document.querySelectorAll('.sb-btn').forEach(function(el) { el.classList.remove('active'); });
+  var tc   = document.getElementById('tc-' + name);
+  var tab  = document.getElementById('tab-' + name);
+  var sbbtn = document.getElementById('sb-' + name);
+  if (tc)    tc.classList.add('active');
+  if (tab)   tab.classList.add('active');
+  if (sbbtn) sbbtn.classList.add('active');
 }
 
 // Attacher les événements tabs via addEventListener (PAS onclick dans le HTML)
