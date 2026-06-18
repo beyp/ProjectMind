@@ -326,6 +326,113 @@ def delete_project(project_id: int) -> bool:
     return deleted
 
 
+def get_task_assignments(task_id: int) -> list[dict]:
+    """Retourne les ressources assignées à une tâche."""
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT ta.*, r.acronym, r.full_name, r.color, r.max_fraction
+        FROM task_assignments ta
+        JOIN resources r ON ta.resource_id = r.id
+        WHERE ta.task_id=?
+        ORDER BY r.acronym
+    """, (task_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_project_assignments(project_id: int) -> list[dict]:
+    """Retourne toutes les assignations d'un projet."""
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT ta.*, r.acronym, r.full_name, r.color, t.title as task_title,
+               t.start_date, t.end_date, t.progress
+        FROM task_assignments ta
+        JOIN resources r ON ta.resource_id = r.id
+        JOIN tasks t ON ta.task_id = t.id
+        WHERE t.project_id=?
+        ORDER BY r.acronym, t.id
+    """, (project_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def upsert_task_assignment(task_id: int, resource_id: int,
+                           hours: float = 0.0, fraction: float = 0.0,
+                           notes: str = "") -> int:
+    """Crée ou met à jour une assignation ressource ↔ tâche."""
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("""
+        INSERT INTO task_assignments (task_id, resource_id, hours, fraction, notes)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(task_id, resource_id)
+        DO UPDATE SET hours=excluded.hours,
+                      fraction=excluded.fraction,
+                      notes=excluded.notes
+    """, (task_id, resource_id, hours, fraction, notes))
+    aid = c.lastrowid
+    conn.commit()
+    conn.close()
+    return aid
+
+
+def delete_task_assignment(task_id: int, resource_id: int) -> bool:
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("DELETE FROM task_assignments WHERE task_id=? AND resource_id=?",
+              (task_id, resource_id))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
+
+
+def compute_task_end_date(task_id: int) -> str | None:
+    """
+    Calcule la date de fin estimée d'une tâche
+    basée sur les assignations de ressources et le start_date.
+    Logique : total_hours / (sum des fractions * 40h/sem) → nb semaines.
+    """
+    from datetime import date, timedelta
+    conn  = get_db()
+    task  = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    if not task or not task["start_date"]:
+        conn.close()
+        return None
+
+    assigns = conn.execute("""
+        SELECT ta.hours, ta.fraction, r.max_fraction
+        FROM task_assignments ta
+        JOIN resources r ON ta.resource_id = r.id
+        WHERE ta.task_id=?
+    """, (task_id,)).fetchall()
+    conn.close()
+
+    if not assigns:
+        return None
+
+    # Heures totales nécessaires
+    total_hours = sum(a["hours"] for a in assigns if a["hours"] > 0)
+    if total_hours == 0:
+        return None
+
+    # Capacité hebdomadaire totale des ressources assignées (en heures/sem)
+    weekly_capacity = sum(
+        (a["fraction"] if a["fraction"] > 0 else a["max_fraction"]) * 40
+        for a in assigns
+    )
+    if weekly_capacity == 0:
+        return None
+
+    weeks_needed = total_hours / weekly_capacity
+    try:
+        start = date.fromisoformat(task["start_date"])
+        end   = start + timedelta(weeks=weeks_needed)
+        return end.isoformat()
+    except Exception:
+        return None
+
+
 def get_resources(project_id: int) -> list[dict]:
     conn = get_db()
     rows = conn.execute(
