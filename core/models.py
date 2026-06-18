@@ -322,6 +322,124 @@ def delete_project(project_id: int) -> bool:
     return deleted
 
 
+def get_resources(project_id: int) -> list[dict]:
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM resources WHERE project_id=? ORDER BY sort_order, id",
+        (project_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def create_resource(project_id: int, acronym: str, full_name: str = "",
+                    is_external: bool = False, max_fraction: float = 1.0,
+                    color: str = "#1E90FF") -> int:
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("""
+        INSERT INTO resources
+        (project_id, acronym, full_name, is_external, max_fraction, color)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (project_id, acronym, full_name, int(is_external), max_fraction, color))
+    rid = c.lastrowid
+    conn.commit()
+    conn.close()
+    return rid
+
+
+def update_resource(resource_id: int, **kwargs) -> None:
+    if not kwargs:
+        return
+    sets = ", ".join(f"{k}=?" for k in kwargs)
+    vals = list(kwargs.values()) + [resource_id]
+    conn = get_db()
+    conn.execute(f"UPDATE resources SET {sets} WHERE id=?", vals)
+    conn.commit()
+    conn.close()
+
+
+def delete_resource(resource_id: int) -> bool:
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("DELETE FROM resources WHERE id=?", (resource_id,))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
+
+
+def reorder_resources(project_id: int, ordered_ids: list[int]) -> None:
+    conn = get_db()
+    for idx, rid in enumerate(ordered_ids):
+        conn.execute(
+            "UPDATE resources SET sort_order=? WHERE id=? AND project_id=?",
+            (idx, rid, project_id)
+        )
+    conn.commit()
+    conn.close()
+
+
+def get_capacity(project_id: int, year: int | None = None) -> list[dict]:
+    conn = get_db()
+    if year:
+        rows = conn.execute("""
+            SELECT c.*, r.acronym, r.full_name, r.max_fraction, r.color
+            FROM capacity c
+            JOIN resources r ON c.resource_id = r.id
+            WHERE c.project_id=? AND c.year=?
+            ORDER BY r.sort_order, r.id, c.week
+        """, (project_id, year)).fetchall()
+    else:
+        rows = conn.execute("""
+            SELECT c.*, r.acronym, r.full_name, r.max_fraction, r.color
+            FROM capacity c
+            JOIN resources r ON c.resource_id = r.id
+            WHERE c.project_id=?
+            ORDER BY r.sort_order, r.id, c.year, c.week
+        """, (project_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def upsert_capacity(project_id: int, resource_id: int, year: int, week: int,
+                    fraction: float) -> None:
+    """Insère ou met à jour une cellule capacity."""
+    conn = get_db()
+    # Utiliser INSERT OR REPLACE pour compatibilité SQLite
+    conn.execute("""
+        INSERT INTO capacity (project_id, resource_id, year, week, fraction)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(resource_id, task_id, year, week)
+        DO UPDATE SET fraction=excluded.fraction
+    """, (project_id, resource_id, year, week, fraction))
+    conn.commit()
+    conn.close()
+
+
+def get_capacity_matrix(project_id: int, year: int) -> dict:
+    """
+    Retourne matrix[str(resource_id)][week] = fraction
+    pour affichage dans le tableau capacity.
+    """
+    rows      = get_capacity(project_id, year)
+    resources = get_resources(project_id)
+    matrix: dict[str, dict[int, float]] = {}
+
+    for row in rows:
+        rid  = str(row["resource_id"])
+        week = row["week"]
+        frac = row["fraction"]
+        if rid not in matrix:
+            matrix[rid] = {}
+        matrix[rid][week] = matrix[rid].get(week, 0.0) + frac
+
+    return {
+        "matrix":    matrix,
+        "resources": resources,
+    }
+
+
 def get_fiscal_year(d: date | None = None) -> str:
     """Retourne le Fiscal Year pour une date (ex: FY27)."""
     if d is None:
