@@ -410,20 +410,17 @@ async def api_ai_import(project_id: int, request: Request):
 @app.post("/api/projects/{project_id}/ai/capacity")
 async def api_ai_capacity(project_id: int, request: Request):
     """
-    IA dédiée au capacity planning.
-    Analyse du texte/instructions et retourne des actions structurées :
-    - create_resource : créer une ressource
-    - assign_resource : assigner une ressource à une tâche
-    - set_capacity    : définir la fraction d une ressource sur une semaine
+    IA capacity planning - gestion complète des ressources et allocations.
+    Supporte : créer/supprimer ressources, allouer par semaine, assigner aux tâches,
+               effacer capacity, avec ou sans image.
     """
     import os, json as _json
-    from ai.task_parser import GROQ_URL
+    from ai.task_parser import GROQ_URL, GROQ_VISION_MODEL
 
-    body         = await request.json()
-    text         = body.get("text", "")
-    image_data   = body.get("image_data", "")
-    image_mime   = body.get("image_mime", "image/jpeg")
-    language     = body.get("language", "en")
+    body       = await request.json()
+    text       = body.get("text", "")
+    image_data = body.get("image_data", "")
+    image_mime = body.get("image_mime", "image/jpeg")
 
     project   = get_project(project_id)
     resources = get_resources(project_id)
@@ -433,46 +430,64 @@ async def api_ai_capacity(project_id: int, request: Request):
     if not groq_key:
         return {"error": "GROQ_API_KEY non configurée", "actions": []}
 
-    # Contexte du projet pour l IA
-    res_list  = ", ".join(f"{r['acronym']} (max {r['max_fraction']})" for r in resources) or "aucune"
-    task_list = ", ".join(f"#{t['id']} {t['title']}" for t in tasks[:20]) or "aucune"
+    res_list  = ", ".join(
+        f"{r['acronym']} (id:{r['id']}, max:{r['max_fraction']}, role:{r.get('role','')})"
+        for r in resources
+    ) or "aucune"
+    task_list = ", ".join(
+        f"#{t['id']} {t['title'][:30]}"
+        for t in tasks[:20]
+    ) or "aucune"
 
     system_prompt = f"""You are a project capacity planning assistant.
-The project is: {project.get('name', '')}
-Existing resources: {res_list}
+Project: {project.get('name', '')}
+Existing resources (acronym, id, max_fraction, role): {res_list}
 Existing tasks: {task_list}
 
-Analyze the user's instructions and return a JSON array of actions to perform.
-Each action has a "type" and parameters:
+Analyze the instructions and return a JSON array of actions to perform.
 
-1. Create a resource:
-   {{"type": "create_resource", "acronym": "SAMC4", "full_name": "Sam C.", "max_fraction": 1.0, "is_external": false, "color": "#1E90FF"}}
+Available action types:
 
-2. Set capacity (resource allocation per week):
+1. Create resource:
+   {{"type": "create_resource", "acronym": "SAMC4", "full_name": "Sam C.", "role": "BA", "max_fraction": 1.0, "is_external": false, "color": "#1E90FF"}}
+
+2. Delete resource:
+   {{"type": "delete_resource", "acronym": "SAMC4", "message": "reason"}}
+
+3. Set capacity (allocation per week):
    {{"type": "set_capacity", "acronym": "SAMC4", "fraction": 0.5, "weeks": [23,24,25,26], "year": 2026}}
-   (fraction: 0.25=25%, 0.5=50%, 1.0=100%)
 
-3. Assign resource to task:
+4. Clear capacity (reset to 0):
+   {{"type": "clear_capacity", "acronym": "SAMC4", "weeks": [23,24], "year": 2026}}
+
+5. Assign resource to task:
    {{"type": "assign_resource", "acronym": "SAMC4", "task_id": 5, "hours": 20, "fraction": 0.5}}
 
-4. Reply message to user:
-   {{"type": "message", "text": "I have created SAMC4 and set 25% allocation..."}}
+6. Remove assignment:
+   {{"type": "remove_assignment", "acronym": "SAMC4", "task_id": 5}}
+
+7. Reply message:
+   {{"type": "message", "text": "Done. I have created SAMC4 and allocated 25% on weeks 23-26."}}
 
 Rules:
 - ALWAYS include at least one "message" action
 - Use exact acronyms from existing resources when possible
-- If resource doesn't exist, include a create_resource action first
-- Default colors: internal=#1E90FF, external=#FF8C00
-- Reply ONLY with a valid JSON array, no text before/after
+- fraction: 0.25=25%=10h/sem, 0.5=50%=20h/sem, 1.0=100%=40h/sem
+- If resource doesn't exist, include create_resource first
+- Current year if not specified: 2026
+- Reply ONLY with valid JSON array, no text before/after
 """
 
-    # Construire le message
-    user_content = []
+    # Build user message (with image if present)
     if image_data:
-        user_content.append({"type": "text", "text": text or "Analyze this capacity planning image"})
-        user_content.append({"type": "image_url", "image_url": {"url": f"data:{image_mime};base64,{image_data}"}})
+        user_msg = [
+            {"type": "text", "text": text or "Analyze this capacity planning data"},
+            {"type": "image_url", "image_url": {"url": f"data:{image_mime};base64,{image_data}"}}
+        ]
+        model = GROQ_VISION_MODEL
     else:
-        user_content.append({"type": "text", "text": text})
+        user_msg = text
+        model    = "llama-3.3-70b-versatile"
 
     import requests as req
     try:
@@ -480,40 +495,46 @@ Rules:
             GROQ_URL,
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model":    "meta-llama/llama-4-scout-17b-16e-instruct" if image_data else "llama-3.3-70b-versatile",
+                "model":    model,
                 "messages": [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user",   "content": user_content if image_data else text},
+                    {"role": "user",   "content": user_msg},
                 ],
-                "temperature": 0.3,
+                "temperature": 0.2,
                 "max_tokens":  2048,
             },
             timeout=30,
         )
         r.raise_for_status()
-        content = r.json()["choices"][0]["message"]["content"].strip()
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0].strip()
-        actions = _json.loads(content)
+        raw = r.json()["choices"][0]["message"]["content"].strip()
+        if "```json" in raw:
+            raw = raw.split("```json")[1].split("```")[0].strip()
+        elif "```" in raw:
+            raw = raw.split("```")[1].split("```")[0].strip()
+        actions = _json.loads(raw)
         if not isinstance(actions, list):
             actions = [actions]
     except Exception as e:
-        return {"error": str(e), "actions": [{"type": "message", "text": f"Erreur: {e}"}]}
+        return {"error": str(e), "actions": [{"type": "message", "text": f"IA error: {e}"}]}
 
-    # Exécuter les actions automatiquement
+    # Refresh resources map
+    resources = get_resources(project_id)
+    res_map   = {r["acronym"].upper(): r for r in resources}
+
     executed = []
     for action in actions:
         atype = action.get("type", "")
 
+        # ── create_resource ─────────────────────────────────────────────────
         if atype == "create_resource":
-            # Vérifier si elle existe déjà
-            existing = next((r for r in resources if r["acronym"] == action.get("acronym", "").upper()), None)
-            if not existing:
+            acro = action.get("acronym", "").upper()
+            if acro in res_map:
+                action["executed"] = False
+                action["note"]     = f"{acro} already exists"
+            else:
                 rid = create_resource(
                     project_id   = project_id,
-                    acronym      = action.get("acronym", "").upper(),
+                    acronym      = acro,
                     full_name    = action.get("full_name", ""),
                     role         = action.get("role", ""),
                     is_external  = action.get("is_external", False),
@@ -521,53 +542,95 @@ Rules:
                     color        = action.get("color", "#1E90FF"),
                 )
                 action["executed"] = True
-                action["id"] = rid
-                resources = get_resources(project_id)  # refresh
-            else:
-                action["executed"] = False
-                action["note"] = "already exists"
+                action["id"]       = rid
+                resources = get_resources(project_id)
+                res_map   = {r["acronym"].upper(): r for r in resources}
             executed.append(action)
 
-        elif atype == "set_capacity":
-            # Trouver la ressource par acronyme
+        # ── delete_resource ─────────────────────────────────────────────────
+        elif atype == "delete_resource":
             acro = action.get("acronym", "").upper()
-            res  = next((r for r in resources if r["acronym"] == acro), None)
+            res  = res_map.get(acro)
             if res:
-                year     = int(action.get("year", __import__("datetime").date.today().year))
+                delete_resource(res["id"])
+                action["executed"] = True
+                resources = get_resources(project_id)
+                res_map   = {r["acronym"].upper(): r for r in resources}
+            else:
+                action["executed"] = False
+                action["note"]     = f"{acro} not found"
+            executed.append(action)
+
+        # ── set_capacity ─────────────────────────────────────────────────────
+        elif atype == "set_capacity":
+            acro = action.get("acronym", "").upper()
+            res  = res_map.get(acro)
+            if res:
+                year     = int(action.get("year", 2026))
                 weeks    = action.get("weeks", [])
                 fraction = float(action.get("fraction", 0.5))
                 for week in weeks:
                     upsert_capacity(project_id, res["id"], year, int(week), fraction)
                 action["executed"] = True
-                action["resource_id"] = res["id"]
             else:
                 action["executed"] = False
-                action["note"] = f"Resource {acro} not found"
+                action["note"]     = f"{acro} not found"
             executed.append(action)
 
+        # ── clear_capacity ───────────────────────────────────────────────────
+        elif atype == "clear_capacity":
+            acro = action.get("acronym", "").upper()
+            res  = res_map.get(acro)
+            if res:
+                year  = int(action.get("year", 2026))
+                weeks = action.get("weeks", [])
+                for week in weeks:
+                    upsert_capacity(project_id, res["id"], year, int(week), 0.0)
+                action["executed"] = True
+            else:
+                action["executed"] = False
+                action["note"]     = f"{acro} not found"
+            executed.append(action)
+
+        # ── assign_resource ──────────────────────────────────────────────────
         elif atype == "assign_resource":
             from core.models import upsert_task_assignment
             acro = action.get("acronym", "").upper()
-            res  = next((r for r in resources if r["acronym"] == acro), None)
-            if res and action.get("task_id"):
+            res  = res_map.get(acro)
+            tid  = action.get("task_id")
+            if res and tid:
                 upsert_task_assignment(
-                    task_id     = int(action["task_id"]),
+                    task_id     = int(tid),
                     resource_id = res["id"],
                     hours       = float(action.get("hours", 0)),
                     fraction    = float(action.get("fraction", 0)),
+                    notes       = action.get("notes", ""),
                 )
                 action["executed"] = True
             else:
                 action["executed"] = False
-                action["note"] = "Resource or task not found"
+                action["note"]     = f"Resource {acro} or task {tid} not found"
             executed.append(action)
 
+        # ── remove_assignment ────────────────────────────────────────────────
+        elif atype == "remove_assignment":
+            from core.models import delete_task_assignment
+            acro = action.get("acronym", "").upper()
+            res  = res_map.get(acro)
+            tid  = action.get("task_id")
+            if res and tid:
+                delete_task_assignment(int(tid), res["id"])
+                action["executed"] = True
+            else:
+                action["executed"] = False
+                action["note"]     = f"Resource {acro} or task {tid} not found"
+            executed.append(action)
+
+        # ── message ──────────────────────────────────────────────────────────
         elif atype == "message":
             executed.append(action)
 
     return {"actions": executed, "ok": True}
-
-
 @app.post("/api/projects/{project_id}/ai/parse-image")
 async def api_ai_parse_image(project_id: int, request: Request):
     """
