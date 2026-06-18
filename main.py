@@ -50,6 +50,43 @@ templates.env.globals["today"]              = date.today()  # valeur, pas callab
 from urllib.parse import quote as _url_quote
 templates.env.filters["urlencode"] = lambda s: _url_quote(str(s), safe="")
 
+# Filtre Jinja2 : date ISO → numéro de semaine ISO
+def _week_num(date_str: str) -> int | None:
+    """Retourne le numéro de semaine ISO depuis une date YYYY-MM-DD."""
+    if not date_str:
+        return None
+    try:
+        from datetime import date as _d
+        d = _d.fromisoformat(str(date_str)[:10])
+        return d.isocalendar()[1]
+    except Exception:
+        return None
+
+def _week_range_label(start_str: str, end_str: str, lang: str = "fr") -> str:
+    """
+    Génère le label semaine(s) pour l affichage Weekly Status.
+    - Même semaine : S21 (fr) ou W21 (en)
+    - Plusieurs semaines : S21 à S24 (fr) ou W21 to W24 (en)
+    - Pas de dates : chaîne vide
+    """
+    sw = _week_num(start_str)
+    ew = _week_num(end_str)
+    prefix = "W" if lang == "en" else "S"
+    sep    = " to "  if lang == "en" else " à "
+
+    if sw is None and ew is None:
+        return ""
+    if sw is None:
+        return f"{prefix}{ew}"
+    if ew is None:
+        return f"{prefix}{sw}"
+    if sw == ew:
+        return f"{prefix}{sw}"
+    return f"{prefix}{sw}{sep}{prefix}{ew}"
+
+templates.env.filters["week_num"]     = lambda s: _week_num(s)
+templates.env.globals["week_range"]   = _week_range_label
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
