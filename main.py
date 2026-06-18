@@ -712,6 +712,95 @@ async def api_project_assignments(project_id: int):
     return get_project_assignments(project_id)
 
 
+@app.post("/api/projects/{project_id}/ai/capacity-parse")
+async def api_capacity_parse(project_id: int, request: Request):
+    """
+    Parse du texte pour la gestion des ressources et du capacity planning.
+    Comprend : ajouter ressources, définir fractions, assigner aux tâches.
+    Retourne une liste d'actions à appliquer.
+    """
+    import os
+    from ai.task_parser import TaskParser
+
+    data      = await request.json()
+    text      = data.get("text", "")
+    resources_ctx = data.get("resources", "")
+    language  = data.get("language", "fr")
+    project   = get_project(project_id)
+    if not project:
+        raise HTTPException(404)
+
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if not groq_key:
+        return JSONResponse({"error": "GROQ_API_KEY non configuree"})
+
+    # Système prompt spécialisé capacity
+    system_fr = """Tu es un assistant expert en gestion de capacite de projet.
+Tu analyses du texte décrivant des besoins en ressources et retournes un JSON structuré.
+
+Ressources disponibles dans le projet: """ + resources_ctx + """
+
+Pour chaque action identifiée, génère un objet JSON :
+- Pour ajouter une ressource :
+  {"type": "add_resource", "acronym": "SAMC4", "full_name": "Samuel C.", "max_fraction": 0.25, "color": "#1E90FF", "is_external": false, "message": "explication"}
+
+- Pour définir la capacité hebdomadaire :
+  {"type": "set_capacity", "acronym": "SAMC4", "fraction": 0.25, "weeks": [23,24,25,26], "year": 2026, "entries": [{"resource_id": null, "year": 2026, "week": 23, "fraction": 0.25}], "message": "explication"}
+
+- Pour donner une information :
+  {"type": "info", "message": "explication"}
+
+Règles :
+- fraction 0.25 = 25% = 10h/sem sur base 40h
+- Si l'utilisateur dit "à 25%" → max_fraction = 0.25
+- Si resource_id est inconnu, mettre null (à résoudre côté client)
+- Retourne UNIQUEMENT un JSON valide : {"actions": [...]}
+"""
+
+    import requests as req
+    try:
+        r = req.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model":    "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system",  "content": system_fr},
+                    {"role": "user",    "content": text},
+                ],
+                "temperature": 0.2,
+                "max_tokens":  1024,
+            },
+            timeout=30,
+        )
+        r.raise_for_status()
+        content = r.json()["choices"][0]["message"]["content"].strip()
+
+        import re as _re, json as _json
+        # Extraire le JSON
+        m = _re.search(r'\{.*\}', content, _re.DOTALL)
+        if m:
+            result = _json.loads(m.group(0))
+            actions = result.get("actions", [])
+        else:
+            actions = [{"type": "info", "message": content}]
+
+        # Résoudre les resource_id pour les actions set_capacity
+        res_map = {r["acronym"].upper(): r["id"] for r in get_resources(project_id)}
+        for action in actions:
+            if action.get("type") == "set_capacity":
+                acro = action.get("acronym", "").upper()
+                rid  = res_map.get(acro)
+                if rid and action.get("entries"):
+                    for entry in action["entries"]:
+                        entry["resource_id"] = rid
+
+        return {"actions": actions, "count": len(actions)}
+
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)})
+
+
 @app.get("/api/projects/{project_id}/export/pptx")
 async def export_pptx(project_id: int):
     """Génère et télécharge le Weekly Status PowerPoint."""
