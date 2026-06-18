@@ -26,6 +26,27 @@ header h1{color:var(--accent);font-size:1.05rem;}
 .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;}
 .card-ttl{color:var(--accent);font-size:0.88rem;text-transform:uppercase;
   letter-spacing:1px;margin-bottom:12px;}
+/* Accordéon */
+.acc-header{
+  display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;padding:10px 14px;margin:-16px -16px 0 -16px;
+  border-radius:8px 8px 0 0;user-select:none;
+  transition:background 0.15s;
+}
+.acc-header:hover{background:color-mix(in srgb,var(--accent) 8%,transparent);}
+.acc-header .acc-title{
+  color:var(--accent);font-size:0.88rem;text-transform:uppercase;
+  letter-spacing:1px;font-weight:600;
+}
+.acc-header .acc-arrow{
+  color:var(--dim);font-size:0.9rem;transition:transform 0.2s;flex-shrink:0;
+}
+.acc-header.open .acc-arrow{transform:rotate(180deg);}
+.acc-body{overflow:hidden;transition:max-height 0.3s ease, opacity 0.2s;
+  max-height:2000px;opacity:1;}
+.acc-body.closed{max-height:0;opacity:0;pointer-events:none;}
+.card.acc-card{padding-top:0;}
+.card.acc-card .acc-body{padding-top:14px;}
 .fg{margin-bottom:10px;}
 .fg label{display:block;font-size:0.75rem;color:var(--dim);margin-bottom:3px;}
 .fg input,.fg select{width:100%;background:#12141f;border:1px solid var(--border);
@@ -91,7 +112,11 @@ header h1{color:var(--accent);font-size:1.05rem;}
   <!-- Panneau gauche -->
   <div>
     <div class="card">
-      <div class="card-ttl">Ressources</div>
+      <div class="acc-header open" id="acc-resources-hdr" onclick="toggleAcc('acc-resources')">
+  <span class="acc-title">Ressources</span>
+  <span class="acc-arrow">&#x25BC;</span>
+</div>
+<div class="acc-body" id="acc-resources-body">
       <div id="res-list">
         {% for res in resources %}
         <div class="res-item" data-id="{{ res.id }}">
@@ -232,7 +257,11 @@ header h1{color:var(--accent);font-size:1.05rem;}
     </div>
 
     <div class="card">
-      <div class="card-ttl">Legende</div>
+      <div class="acc-header " id="acc-legend-hdr" onclick="toggleAcc('acc-legend')">
+  <span class="acc-title">Legende</span>
+  <span class="acc-arrow">&#x25BC;</span>
+</div>
+<div class="acc-body closed" id="acc-legend-body">
       <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);"></div>Dans les limites</div>
       <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--orange) 20%,transparent);border:1px solid var(--orange);"></div>Attention (80-100%)</div>
       <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--red) 20%,transparent);border:1px solid var(--red);"></div>Surcharge (&gt; max)</div>
@@ -245,7 +274,11 @@ header h1{color:var(--accent);font-size:1.05rem;}
 
     <!-- Gestion des rôles -->
     <div class="card">
-      <div class="card-ttl">Roles et couleurs</div>
+      <div class="acc-header " id="acc-roles-hdr" onclick="toggleAcc('acc-roles')">
+  <span class="acc-title">Roles et couleurs</span>
+  <span class="acc-arrow">&#x25BC;</span>
+</div>
+<div class="acc-body closed" id="acc-roles-body">
       <div id="roles-list-mgmt" style="margin-bottom:10px;">
         {% for rc in role_colors %}
         <div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:0.8rem;">
@@ -1021,6 +1054,51 @@ function applyRoleColorFromDB(role, colorInputId) {
     if (inp) inp.value = color;
   }
 }
+
+
+// ── Accordéon panneau gauche ───────────────────────────────────────────────────
+var ACC_STORAGE = 'pm_capacity_acc_' + (typeof PID !== 'undefined' ? PID : '0');
+
+function toggleAcc(id) {
+  var hdr  = document.getElementById(id + '-hdr');
+  var body = document.getElementById(id + '-body');
+  if (!hdr || !body) return;
+
+  var isOpen = hdr.classList.contains('open');
+  if (isOpen) {
+    hdr.classList.remove('open');
+    body.classList.add('closed');
+  } else {
+    hdr.classList.add('open');
+    body.classList.remove('closed');
+  }
+
+  // Sauvegarder état dans localStorage
+  try {
+    var states = JSON.parse(localStorage.getItem(ACC_STORAGE) || '{}');
+    states[id] = !isOpen;
+    localStorage.setItem(ACC_STORAGE, JSON.stringify(states));
+  } catch(e) {}
+}
+
+// Restaurer états sauvegardés au chargement
+document.addEventListener('DOMContentLoaded', function() {
+  try {
+    var states = JSON.parse(localStorage.getItem(ACC_STORAGE) || '{}');
+    Object.keys(states).forEach(function(id) {
+      var hdr  = document.getElementById(id + '-hdr');
+      var body = document.getElementById(id + '-body');
+      if (!hdr || !body) return;
+      if (states[id]) {
+        hdr.classList.add('open');
+        body.classList.remove('closed');
+      } else {
+        hdr.classList.remove('open');
+        body.classList.add('closed');
+      }
+    });
+  } catch(e) {}
+});
 
 </script>
 <!-- Modal édition ressource -->
