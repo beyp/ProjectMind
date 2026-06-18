@@ -783,6 +783,28 @@ async def api_reorder_resources(project_id: int, request: Request):
     return {"ok": True}
 
 
+@app.post("/api/projects/{project_id}/resources/reset-colors")
+async def api_reset_resource_colors(project_id: int):
+    """Remet les couleurs de toutes les ressources selon leur rôle."""
+    ROLE_COLORS = {
+        "PM": "#E74C3C", "BA": "#3498DB", "SME": "#27AE60",
+        "Lead": "#8E44AD", "Dev": "#1ABC9C", "Analyst": "#2980B9",
+        "OD Data CoreHR": "#F39C12", "OD Data WFM": "#E67E22",
+        "Architect": "#9B59B6", "QA": "#16A085",
+        "OCM": "#D35400", "Support": "#7F8C8D",
+    }
+    resources   = get_resources(project_id)
+    reset_count = 0
+    for res in resources:
+        role  = res.get("role", "")
+        color = ROLE_COLORS.get(role)
+        if color:
+            update_resource(res["id"], color=color)
+            reset_count += 1
+    return {"ok": True, "reset": reset_count,
+            "message": f"Couleurs mises a jour pour {reset_count} ressource(s)."}
+
+
 @app.get("/api/resources/{resource_id}")
 async def api_get_resource(resource_id: int):
     """Récupère une ressource par son ID."""
