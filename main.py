@@ -689,14 +689,32 @@ async def api_get_resources(project_id: int):
 @app.post("/api/projects/{project_id}/resources")
 async def api_create_resource(project_id: int, request: Request):
     data = await request.json()
+    # Palette de couleurs par rôle (si pas de couleur fournie)
+    ROLE_COLORS = {
+        "PM":               "#E74C3C",  # Rouge foncé — Chef de projet
+        "BA":               "#3498DB",  # Bleu — Business Analyst
+        "SME":              "#27AE60",  # Vert — Subject Matter Expert
+        "Lead":             "#8E44AD",  # Violet — Lead technique
+        "Dev":              "#1ABC9C",  # Turquoise — Développeur
+        "Analyst":          "#2980B9",  # Bleu moyen — Analyste
+        "OD Data CoreHR":   "#F39C12",  # Orange — OD Data CoreHR
+        "OD Data WFM":      "#E67E22",  # Orange foncé — OD Data WFM
+        "Architect":        "#9B59B6",  # Violet clair — Architecte
+        "QA":               "#16A085",  # Vert foncé — QA
+        "OCM":              "#D35400",  # Brun — Change Management
+        "Support":          "#7F8C8D",  # Gris — Support
+    }
+    role  = data.get("role", "")
+    color = data.get("color", "") or ROLE_COLORS.get(role, "#1E90FF")
+
     rid  = create_resource(
         project_id   = project_id,
         acronym      = data.get("acronym", "").upper(),
         full_name    = data.get("full_name", ""),
-        role         = data.get("role", ""),
+        role         = role,
         is_external  = data.get("is_external", False),
         max_fraction = float(data.get("max_fraction", 1.0)),
-        color        = data.get("color", "#1E90FF"),
+        color        = color,
     )
     return {"id": rid, "ok": True}
 
