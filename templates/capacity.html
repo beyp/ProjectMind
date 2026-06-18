@@ -98,7 +98,7 @@ header h1{color:var(--accent);font-size:1.05rem;}
           <span class="res-handle" title="Glisser pour reordonner">&#x22EE;</span>
           <span class="res-badge" style="background:{{ res.color }};">{{ res.acronym }}</span>
           <span style="flex:1;{% if res.is_external %}font-style:italic;{% endif %}color:var(--dim);font-size:0.78rem;">
-            {% if res.full_name %}{{ res.full_name }}{% if res.is_external %} (ext){% endif %}{% endif %}
+            {% if res.full_name %}{{ res.full_name }}{% if res.is_external %} (ext){% endif %}{% endif %}{% if res.role %} <span style="background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);padding:1px 5px;border-radius:6px;font-size:0.68rem;">{{ res.role }}</span>{% endif %}
           </span>
           <span style="font-size:0.72rem;color:var(--dim);">
             {{ res.max_fraction }} / {{ (res.max_fraction * 40)|int }}h
