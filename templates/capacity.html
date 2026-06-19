@@ -477,10 +477,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Ajouter ressource
   // ── Couleurs des rôles depuis la DB ─────────────────────────────────────────
   // Chargé via Jinja2 (toujours sync avec la DB)
+  // Palette role_colors depuis serveur via tojson
   window.ROLE_COLORS = {};
-  {% for rc in (role_colors or []) %}
-  window.ROLE_COLORS["{{ rc.role }}"] = "{{ rc.color }}";
-  {% endfor %}
+  ({{ role_colors | tojson }}).forEach(function(rc){
+    if(rc && rc.role) window.ROLE_COLORS[rc.role] = rc.color;
+  });
 
   function applyRoleColor(role, colorInputId) {
     var color = window.ROLE_COLORS[role];
@@ -1643,10 +1644,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Ajouter ressource
   // ── Couleurs des rôles depuis la DB ─────────────────────────────────────────
   // Chargé via Jinja2 (toujours sync avec la DB)
+  // Palette role_colors depuis serveur via tojson
   window.ROLE_COLORS = {};
-  {% for rc in (role_colors or []) %}
-  window.ROLE_COLORS["{{ rc.role }}"] = "{{ rc.color }}";
-  {% endfor %}
+  ({{ role_colors | tojson }}).forEach(function(rc){
+    if(rc && rc.role) window.ROLE_COLORS[rc.role] = rc.color;
+  });
 
   function applyRoleColor(role, colorInputId) {
     var color = window.ROLE_COLORS[role];
