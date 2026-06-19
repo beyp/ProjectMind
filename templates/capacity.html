@@ -478,7 +478,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // ── Couleurs des rôles depuis la DB ─────────────────────────────────────────
   // Chargé via Jinja2 (toujours sync avec la DB)
   window.ROLE_COLORS = {};
-  {% for rc in role_colors %}
+  {% for rc in (role_colors or []) %}
   window.ROLE_COLORS["{{ rc.role }}"] = "{{ rc.color }}";
   {% endfor %}
 
@@ -1361,7 +1361,7 @@ function toggleAcc(id) {
       <div class="card-ttl acc-toggle " data-body="acc-roles-body" onclick="toggleAcc2(this)" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:0;">Roles et couleurs<span class="acc-arrow" style="font-size:0.8rem;transition:transform 0.2s;">&#x25BC;</span></div><div id="acc-roles-body" class="acc-content closed" style="padding-top:10px;">
 <div id="acc-roles-body" class="acc-content closed" style="padding-top:10px;">
       <div id="roles-list-mgmt" style="margin-bottom:10px;">
-        {% for rc in role_colors %}
+        {% for rc in (role_colors or []) %}
         <div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:0.8rem;">
           <span style="width:12px;height:12px;border-radius:50%;background:{{ rc.color }};
             flex-shrink:0;border:1px solid rgba(255,255,255,0.2);"></span>
@@ -1644,7 +1644,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // ── Couleurs des rôles depuis la DB ─────────────────────────────────────────
   // Chargé via Jinja2 (toujours sync avec la DB)
   window.ROLE_COLORS = {};
-  {% for rc in role_colors %}
+  {% for rc in (role_colors or []) %}
   window.ROLE_COLORS["{{ rc.role }}"] = "{{ rc.color }}";
   {% endfor %}
 
