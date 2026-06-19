@@ -767,7 +767,11 @@ async def capacity_view(request: Request, project_id: int):
             "resources":   resources,
             "matrix":      matrix,
             "year":        year,
-            "role_colors": role_colors,
+            # role_colors comme liste de dicts pour Jinja2 {% for rc in role_colors %}
+            "role_colors": [{"role": k, "color": v}
+                            for k, v in (role_colors.items()
+                            if isinstance(role_colors, dict)
+                            else {}.items())],
         },
     )
 
