@@ -72,6 +72,17 @@ header h1{color:var(--accent);font-size:1.05rem;}
 .leg-dot{width:14px;height:14px;border-radius:3px;flex-shrink:0;}
 ::-webkit-scrollbar{height:5px;width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* ── Accordéon panneau gauche v3 ── */
+.acc-section{border-bottom:1px solid var(--border);}
+.acc-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
+  cursor:pointer;user-select:none;font-size:0.82rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:0.5px;color:var(--accent);transition:background 0.15s;}
+.acc-hd:hover{background:color-mix(in srgb,var(--accent) 6%,transparent);}
+.acc-arr{font-size:0.75rem;color:var(--dim);transition:transform 0.2s;flex-shrink:0;}
+.acc-hd.open .acc-arr{transform:rotate(180deg);}
+.acc-bd{padding:0 14px 12px 14px;}
+
 </style>
 </head>
 <body>
@@ -99,177 +110,128 @@ header h1{color:var(--accent);font-size:1.05rem;}
         {% for res in resources %}
         <div class="res-item" data-id="{{ res.id }}">
           <span class="res-handle" title="Glisser pour reordonner">&#x22EE;</span>
+<div style="display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;">
+
+  <!-- RESSOURCES -->
+  <div class="acc-section">
+    <div class="acc-hd open" onclick="accToggle(this)"><span>Ressources</span><span class="acc-arr">&#x25BC;</span></div>
+    <div class="acc-bd">
+      <div id="res-list">
+        {% for res in resources %}
+        <div class="res-item" data-id="{{ res.id }}">
+          <span class="res-handle" title="Glisser">&#x22EE;</span>
           <span class="res-badge" style="background:{{ res.color }};">{{ res.acronym }}</span>
-          <span class="res-edit-trigger" data-id="{{ res.id }}" title="Cliquer pour editer" style="flex:1;cursor:pointer;{% if res.is_external %}font-style:italic;{% endif %}color:var(--dim);font-size:0.78rem;">
-            {% if res.full_name %}{{ res.full_name }}{% if res.is_external %} (ext){% endif %}{% endif %}{% if res.role %} <span style="background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);padding:1px 5px;border-radius:6px;font-size:0.68rem;">{{ res.role }}</span>{% endif %}
+          <span style="flex:1;font-size:0.78rem;cursor:pointer;" class="res-edit-trigger" data-id="{{ res.id }}">
+            {% if res.full_name %}<span style="color:var(--dim);">{{ res.full_name }}</span>{% endif %}
+            {% if res.role %}<span style="background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);padding:1px 5px;border-radius:6px;font-size:0.68rem;margin-left:4px;">{{ res.role }}</span>{% endif %}
+            {% if res.is_external %}<span style="color:var(--orange);font-size:0.7rem;"> (ext)</span>{% endif %}
           </span>
-          <span style="font-size:0.72rem;color:var(--dim);">
-            {{ res.max_fraction }} / {{ (res.max_fraction * 40)|int }}h
-          </span>
+          <span style="font-size:0.72rem;color:var(--dim);">{{ res.max_fraction }}/{{ (res.max_fraction*40)|int }}h</span>
           <button class="btn-r del-res-btn" data-id="{{ res.id }}">&times;</button>
         </div>
         {% endfor %}
-        {% if not resources %}
-        <p style="color:var(--dim);font-size:0.82rem;padding:6px;">Aucune ressource.</p>
-        {% endif %}
-      </div>
-      <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;">
-        <div class="fg2">
-          <div class="fg"><label>Acronyme *</label>
-            <input id="r-acro" type="text" placeholder="LOZN" maxlength="8"></div>
-          <div class="fg"><label>Nom / Societe</label>
-            <input id="r-name" type="text" placeholder="Laurent O."></div>
-        </div>
-        <div class="fg2">
-          <div class="fg"><label>Role</label>
-            <input id="r-role" type="text" list="roles-list" placeholder="BA, PM, SME...">
-            <datalist id="roles-list">
-              <option value="PM">
-              <option value="BA">
-              <option value="SME">
-              <option value="Lead">
-              <option value="Dev">
-              <option value="Analyst">
-              <option value="OD Data CoreHR">
-              <option value="OD Data WFM">
-              <option value="Architect">
-              <option value="QA">
-              <option value="OCM">
-              <option value="Support">
-            </datalist>
-          </div>
-          <div class="fg"><label>Type</label>
-            <select id="r-ext">
-              <option value="0">Interne</option>
-              <option value="1">Externe</option>
-            </select></div>
-        </div>
-        <div class="fg2">
-          <div class="fg"><label>Max (fraction)</label>
-            <input id="r-max" type="number" value="1.0" min="0.1" max="2" step="0.05"></div>
-          <div class="card-ttl acc-toggle " data-body="acc-add-res-body" onclick="toggleAcc2(this)" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:0;">Ajouter ressource<span class="acc-arrow" style="font-size:0.8rem;transition:transform 0.2s;">&#x25BC;</span></div><div id="acc-add-res-body" class="acc-content closed" style="padding-top:10px;">
-    </div>
-
-    <div class="card">
-      <div class="card-ttl acc-toggle open" data-body="acc-ia-body" onclick="toggleAcc2(this)" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:0;">Assistant IA<span class="acc-arrow" style="font-size:0.8rem;transition:transform 0.2s;">&#x25BC;</span></div><div id="acc-ia-body" class="acc-content" style="padding-top:10px;">
-      <p style="color:var(--dim);font-size:0.78rem;margin-bottom:8px;">
-        Decrivez vos besoins ou deposez une image (planning, screenshot) —
-        l IA suggerera les ressources et allocations.
-      </p>
-
-      <!-- Zone drop image -->
-      <div id="cap-drop"
-        style="border:2px dashed var(--border);border-radius:6px;padding:10px;
-          text-align:center;cursor:pointer;margin-bottom:8px;font-size:0.78rem;
-          color:var(--dim);transition:border-color 0.2s;">
-        <div id="cap-drop-lbl">
-          &#x1F4F7; Deposer image ou
-          <label for="cap-img-input" style="color:var(--accent);cursor:pointer;text-decoration:underline;">choisir</label>
-        </div>
-        <input type="file" id="cap-img-input" accept="image/*" style="display:none;">
-        <div id="cap-img-preview" style="display:none;margin-top:6px;position:relative;">
-          <img id="cap-img-el" style="max-height:100px;max-width:100%;border-radius:4px;">
-          <button id="cap-img-clear"
-            style="position:absolute;top:2px;right:2px;background:var(--red);color:white;
-              border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;
-              font-size:0.8rem;line-height:16px;text-align:center;">&times;</button>
-        </div>
-      </div>
-
-      <!-- Historique IA -->
-      <div id="cap-ia-hist"
-        style="background:#0a0c14;border-radius:6px;padding:10px;font-size:0.78rem;
-          min-height:80px;max-height:200px;overflow-y:auto;margin-bottom:8px;">
-        <div style="color:var(--dim);">Pret. Decrivez vos besoins en resources.</div>
-      </div>
-
-      <!-- Input texte -->
-      <div style="display:flex;gap:6px;">
-        <textarea id="cap-ia-input"
-          style="flex:1;background:#12141f;border:1px solid var(--border);color:var(--text);
-            padding:6px 10px;border-radius:6px;font-size:0.78rem;font-family:inherit;
-            resize:none;"
-          rows="2"
-          placeholder="Ex: Planifier LOZN a 50% les 4 prochaines semaines..."></textarea>
-        <button class="btn btn-p" id="cap-ia-send" style="font-size:0.78rem;padding:6px 12px;">
-          IA
-        </button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-ttl acc-toggle " data-body="acc-palette-body" onclick="toggleAcc2(this)" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:0;">Palette roles<span class="acc-arrow" style="font-size:0.8rem;transition:transform 0.2s;">&#x25BC;</span></div><div id="acc-palette-body" class="acc-content closed" style="padding-top:10px;">
-      <div id="palette-list" style="margin-bottom:10px;">
-        <!-- Chargé dynamiquement -->
-      </div>
-      <!-- Ajouter / modifier un rôle -->
-      <div style="display:flex;gap:6px;margin-top:8px;">
-        <input id="new-role" type="text" placeholder="Nouveau role"
-          style="flex:1;background:#12141f;border:1px solid var(--border);
-          color:var(--text);padding:4px 8px;border-radius:5px;font-size:0.78rem;">
-        <input id="new-role-color" type="color" value="#1E90FF"
-          style="width:34px;height:30px;padding:2px;border:1px solid var(--border);
-          border-radius:5px;cursor:pointer;">
-        <button class="btn btn-p" id="btn-add-role"
-          style="padding:4px 10px;font-size:0.78rem;">+</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-ttl acc-toggle " data-body="acc-legend-body" onclick="toggleAcc2(this)" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:0;">Legende<span class="acc-arrow" style="font-size:0.8rem;transition:transform 0.2s;">&#x25BC;</span></div>
-<div id="acc-legend-body" class="acc-content closed" style="padding-top:10px;">
-      <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);"></div>Dans les limites</div>
-      <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--orange) 20%,transparent);border:1px solid var(--orange);"></div>Attention (80-100%)</div>
-      <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--red) 20%,transparent);border:1px solid var(--red);"></div>Surcharge (&gt; max)</div>
-      <div style="margin-top:8px;font-size:0.75rem;color:var(--dim);">
-        1.0 = 100% = 40h/sem<br>
-        0.5 = 50% = 20h/sem<br>
-        0.1 = 10% = 4h/sem
-      </div>
-    </div>
-
-    <!-- Gestion des rôles -->
-    <div class="card">
-      <div class="card-ttl acc-toggle " data-body="acc-roles-body" onclick="toggleAcc2(this)" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:0;">Roles et couleurs<span class="acc-arrow" style="font-size:0.8rem;transition:transform 0.2s;">&#x25BC;</span></div><div id="acc-roles-body" class="acc-content closed" style="padding-top:10px;">
-<div id="acc-roles-body" class="acc-content closed" style="padding-top:10px;">
-      <div id="roles-list-mgmt" style="margin-bottom:10px;">
-        {% for rc in role_colors %}
-        <div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:0.8rem;">
-          <span style="width:12px;height:12px;border-radius:50%;background:{{ rc.color }};
-            flex-shrink:0;border:1px solid rgba(255,255,255,0.2);"></span>
-          <span style="flex:1;">{{ rc.role }}</span>
-          <span style="font-size:0.7rem;color:var(--dim);">{{ rc.color }}</span>
-          <button class="del-role-btn" data-role="{{ rc.role }}"
-            style="background:none;border:none;color:var(--red);cursor:pointer;
-              font-size:0.8rem;padding:0 4px;"
-            title="Supprimer ce role">&times;</button>
-        </div>
-        {% endfor %}
-      </div>
-      <!-- Ajouter un rôle -->
-      <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">
-        <div style="display:flex;gap:6px;align-items:center;">
-          <input id="new-role-name" type="text" placeholder="Nom du role"
-            style="flex:1;background:#12141f;border:1px solid var(--border);color:var(--text);
-              padding:4px 8px;border-radius:5px;font-size:0.78rem;">
-          <input id="new-role-color" type="color" value="#1E90FF"
-            style="width:32px;height:28px;padding:1px;border:none;cursor:pointer;border-radius:4px;">
-          <button class="btn btn-p" id="btn-add-role" style="font-size:0.75rem;padding:4px 10px;">+</button>
-        </div>
+        {% if not resources %}<p style="color:var(--dim);font-size:0.82rem;padding:6px;">Aucune ressource.</p>{% endif %}
       </div>
     </div>
   </div>
 
-  <!-- Tableau capacity -->
-  <div class="card" style="overflow:hidden;">
-    <div class="card-ttl">
-      Grille Capacity
-      <span id="year-lbl" style="color:var(--dim);font-size:0.8rem;
-        text-transform:none;letter-spacing:0;margin-left:4px;">{{ year }}</span>
+  <!-- AJOUTER RESSOURCE -->
+  <div class="acc-section">
+    <div class="acc-hd" onclick="accToggle(this)"><span>Ajouter ressource</span><span class="acc-arr">&#x25BC;</span></div>
+    <div class="acc-bd" style="display:none;">
+      <div class="fg2" style="margin-bottom:8px;">
+        <div class="fg"><label>Acronyme *</label><input id="r-acro" type="text" placeholder="LOZN" maxlength="8"></div>
+        <div class="fg"><label>Nom / Societe</label><input id="r-name" type="text" placeholder="Laurent O."></div>
+      </div>
+      <div class="fg2" style="margin-bottom:8px;">
+        <div class="fg"><label>Role</label>
+          <input id="r-role" type="text" list="roles-list" placeholder="BA, PM, SME...">
+          <datalist id="roles-list">
+            <option value="PM"><option value="BA"><option value="SME"><option value="Lead">
+            <option value="Dev"><option value="Analyst"><option value="OD Data CoreHR">
+            <option value="OD Data WFM"><option value="Architect"><option value="QA">
+            <option value="OCM"><option value="Support">
+          </datalist>
+        </div>
+        <div class="fg"><label>Type</label><select id="r-ext"><option value="0">Interne</option><option value="1">Externe</option></select></div>
+      </div>
+      <div class="fg2" style="margin-bottom:8px;">
+        <div class="fg"><label>Max (fraction)</label><input id="r-max" type="number" value="1.0" min="0.1" max="2" step="0.05"></div>
+        <div class="fg"><label>Couleur</label><input id="r-color" type="color" value="#1E90FF" style="height:32px;padding:2px;cursor:pointer;border:1px solid var(--border);border-radius:6px;"></div>
+      </div>
+      <button class="btn btn-p" id="btn-add-res" style="width:100%;margin-top:4px;">+ Ajouter ressource</button>
+      <button class="btn btn-n" id="btn-reset-colors" style="width:100%;margin-top:6px;font-size:0.78rem;">&#x1F3A8; Reset couleurs par role</button>
     </div>
-    <div class="qnav" id="qnav"></div>
-    <div class="cap-wrap">
-      <table class="ctable" id="ctable"></table>
+  </div>
+
+  <!-- ASSISTANT IA -->
+  <div class="acc-section">
+    <div class="acc-hd open" onclick="accToggle(this)">
+      <span>Assistant IA <span style="font-size:0.65rem;color:var(--dim);text-transform:none;letter-spacing:0;">Groq vision</span></span>
+      <span class="acc-arr">&#x25BC;</span>
+    </div>
+    <div class="acc-bd">
+      <p style="color:var(--dim);font-size:0.78rem;margin-bottom:8px;">Decrivez vos besoins ou deposez une image — l IA suggerera les ressources.</p>
+      <div id="cap-drop" style="border:2px dashed var(--border);border-radius:6px;padding:10px;text-align:center;cursor:pointer;margin-bottom:8px;font-size:0.78rem;color:var(--dim);">
+        <div id="cap-drop-lbl">&#x1F4F7; Deposer image ou <label for="cap-img-input" style="color:var(--accent);cursor:pointer;text-decoration:underline;">choisir</label></div>
+        <input type="file" id="cap-img-input" accept="image/*" style="display:none;">
+        <div id="cap-img-preview" style="display:none;margin-top:6px;position:relative;">
+          <img id="cap-img-el" style="max-height:100px;max-width:100%;border-radius:4px;">
+          <button id="cap-img-clear" style="position:absolute;top:2px;right:2px;background:var(--red);color:white;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:0.8rem;line-height:16px;text-align:center;">&times;</button>
+        </div>
+      </div>
+      <div id="cap-ia-hist" style="background:#0a0c14;border-radius:6px;padding:10px;font-size:0.78rem;min-height:80px;max-height:180px;overflow-y:auto;margin-bottom:8px;">
+        <div style="color:var(--dim);">Pret. Decrivez vos besoins en resources.</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <textarea id="cap-ia-input" style="flex:1;background:#12141f;border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:0.78rem;font-family:inherit;resize:none;" rows="2" placeholder="Ex: Planifier LOZN a 50% les 4 prochaines semaines..."></textarea>
+        <button class="btn btn-p" id="cap-ia-send" style="font-size:0.78rem;padding:6px 12px;">IA</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PALETTE ROLES -->
+  <div class="acc-section">
+    <div class="acc-hd" onclick="accToggle(this)">
+      <span>Palette roles <button class="btn btn-n" id="btn-refresh-palette" onclick="event.stopPropagation();loadPalette();" style="font-size:0.65rem;padding:2px 6px;margin-left:6px;">&#x21BA;</button></span>
+      <span class="acc-arr">&#x25BC;</span>
+    </div>
+    <div class="acc-bd" style="display:none;">
+      <div id="palette-list" style="margin-bottom:8px;"></div>
+      <div style="display:flex;gap:6px;">
+        <input id="new-role" type="text" placeholder="Nouveau role" style="flex:1;background:#12141f;border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:5px;font-size:0.78rem;">
+        <input id="new-role-color" type="color" value="#1E90FF" style="width:34px;height:30px;padding:2px;border:1px solid var(--border);border-radius:5px;cursor:pointer;">
+        <button class="btn btn-p" id="btn-add-role" style="padding:4px 10px;font-size:0.78rem;">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEGENDE -->
+  <div class="acc-section">
+    <div class="acc-hd" onclick="accToggle(this)"><span>Legende</span><span class="acc-arr">&#x25BC;</span></div>
+    <div class="acc-bd" style="display:none;">
+      <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);"></div>Dans les limites</div>
+      <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--orange) 20%,transparent);border:1px solid var(--orange);"></div>Attention (80-100%)</div>
+      <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--red) 20%,transparent);border:1px solid var(--red);"></div>Surcharge (&gt; max)</div>
+      <div style="margin-top:8px;font-size:0.75rem;color:var(--dim);">1.0=100%=40h/sem | 0.5=50%=20h/sem | 0.1=10%=4h/sem</div>
+    </div>
+  </div>
+
+  <!-- ROLES ET COULEURS -->
+  <div class="acc-section">
+    <div class="acc-hd" onclick="accToggle(this)"><span>Roles et couleurs</span><span class="acc-arr">&#x25BC;</span></div>
+    <div class="acc-bd" style="display:none;">
+      <div id="role-colors-list"></div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <input id="rc-role" type="text" placeholder="Nom du role" style="flex:1;background:#12141f;border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:5px;font-size:0.78rem;">
+        <input id="rc-color" type="color" value="#1E90FF" style="width:34px;height:30px;padding:2px;border:1px solid var(--border);border-radius:5px;cursor:pointer;">
+        <button class="btn btn-p" id="btn-add-role-color" style="padding:4px 10px;font-size:0.78rem;">+</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
     </div>
     <div style="margin-top:8px;color:var(--dim);font-size:0.75rem;">
       Ctrl+S = sauvegarder &nbsp;|&nbsp; Tab = cellule suivante
@@ -2229,6 +2191,24 @@ document.addEventListener('DOMContentLoaded', function() {
 function toggleAcc(id) {
   var hdr = document.querySelector('[data-body="' + id + '-body"]');
   if (hdr) toggleAcc2(hdr);
+}
+
+
+// ── Accordéon panneau gauche v3 ──────────────────────────────────────────────
+function accToggle(hdr) {
+  var bd = hdr.nextElementSibling;
+  if (!bd) return;
+  var isOpen = hdr.classList.contains('open');
+  if (isOpen) {
+    hdr.classList.remove('open');
+    bd.style.display = 'none';
+  } else {
+    hdr.classList.add('open');
+    bd.style.display = 'block';
+  }
+  // Sauvegarder
+  var key = 'acc_' + (hdr.parentElement ? Array.from(hdr.parentElement.parentElement.children).indexOf(hdr.parentElement) : 0);
+  try { localStorage.setItem('cap_acc_' + PID + '_' + key, !isOpen); } catch(e) {}
 }
 
 </script>
