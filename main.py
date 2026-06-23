@@ -1094,3 +1094,24 @@ async def export_pptx(project_id: int):
     except Exception as e:
         logger.error("PPTX export error: %s", e)
         raise HTTPException(500, str(e))
+
+# ---------------------------------------------------------------------------
+# Health check — requis pour AION-Core
+# ---------------------------------------------------------------------------
+
+@app.get("/health")
+async def health():
+    """Health check endpoint pour AION-Core."""
+    return {"status": "ok", "app": "ProjectMind", "version": "0.1.0"}
+
+
+# ---------------------------------------------------------------------------
+# Entry point — python main.py
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    import uvicorn
+    host = os.getenv("PROJECTMIND_HOST", "0.0.0.0")
+    port = int(os.getenv("PROJECTMIND_PORT", "8766"))
+    logger.info(f"ProjectMind -> http://{host}:{port}")
+    uvicorn.run("main:app", host=host, port=port, reload=False)
