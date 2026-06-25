@@ -502,7 +502,7 @@ header h1{color:var(--accent);font-size:1.1rem;}
 // ── Données projet ────────────────────────────────────────────────────────────
 var PID       = {{ project.id }};
 var LANG      = "{{ project.language }}";
-var TASKS_ALL = {{ tasks_flat | tojson }};
+var TASKS_ALL = {{ tasks_by_cat.values() | sum(start=[]) | list | tojson }};
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 function showTab(name) {
@@ -952,7 +952,7 @@ document.getElementById('btn-del-task').addEventListener('click', function() {
 
 
 // ── Ressources assignees aux taches ──────────────────────────────────────────
-var _RES = {{ resources | tojson }};
+var _RES = [];  // resources feature coming in v0.3
 
 function loadAssignments(taskId) {
   var sel = document.getElementById('et-res');
