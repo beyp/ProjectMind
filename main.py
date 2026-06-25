@@ -432,3 +432,103 @@ async def api_export_pptx(project_id: int):
     except Exception as e:
         logger.error("Export PPTX error: %s", e)
         raise HTTPException(500, f"Erreur export PPTX: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# API — Docker Config (healthcheck, port, restart)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/projects/{project_id}/docker-config")
+async def api_get_docker_config(project_id: int):
+    """Retourne la config Docker sauvegardee pour ce projet."""
+    import json as _json
+    conn = get_db()
+    # Migration safe: ajouter colonne si manquante
+    try:
+        conn.execute("ALTER TABLE projects ADD COLUMN docker_config TEXT")
+        conn.commit()
+    except Exception:
+        pass
+    row = conn.execute("SELECT docker_config FROM projects WHERE id=?", (project_id,)).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Projet introuvable")
+    try:
+        cfg = _json.loads(row["docker_config"] or "{}")
+    except Exception:
+        cfg = {}
+    return {
+        "port":        cfg.get("port",        8766),
+        "restart":     cfg.get("restart",     "unless-stopped"),
+        "hc_interval": cfg.get("hc_interval", 60),
+        "hc_timeout":  cfg.get("hc_timeout",  10),
+        "hc_retries":  cfg.get("hc_retries",  3),
+        "hc_start":    cfg.get("hc_start",    15),
+    }
+
+
+@app.post("/api/projects/{project_id}/docker-config")
+async def api_save_docker_config(project_id: int, request: Request):
+    """Sauvegarde la config Docker et regenere docker-compose.yml."""
+    import json as _json
+    data = await request.json()
+    cfg  = {
+        "port":        int(data.get("port",        8766)),
+        "restart":     data.get("restart",          "unless-stopped"),
+        "hc_interval": int(data.get("hc_interval", 60)),
+        "hc_timeout":  int(data.get("hc_timeout",  10)),
+        "hc_retries":  int(data.get("hc_retries",  3)),
+        "hc_start":    int(data.get("hc_start",    15)),
+    }
+    conn = get_db()
+    try:
+        conn.execute("ALTER TABLE projects ADD COLUMN docker_config TEXT")
+        conn.commit()
+    except Exception:
+        pass
+    conn.execute("UPDATE projects SET docker_config=? WHERE id=?", (_json.dumps(cfg), project_id))
+    conn.commit()
+    conn.close()
+    _regen_docker_compose(cfg)
+    return {"ok": True, "config": cfg}
+
+
+def _regen_docker_compose(cfg: dict) -> None:
+    """Regenere docker-compose.yml avec la config fournie."""
+    port     = cfg.get("port",        8766)
+    restart  = cfg.get("restart",     "unless-stopped")
+    interval = cfg.get("hc_interval", 60)
+    timeout  = cfg.get("hc_timeout",  10)
+    retries  = cfg.get("hc_retries",  3)
+    start    = cfg.get("hc_start",    15)
+    content  = f"""services:
+  projectmind:
+    build: .
+    container_name: projectmind
+    ports:
+      - "{port}:{port}"
+    volumes:
+      - ./data:/app/data
+      - ./templates:/app/templates
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    restart: {restart}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:{port}/api/projects"]
+      interval: {interval}s
+      timeout: {timeout}s
+      retries: {retries}
+      start_period: {start}s
+
+networks:
+  default:
+    name: projectmind-network
+"""
+    try:
+        dc_path = Path(__file__).parent / "docker-compose.yml"
+        dc_path.write_text(content, encoding="utf-8")
+        logger.info("docker-compose.yml regenere (port=%s, hc=%ss)", port, interval)
+    except Exception as e:
+        logger.warning("Impossible regenerer docker-compose.yml: %s", e)
+
