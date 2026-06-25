@@ -36,6 +36,12 @@ header span{color:var(--dim);font-size:0.85rem;}
   cursor:pointer;z-index:10;}
 .pcard-wrap:hover .del-btn{display:block;}
 .del-btn:hover{background:var(--red);color:white;}
+.cfg-btn{display:none;position:absolute;top:8px;right:42px;width:28px;height:28px;
+  border-radius:50%;background:color-mix(in srgb,var(--accent) 20%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);
+  font-size:0.85rem;line-height:26px;text-align:center;cursor:pointer;z-index:10;padding:0;}
+.pcard-wrap:hover .cfg-btn{display:block;}
+.cfg-btn:hover{background:var(--accent);}
 .new-card{display:flex;align-items:center;justify-content:center;gap:10px;
   background:transparent;border:2px dashed var(--border);border-radius:12px;
   padding:20px;cursor:pointer;color:var(--dim);font-size:0.9rem;
@@ -94,6 +100,9 @@ header span{color:var(--dim);font-size:0.85rem;}
       <!-- le nom est récupéré via le dict JS injecté ci-dessous -->
       <button class="del-btn" data-id="{{ p.id }}" title="Supprimer">
         &times;
+      </button>
+      <button class="cfg-btn" data-id="{{ p.id }}" data-name="{{ p.name }}" title="Configuration Docker">
+        &#x2699;&#xFE0F;
       </button>
     </div>
     {% endfor %}
@@ -221,7 +230,87 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.key === 'Enter') document.getElementById('btn-confirm-new').click();
   });
 
+
+  // Docker Config modal
+  var _dcfgId = null;
+  document.querySelectorAll('.cfg-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      _dcfgId = parseInt(this.dataset.id);
+      document.getElementById('dcfg-name').textContent = this.dataset.name;
+      fetch('/api/projects/' + _dcfgId + '/docker-config')
+      .then(function(r){return r.json();}).then(function(d) {
+        document.getElementById('dcfg-port').value        = d.port        || 8766;
+        document.getElementById('dcfg-restart').value     = d.restart     || 'unless-stopped';
+        document.getElementById('dcfg-hc-interval').value = d.hc_interval || 60;
+        document.getElementById('dcfg-hc-timeout').value  = d.hc_timeout  || 10;
+        document.getElementById('dcfg-hc-retries').value  = d.hc_retries  || 3;
+        document.getElementById('dcfg-hc-start').value    = d.hc_start    || 15;
+        document.getElementById('dcfg-cmd').style.display = 'none';
+      });
+      document.getElementById('modal-docker-cfg').classList.add('open');
+    });
+  });
+  document.getElementById('btn-cancel-dcfg').addEventListener('click', function() {
+    document.getElementById('modal-docker-cfg').classList.remove('open');
+  });
+  document.getElementById('modal-docker-cfg').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+  });
+  document.getElementById('btn-show-cmd').addEventListener('click', function() {
+    var cmd = 'cd C:\\\\AION_APPS\\\\repos\\\\ProjectMind\ndocker compose up -d --build\n\n# Logs en direct :\ndocker compose logs -f projectmind';
+    var el  = document.getElementById('dcfg-cmd');
+    el.textContent = cmd; el.style.display = 'block';
+  });
+  document.getElementById('btn-save-dcfg').addEventListener('click', function() {
+    if (!_dcfgId) return;
+    var cfg = {
+      port:        parseInt(document.getElementById('dcfg-port').value) || 8766,
+      restart:     document.getElementById('dcfg-restart').value,
+      hc_interval: parseInt(document.getElementById('dcfg-hc-interval').value) || 60,
+      hc_timeout:  parseInt(document.getElementById('dcfg-hc-timeout').value)  || 10,
+      hc_retries:  parseInt(document.getElementById('dcfg-hc-retries').value)  || 3,
+      hc_start:    parseInt(document.getElementById('dcfg-hc-start').value)    || 15,
+    };
+    fetch('/api/projects/' + _dcfgId + '/docker-config', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg)
+    }).then(function(r){return r.json();}).then(function(d) {
+      if (d.ok) {
+        document.getElementById('modal-docker-cfg').classList.remove('open');
+        var f = document.createElement('div');
+        f.textContent = 'Config Docker sauvegardee !';
+        f.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1a1d27;border:1px solid rgba(76,175,80,.5);color:#4caf50;padding:10px 18px;border-radius:8px;font-size:.85rem;z-index:9999;';
+        document.body.appendChild(f); setTimeout(function(){f.remove();},3000);
+      }
+    });
+  });
+
 });
 </script>
+<!-- Modal config Docker -->
+<div class="moverlay" id="modal-docker-cfg">
+  <div class="mbox" style="width:520px;">
+    <h2>&#x2699;&#xFE0F; Config Docker &mdash; <span id="dcfg-name"></span></h2>
+    <p style="font-size:0.8rem;color:var(--dim);margin-bottom:18px;">Ces valeurs sont utilisees pour le healthcheck et le lancement du container.</p>
+    <div class="fg2">
+      <div class="fg"><label>Port expose</label><input id="dcfg-port" type="number" value="8766" min="1024" max="65535"></div>
+      <div class="fg"><label>Restart policy</label><select id="dcfg-restart"><option value="unless-stopped">unless-stopped</option><option value="always">always</option><option value="on-failure">on-failure</option><option value="no">no</option></select></div>
+    </div>
+    <div style="font-size:0.8rem;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 10px;">Healthcheck</div>
+    <div class="fg2">
+      <div class="fg"><label>Intervalle (secondes)</label><input id="dcfg-hc-interval" type="number" value="60" min="10" max="3600"><span style="font-size:0.72rem;color:var(--dim);">Dev: 30s | Prod: 120s</span></div>
+      <div class="fg"><label>Timeout (secondes)</label><input id="dcfg-hc-timeout" type="number" value="10" min="3" max="60"></div>
+      <div class="fg"><label>Retries</label><input id="dcfg-hc-retries" type="number" value="3" min="1" max="10"></div>
+      <div class="fg"><label>Start period (secondes)</label><input id="dcfg-hc-start" type="number" value="15" min="5" max="120"></div>
+    </div>
+    <div style="margin-top:14px;padding:10px 14px;border-radius:8px;background:rgba(33,150,243,.05);border:1px solid rgba(33,150,243,.2);font-size:0.78rem;color:var(--dim);">Les modifications sont appliquees au prochain <code style="background:#12141f;padding:1px 5px;border-radius:3px;">docker compose up -d --build</code></div>
+    <div id="dcfg-cmd" style="display:none;margin-top:10px;padding:10px 14px;border-radius:8px;background:#0a0c14;border:1px solid var(--border);font-family:Consolas,monospace;font-size:0.78rem;color:#4caf50;white-space:pre;"></div>
+    <div class="btn-row">
+      <button class="btn btn-n" id="btn-cancel-dcfg">Annuler</button>
+      <button class="btn" style="background:rgba(76,175,80,.15);border:1px solid rgba(76,175,80,.35);color:var(--green);" id="btn-show-cmd">&#x1F4CB; Voir commande</button>
+      <button class="btn btn-p" id="btn-save-dcfg">Sauvegarder</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
