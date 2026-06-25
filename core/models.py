@@ -5,7 +5,7 @@ import sqlite3
 from datetime import datetime, date
 from pathlib import Path
 
-DB_PATH = Path("data/projectmind.db")
+DB_PATH = Path(__file__).resolve().parent.parent / "data" / "projectmind.db"
 
 # ── Statuts disponibles ───────────────────────────────────────────────────────
 STATUSES = {
@@ -417,3 +417,11 @@ def get_fiscal_quarter(d: date = None) -> str:
     else:
         q = "Q4"
     return f"{fy}-{q}"
+
+
+# Auto-init: garantit que les tables existent au chargement du module
+try:
+    init_db()
+except Exception as _e:
+    import logging as _logging
+    _logging.getLogger(__name__).warning("init_db auto: %s", _e)
