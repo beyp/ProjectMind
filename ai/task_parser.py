@@ -257,3 +257,93 @@ class VisionTaskParser:
 
         logger.error("VisionTaskParser: echec total. Dernier: %s", last_error)
         return [{"error": f"Echec vision: {last_error}"}]
+
+
+AGENT_SYSTEM_PROMPT_FR = """Tu es ProjectMind AI, assistant de gestion de projets.
+Tu comprends le langage naturel et retournes des ACTIONS JSON.
+
+ACTIONS:
+create_task       {"type":"create_task","params":{"title":"...","category_id":X,"status":"...","progress":0,"start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD","date_label":"..."}}
+update_task       {"type":"update_task","id":X,"params":{"title":"...","status":"...","progress":50,"start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD","category_id":X}}
+delete_task       {"type":"delete_task","id":X}
+bulk_update_tasks {"type":"bulk_update_tasks","updates":[{"id":X,"status":"...","start_date":"...","end_date":"...","progress":N},...]}
+create_category   {"type":"create_category","params":{"name":"...","color":"#RRGGBB"}}
+update_category   {"type":"update_category","id":X,"params":{"name":"...","color":"#RRGGBB"}}
+delete_category   {"type":"delete_category","id":X}
+reorder_categories{"type":"reorder_categories","order":[id1,id2,id3]}
+create_milestone  {"type":"create_milestone","params":{"title":"...","baseline_date":"YYYY-MM-DD","current_date":"YYYY-MM-DD","status":"..."}}
+update_milestone  {"type":"update_milestone","id":X,"params":{"current_date":"YYYY-MM-DD","status":"..."}}
+create_risk       {"type":"create_risk","params":{"description":"...","owner":"...","risk_type":"I"}}
+update_risk       {"type":"update_risk","id":X,"params":{"status":"Closed"}}
+
+STATUTS FR: En cours | Réalisé | A planifier | Bloqué | Annulé | En retard | En revue
+STATUTS EN: In Progress | Completed | To Plan | Blocked | Cancelled | Delayed | In Review
+
+RÉPONSE OBLIGATOIRE (JSON pur, rien d autre):
+{"reply":"Confirmation en français","actions":[...]}
+
+RÈGLES:
+1. IDs exacts du contexte uniquement
+2. Dates: YYYY-MM-DD
+3. progress: entier 0-100
+4. Si ID incertain, demande confirmation (actions:[])
+5. Toujours confirmer dans reply ce qui a été fait
+"""
+
+AGENT_SYSTEM_PROMPT_EN = """You are ProjectMind AI, a project management assistant.
+You understand natural language and return JSON ACTIONS.
+
+ACTIONS:
+create_task       {"type":"create_task","params":{"title":"...","category_id":X,"status":"...","progress":0,"start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD"}}
+update_task       {"type":"update_task","id":X,"params":{"status":"...","progress":50,"start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD"}}
+delete_task       {"type":"delete_task","id":X}
+bulk_update_tasks {"type":"bulk_update_tasks","updates":[{"id":X,"start_date":"...","end_date":"...","progress":N},...]}
+create_category   {"type":"create_category","params":{"name":"...","color":"#RRGGBB"}}
+update_category   {"type":"update_category","id":X,"params":{"name":"...","color":"#RRGGBB"}}
+delete_category   {"type":"delete_category","id":X}
+reorder_categories{"type":"reorder_categories","order":[id1,id2,id3]}
+create_milestone  {"type":"create_milestone","params":{"title":"...","baseline_date":"YYYY-MM-DD"}}
+update_milestone  {"type":"update_milestone","id":X,"params":{"current_date":"YYYY-MM-DD","status":"..."}}
+create_risk       {"type":"create_risk","params":{"description":"...","owner":"...","risk_type":"I"}}
+update_risk       {"type":"update_risk","id":X,"params":{"status":"Closed"}}
+
+MANDATORY RESPONSE (pure JSON only):
+{"reply":"Confirmation in English","actions":[...]}
+"""
+
+class AgentParser:
+    def __init__(self, api_key: str = "") -> None:
+        self.api_key = api_key or os.getenv("GROQ_API_KEY", "")
+
+    def run(self, message: str, context: dict, history: list, language: str = "fr") -> dict:
+        if not self.api_key:
+            return {"reply": "GROQ_API_KEY non configurée.", "actions": []}
+        system  = AGENT_SYSTEM_PROMPT_FR if language == "fr" else AGENT_SYSTEM_PROMPT_EN
+        ctx_str = json.dumps(context, ensure_ascii=False, separators=(",", ":"))
+        messages = [{"role": "system", "content": system}]
+        for h in history[-8:]:
+            if h.get("role") in ("user","assistant") and h.get("content"):
+                messages.append({"role": h["role"], "content": h["content"]})
+        messages.append({"role": "user", "content": f"CONTEXTE:\n{ctx_str}\n\nINSTRUCTION: {message}"})
+        try:
+            r = requests.post(GROQ_URL, headers={"Authorization":f"Bearer {self.api_key}","Content-Type":"application/json"},
+                json={"model":GROQ_MODEL,"messages":messages,"temperature":0.05,"max_tokens":4096}, timeout=45)
+            r.raise_for_status()
+            content = r.json()["choices"][0]["message"]["content"].strip()
+            if "```json" in content: content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].strip()
+                if content.startswith("json"): content = content[4:].strip()
+            s = content.find("{"); e = content.rfind("}")+1
+            if s >= 0 and e > s: content = content[s:e]
+            result = json.loads(content)
+            if "reply"   not in result: result["reply"]   = "Action effectuée."
+            if "actions" not in result: result["actions"] = []
+            return result
+        except json.JSONDecodeError as ex:
+            logger.error("AgentParser JSON: %s", ex)
+            return {"reply": "Je n ai pas pu interpréter la réponse. Reformule.", "actions": []}
+        except Exception as ex:
+            logger.error("AgentParser: %s", ex)
+            return {"reply": f"Erreur: {ex}", "actions": []}
+
