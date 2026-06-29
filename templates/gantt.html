@@ -8,128 +8,177 @@
 <script src="https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:"Segoe UI",sans-serif;background:#0f1117;color:#e0e0e0;}
-header{background:#151821;border-bottom:2px solid #1e90ff;padding:12px 24px;
-  display:flex;align-items:center;gap:16px;}
-header h1{color:#1e90ff;font-size:1.1rem;}
-header a{color:#888;text-decoration:none;font-size:0.85rem;}
-header a:hover{color:#1e90ff;}
-.gantt-info{padding:10px 24px;background:#1a1d27;border-bottom:1px solid #2a2d3e;
-  display:flex;gap:20px;font-size:0.82rem;color:#888;}
-.gantt-info span{color:#e0e0e0;}
-#gantt_here{width:100%;height:calc(100vh - 100px);}
-/* Style Gantt sombre */
-.gantt_container{background:#1a1d27;color:#e0e0e0;}
-.gantt_grid_scale,.gantt_scale_line{background:#151821;color:#888;}
-.gantt_row{background:#1a1d27;}
-.gantt_row.odd{background:#12141f;}
-.gantt_row:hover{background:#2a2d3e;}
-.gantt_task_line{background:#1e90ff;border-color:#1570cc;}
-.gantt_task_progress{background:#0d5fa3;}
-.gantt_task_line.gantt_task_inline_color .gantt_task_progress{background:inherit;filter:brightness(0.7);}
-  .no-date-task .gantt_task_progress { background: rgba(255,255,255,0.2); }
-  .no-date-task { opacity: 0.6; border-style: dashed !important; }
-  .gantt_task_line { border-radius: 3px; }
+body{font-family:"Segoe UI",sans-serif;background:#1b1c1e;color:#e0e0e0;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+header{background:#141517;border-bottom:1px solid #2a2d3e;padding:0 16px;height:48px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.hdr-title{color:#e0e0e0;font-size:0.95rem;font-weight:600;}
+.hdr-sub{color:#888;font-size:0.75rem;}
+.hdr-spacer{flex:1;}
+.hdr-btn{background:transparent;border:1px solid #3a3d50;color:#ccc;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.78rem;}
+.hdr-btn:hover{background:#2a2d3e;color:#fff;}
+.toolbar{background:#1e1f23;border-bottom:1px solid #2a2d3e;padding:6px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;}
+.tb-label{font-size:0.72rem;color:#888;white-space:nowrap;}
+.zoom-slider{-webkit-appearance:none;width:110px;height:4px;background:#3a3d50;border-radius:2px;outline:none;cursor:pointer;}
+.zoom-slider::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#0078D4;cursor:pointer;}
+.tb-sep{width:1px;height:18px;background:#3a3d50;margin:0 4px;}
+.tb-toggle{background:transparent;border:1px solid #3a3d50;color:#999;padding:3px 9px;border-radius:3px;cursor:pointer;font-size:0.72rem;}
+.tb-toggle.active,.tb-toggle:hover{background:#0078D4;border-color:#0078D4;color:#fff;}
+/* Gantt overrides - style Teams dark */
+.gantt_container{background:#1b1c1e!important;border:none!important;}
+.gantt_grid{background:#1e1f23!important;}
+.gantt_grid_scale,.gantt_task_scale{background:#141517!important;border-bottom:1px solid #2a2d3e!important;}
+.gantt_scale_cell{color:#888!important;font-size:0.7rem!important;border-right:1px solid #2a2d3e!important;}
+.gantt_row{background:#1e1f23!important;border-bottom:1px solid #252628!important;}
+.gantt_row.odd{background:#1b1c1e!important;}
+.gantt_row:hover,.gantt_row.gantt_selected{background:#252b3b!important;}
+.gantt_grid_head_cell{color:#aaa!important;font-size:0.7rem!important;font-weight:600!important;background:#141517!important;border-right:1px solid #2a2d3e!important;border-bottom:1px solid #2a2d3e!important;}
+.gantt_cell{color:#ccc!important;font-size:0.78rem!important;border-right:1px solid #252628!important;}
+.gantt_task_content{color:#fff!important;font-size:0.7rem!important;font-weight:500!important;}
+.gantt_task_line{border-radius:3px!important;border:none!important;}
+.gantt_task_progress{border-radius:3px!important;}
+/* Statut → couleur barre */
+.s-inprogress .gantt_task_line{background:#0078D4!important;} .s-inprogress .gantt_task_progress{background:#005A9E!important;}
+.s-completed  .gantt_task_line{background:#107C10!important;} .s-completed  .gantt_task_progress{background:#0B5A0B!important;}
+.s-toplan     .gantt_task_line{background:#3a3d50!important;} .s-toplan     .gantt_task_progress{background:#2a2d3e!important;}
+.s-blocked    .gantt_task_line{background:#C50F1F!important;} .s-blocked    .gantt_task_progress{background:#8B0000!important;}
+.s-delayed    .gantt_task_line{background:#CA5010!important;} .s-delayed    .gantt_task_progress{background:#8B3A0A!important;}
+.s-inreview   .gantt_task_line{background:#7B52AB!important;} .s-inreview   .gantt_task_progress{background:#5A3880!important;}
+.gantt_row.gantt_row_project .gantt_cell{font-weight:700!important;color:#fff!important;}
+.gantt_task_line.gantt_project{background:#0F3460!important;border-radius:2px!important;}
+/* Markers */
+.gantt_marker.today-m{background:rgba(229,57,53,.9)!important;width:2px!important;}
+.gantt_marker.golive-m{background:rgba(180,0,158,.9)!important;width:2px!important;}
+.gantt_marker_content{color:#fff!important;font-size:0.68rem!important;padding:2px 4px!important;border-radius:0 3px 3px 0!important;}
+.today-m  .gantt_marker_content{background:rgba(229,57,53,.9)!important;}
+.golive-m .gantt_marker_content{background:rgba(180,0,158,.9)!important;}
+.gantt_tooltip{background:#252b3b!important;border:1px solid #3a3d50!important;color:#e0e0e0!important;border-radius:6px!important;padding:8px 12px!important;font-size:0.76rem!important;}
+.no-date-task .gantt_task_line{opacity:.35!important;border:1px dashed #555!important;}
+/* Légende */
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:0.7rem;color:#888;}
+.leg-item{display:flex;align-items:center;gap:4px;}
+.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-track{background:#1b1c1e;} ::-webkit-scrollbar-thumb{background:#3a3d50;border-radius:3px;}
 </style>
 </head>
 <body>
 <header>
-  <a href="/project/{{ project.id }}">&#x2190; {{ project.name }}</a>
-  <h1>&#x1F4C5; Vue Gantt</h1>
-  <span style="margin-left:auto;color:#888;">{{ fiscal_q }} &nbsp;|&nbsp; {{ fiscal_y }}</span>
+  <span style="font-size:1.2rem;">&#x1F4CB;</span>
+  <div><div class="hdr-title">{{ project.name }}</div><div class="hdr-sub">{{ fiscal_q }} &nbsp;&#183;&nbsp; Chronologie</div></div>
+  <div class="hdr-spacer"></div>
+  {% if project.go_live_date %}<span style="font-size:0.76rem;color:#E53935;margin-right:8px;">&#x1F3AF; Go-Live : {{ project.go_live_date }}</span>{% endif %}
+  <button class="hdr-btn" onclick="scrollToToday()">&#x23F0; Aujourd'hui</button>
+  <button class="hdr-btn" onclick="gantt.fitDate()">&#x21F9; Ajuster</button>
+  <a href="/project/{{ project.id }}" class="hdr-btn">&#x2190; Projet</a>
 </header>
-<div class="gantt-info">
-  <span>Projet : <span>{{ project.name }}</span></span>
-  {% if project.go_live_date %}
-  <span>Go-Live : <span style="color:#f44336;">{{ project.go_live_date }}</span></span>
-  {% endif %}
-  <span>Fiscal Year : <span>{{ fiscal_y }}</span> (début 1er mars)</span>
+<div class="toolbar">
+  <span class="tb-label">Zoom :</span>
+  <input type="range" class="zoom-slider" id="zslider" min="0" max="4" value="2" oninput="setZoom(this.value)">
+  <span id="zlabel" style="font-size:0.7rem;color:#888;min-width:55px;">Semaine</span>
+  <div class="tb-sep"></div>
+  <button class="tb-toggle active" id="f-all"    onclick="filt('all')">Tout</button>
+  <button class="tb-toggle"        id="f-active" onclick="filt('active')">&#x25B6; En cours</button>
+  <button class="tb-toggle"        id="f-late"   onclick="filt('late')">&#x26A0; En retard</button>
+  <div class="tb-sep"></div>
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:#0078D4"></div>En cours</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#107C10"></div>Réalisé</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#CA5010"></div>En retard</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#C50F1F"></div>Bloqué</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#3a3d50;border:1px dashed #888"></div>A planifier</div>
+  </div>
+  <div class="hdr-spacer"></div>
+  <span id="tc" style="font-size:0.7rem;color:#555;"></span>
 </div>
-
-<div id="gantt_here"></div>
-
+<div id="gantt_here" style="flex:1;"></div>
 <script>
-// Configuration Gantt
-gantt.config.date_format = "%Y-%m-%d";
-gantt.config.scale_unit  = "week";
-gantt.config.date_scale  = "S%W";
-gantt.config.subscales   = [
-  {unit: "month", step: 1, date: "%F %Y"},
+gantt.config.date_format="{% raw %}%Y-%m-%d{% endraw %}";
+gantt.config.show_progress=true; gantt.config.drag_progress=true; gantt.config.drag_resize=true; gantt.config.drag_move=true;
+gantt.config.fit_tasks=true; gantt.config.open_tree_initially=true; gantt.config.row_height=32; gantt.config.bar_height=20;
+gantt.config.min_column_width=28; gantt.config.keep_grid_width=true; gantt.config.grid_resize=true; gantt.config.smart_rendering=true;
+gantt.plugins({marker:true,tooltip:true});
+
+var ZOOMS=[
+  {name:"Jour",    unit:"day",  step:1,fmt:"%d %M",   sub:[{unit:"month",step:1,date:"%F %Y"}]},
+  {name:"3 jours", unit:"day",  step:3,fmt:"%d %M",   sub:[{unit:"month",step:1,date:"%F %Y"}]},
+  {name:"Semaine", unit:"week", step:1,fmt:"S%W",     sub:[{unit:"month",step:1,date:"%F %Y"}]},
+  {name:"Mois",    unit:"month",step:1,fmt:"%F %Y",   sub:[{unit:"quarter",step:1,date:"T%q %Y"}]},
+  {name:"Trimestre",unit:"month",step:3,fmt:"T%q %Y", sub:[{unit:"year",step:1,date:"%Y"}]},
 ];
-gantt.config.show_progress    = true;
-gantt.config.drag_progress    = true;
-gantt.config.drag_resize      = true;
-gantt.config.drag_move        = true;
-gantt.config.fit_tasks        = true;
-gantt.config.open_tree_initially = true;
-gantt.config.row_height       = 28;
-gantt.config.bar_height       = 18;
+function setZoom(v){var z=ZOOMS[parseInt(v)];document.getElementById("zlabel").textContent=z.name;gantt.config.scale_unit=z.unit;gantt.config.step=z.step;gantt.config.date_scale=z.fmt;gantt.config.subscales=z.sub;gantt.render();}
 
-// Colonnes
-gantt.config.columns = [
-  {name: "text",     label: "Tâche",     width: 250, tree: true},
-  {name: "category", label: "Catégorie", width: 120},
-  {name: "start_date", label: "Début",   width: 90,  align: "center"},
-  {name: "duration", label: "Durée",     width: 60,  align: "center"},
-  {name: "progress", label: "%",         width: 44,  align: "center",
-    template: function(t){ return Math.round((t.progress||0)*100)+"%"; }},
+gantt.config.columns=[
+  {name:"wbs",label:"N°",width:36,align:"center",template:function(t){return t._order||"";}},
+  {name:"text",label:"Tâche",width:220,tree:true},
+  {name:"start_date",label:"Début",width:82,align:"center",template:function(t){return t.start_date?gantt.templates.date_grid(t.start_date):"—";}},
+  {name:"end_date",label:"Fin",width:82,align:"center",template:function(t){return t.end_date?gantt.templates.date_grid(t.end_date):"—";}},
+  {name:"duration",label:"Dur.",width:46,align:"center",template:function(t){return t.duration?t.duration+"j":"—";}},
+  {name:"progress",label:"%",width:42,align:"center",template:function(t){return Math.round((t.progress||0)*100)+"%";}},
+  {name:"status",label:"Statut",width:92,align:"center",template:function(t){
+    var m={"En cours":"#0078D4","In Progress":"#0078D4","Réalisé":"#107C10","Completed":"#107C10","A planifier":"#555","To Plan":"#555","Bloqué":"#C50F1F","Blocked":"#C50F1F","En retard":"#CA5010","Delayed":"#CA5010","En revue":"#7B52AB","In Review":"#7B52AB"};
+    var c=m[t.status]||"#555"; return t.status?"<span style=\"background:"+c+"22;color:"+c+";border:1px solid "+c+"44;padding:1px 5px;border-radius:3px;font-size:0.66rem;font-weight:600;\">"+t.status+"</span>":"—";
+  }},
 ];
 
-// Fiscal Year markers
-gantt.plugins({marker: true});
-
-// Données
-var tasks = {{ gantt_tasks | tojson }};
-var data  = {
-  data: tasks.map(function(t, i){
-    return {
-      id:         t.id,
-      text:       t.text,
-      start_date: t.start_date || new Date().toISOString().slice(0,10),
-      end_date:   t.end_date   || "",
-      progress:   t.progress   || 0,
-      category:   t.category   || "",
-      duration:   1,
-    };
-  }),
-  links: []
+gantt.templates.task_class=function(s,e,t){
+  if(!t.has_dates)return "no-date-task";
+  var m={"En cours":"s-inprogress","In Progress":"s-inprogress","Réalisé":"s-completed","Completed":"s-completed","A planifier":"s-toplan","To Plan":"s-toplan","Bloqué":"s-blocked","Blocked":"s-blocked","En retard":"s-delayed","Delayed":"s-delayed","En revue":"s-inreview","In Review":"s-inreview"};
+  return m[t.status]||"s-toplan";
 };
-
-// Colorer les tâches sans dates réelles (estimées)
-gantt.templates.task_class = function(start, end, task) {
-  return task.has_dates ? "" : "no-date-task";
+gantt.templates.tooltip_text=function(s,e,t){
+  var pct=Math.round((t.progress||0)*100); var sd=t.start_date?gantt.templates.date_grid(t.start_date):"?"; var ed=t.end_date?gantt.templates.date_grid(t.end_date):"?";
+  return "<b>"+t.text+"</b>"+(t.has_dates?"":" <span style='color:#CA5010;'>[dates estimées]</span>")+"<br><span style='color:#888;'>Catégorie:</span> "+(t.category||"—")+"<br><span style='color:#888;'>Début:</span> "+sd+" <span style='color:#888;'>Fin:</span> "+ed+"<br><span style='color:#888;'>Avancement:</span> "+pct+"% &nbsp; <span style='color:#888;'>Statut:</span> "+(t.status||"—");
 };
-gantt.templates.tooltip_text = function(start, end, task) {
-  var pct = Math.round((task.progress||0)*100);
-  var flag = task.has_dates ? "" : " [dates estimees]";
-  return "<b>"+task.text+"</b>"+flag+"<br>Cat: "+(task.category||"-")+"<br>Avancement: "+pct+"%";
-};
+gantt.templates.task_text=function(s,e,t){return t.text;};
 
-gantt.init("gantt_here");
-gantt.parse(data);
+var RAW={{ gantt_tasks | tojson }};
+var curFilter="all";
 
-// Marker Go-Live
-{% if project.go_live_date %}
-try {
-  var goLiveParts = "{{ project.go_live_date }}".split("/");
-  if (goLiveParts.length === 3) {
-    var goLiveDate = new Date(goLiveParts[2], goLiveParts[1]-1, goLiveParts[0]);
-    gantt.addMarker({
-      start_date: goLiveDate,
-      css: "deadline",
-      text: "Go-Live",
-      title: "Date de mise en production"
+function buildData(raw){
+  var cats={},pid=9000,data=[],links=[],order=1;
+  raw.forEach(function(t){var c=t.category||"Sans catégorie";if(!cats[c])cats[c]=[];cats[c].push(t);});
+  Object.keys(cats).forEach(function(cn){
+    var p=pid++;
+    data.push({id:p,text:cn,type:"project",open:true,has_dates:true,progress:0,category:"",status:"",_order:order++});
+    cats[cn].forEach(function(t){
+      data.push({id:t.id,text:t.text,start_date:t.start_date||null,end_date:t.end_date||null,progress:t.progress||0,category:t.category||cn,status:t.status||"",parent:p,has_dates:!!(t.start_date&&t.end_date),_order:order++,duration:0});
     });
-  }
-} catch(e) {}
+  });
+  return {data:data,links:links};
+}
+
+function filt(f){
+  curFilter=f;
+  ["all","active","late"].forEach(function(x){document.getElementById("f-"+x).classList.toggle("active",x===f);});
+  gantt.refreshData();
+}
+gantt.attachEvent("onBeforeTaskDisplay",function(id,task){
+  if(task.type==="project")return true;
+  if(curFilter==="active")return task.status==="En cours"||task.status==="In Progress";
+  if(curFilter==="late")return task.status==="En retard"||task.status==="Delayed"||task.status==="Bloqué"||task.status==="Blocked";
+  return true;
+});
+
+// Sauvegarde drag&drop
+gantt.attachEvent("onAfterTaskDrag",function(id,mode){
+  var task=gantt.getTask(id); if(!task||task.type==="project")return;
+  var sd=task.start_date?task.start_date.toISOString().slice(0,10):null;
+  var ed=task.end_date?task.end_date.toISOString().slice(0,10):null;
+  if(!sd)return;
+  fetch("/api/tasks/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({start_date:sd,end_date:ed,progress:Math.round((task.progress||0)*100)})}).catch(function(){});
+});
+
+setZoom(2);
+gantt.init("gantt_here");
+gantt.parse(buildData(RAW));
+var tc=buildData(RAW).data.filter(function(t){return t.type!=="project";}).length;
+document.getElementById("tc").textContent=tc+" tâche(s)";
+
+gantt.addMarker({start_date:new Date(),css:"today-m",text:"Aujourd'hui"});
+{% if project.go_live_date %}
+try{var p="{{ project.go_live_date }}".split("/");if(p.length===3)gantt.addMarker({start_date:new Date(p[2],p[1]-1,p[0]),css:"golive-m",text:"Go-Live"});}catch(e){}
 {% endif %}
 
-// Marker aujourd hui
-gantt.addMarker({
-  start_date: new Date(),
-  css: "today",
-  text: "Aujourd hui",
-});
+function scrollToToday(){gantt.showDate(new Date());}
+setTimeout(scrollToToday,200);
 </script>
 </body>
 </html>
