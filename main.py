@@ -536,3 +536,41 @@ networks:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8766, reload=True)
+
+
+# ── IA : parse image → tâches (llama-4-scout vision) ──────────────────────────
+
+@app.post("/api/projects/{project_id}/ai/parse-image")
+async def api_ai_parse_image(project_id: int, request: Request):
+    """Groq llama-4-scout analyse une image et extrait les taches."""
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(404, "Projet introuvable")
+    data = await request.json()
+    image_data   = data.get("image_data", "")    # base64
+    image_mime   = data.get("image_mime", "image/png")
+    text_context = data.get("text_context", "")
+    language     = data.get("language", project.get("language", "fr"))
+
+    if not image_data:
+        return {"tasks": [], "error": "Aucune image fournie"}
+
+    # Nettoyer le préfixe data URI si présent (ex: data:image/png;base64,xxx)
+    if "," in image_data:
+        image_data = image_data.split(",", 1)[1]
+
+    try:
+        from ai.task_parser import VisionTaskParser
+        vision_parser = VisionTaskParser(GROQ_API_KEY)
+        tasks = vision_parser.parse_image(
+            image_data   = image_data,
+            image_mime   = image_mime,
+            text_context = text_context,
+            language     = language,
+        )
+        model_used = "llama-4-scout (vision)"
+        return {"tasks": tasks, "model": model_used, "ok": True}
+    except Exception as e:
+        logger.error("parse-image error: %s", e)
+        return {"tasks": [], "error": str(e)}
+
