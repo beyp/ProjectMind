@@ -27,6 +27,7 @@ from core.models import (
     get_fiscal_quarter, get_fiscal_year,
 )
 from ai.task_parser import TaskParser
+from core.updater import ProjectMindUpdater
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,13 +46,18 @@ templates.env.globals["get_fiscal_quarter"] = get_fiscal_quarter
 templates.env.globals["today"]             = date.today
 
 
+# Instance globale updater
+_updater = ProjectMindUpdater(mode="notify", check_interval=3600)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     Path("data").mkdir(exist_ok=True)
     Path("logs").mkdir(exist_ok=True)
+    _updater.start()
     logger.info("ProjectMind started")
     yield
+    _updater.stop()
     logger.info("ProjectMind stopped")
 
 
@@ -701,4 +707,21 @@ async def api_ai_agent(project_id:int,request:Request):
         except Exception as ex:
             executed.append({"type":atype,"ok":False,"error":str(ex)})
     return {"reply":result.get("reply",""),"actions":executed,"reload":reload_needed}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# API — Mise à jour
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/update/status")
+async def api_update_status():
+    return _updater.get_state()
+
+@app.post("/api/update/check")
+async def api_update_check():
+    return _updater.check_now()
+
+@app.post("/api/update/apply")
+async def api_update_apply():
+    return _updater.apply_update()
 
