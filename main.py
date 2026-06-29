@@ -532,3 +532,7 @@ networks:
     except Exception as e:
         logger.warning("Impossible regenerer docker-compose.yml: %s", e)
 
+# Lancement uvicorn par python .\main.py
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8766, reload=True)
