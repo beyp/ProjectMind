@@ -70,6 +70,27 @@ header span{color:var(--dim);font-size:0.85rem;}
 </style>
 </head>
 <body>
+
+<!-- Bannière mise à jour -->
+<div id="update-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;
+  background:linear-gradient(135deg,#1a3a1a,#0d2d0d);border-bottom:2px solid #4caf50;
+  padding:10px 20px;align-items:center;gap:12px;font-size:0.83rem;">
+  <span style="font-size:1.1rem;">🔄</span>
+  <div style="flex:1;">
+    <span style="color:#4caf50;font-weight:600;">Mise à jour disponible !</span>
+    <span id="upd-msg" style="color:#aaa;margin-left:8px;"></span>
+    <span id="upd-date" style="color:#666;font-size:0.75rem;margin-left:6px;"></span>
+    <span id="upd-behind" style="color:#888;font-size:0.75rem;margin-left:6px;"></span>
+  </div>
+  <button onclick="applyUpdate()" id="upd-btn"
+    style="background:#4caf50;border:none;color:#fff;padding:6px 16px;border-radius:6px;
+    cursor:pointer;font-size:0.82rem;font-weight:600;white-space:nowrap;">⬇️ Mettre à jour</button>
+  <button onclick="checkUpdateNow()"
+    style="background:transparent;border:1px solid #444;color:#aaa;padding:6px 12px;
+    border-radius:6px;cursor:pointer;font-size:0.78rem;">🔍 Vérifier</button>
+  <button onclick="document.getElementById('update-banner').style.display='none'"
+    style="background:transparent;border:none;color:#666;font-size:1.1rem;cursor:pointer;">✕</button>
+</div>
 <header>
   <span style="font-size:1.5rem;">&#x1F4CB;</span>
   <h1>ProjectMind</h1>
@@ -312,5 +333,51 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
   </div>
 </div>
+
+<script>
+function checkUpdateStatus(){
+  fetch('/api/update/status').then(function(r){return r.json();}).then(function(d){
+    var b=document.getElementById('update-banner');
+    if(d.update_available){
+      document.getElementById('upd-msg').textContent=d.latest_message||'';
+      document.getElementById('upd-date').textContent=d.latest_date?'('+d.latest_date+')':'';
+      document.getElementById('upd-behind').textContent=d.commits_behind>0?d.commits_behind+' commit(s) en retard':'';
+      b.style.display='flex';
+    } else { b.style.display='none'; }
+  }).catch(function(){});
+}
+function checkUpdateNow(){
+  document.getElementById('upd-msg').textContent='⏳ Vérification...';
+  fetch('/api/update/check',{method:'POST'}).then(function(r){return r.json();}).then(function(d){
+    if(d.update_available){
+      document.getElementById('upd-msg').textContent=d.latest_message||'';
+      document.getElementById('update-banner').style.display='flex';
+    } else {
+      document.getElementById('update-banner').style.display='none';
+      var f=document.createElement('div');f.textContent='✅ ProjectMind est à jour !';
+      f.style.cssText='position:fixed;bottom:24px;right:24px;background:#1a1d27;border:1px solid #4caf5055;color:#4caf50;padding:10px 18px;border-radius:8px;font-size:.85rem;z-index:9999;';
+      document.body.appendChild(f);setTimeout(function(){f.remove();},4000);
+    }
+  }).catch(function(){});
+}
+function applyUpdate(){
+  var btn=document.getElementById('upd-btn');
+  btn.disabled=true;btn.textContent='⏳ En cours...';
+  document.getElementById('upd-msg').textContent='git pull + pip install...';
+  fetch('/api/update/apply',{method:'POST'}).then(function(r){return r.json();}).then(function(d){
+    if(d.success){
+      document.getElementById('upd-msg').textContent='✅ '+( d.message||'Redémarrage dans 3s...');
+      btn.textContent='🔄 Redémarrage...';
+      setTimeout(function(){location.reload();},7000);
+    } else {
+      document.getElementById('upd-msg').textContent='❌ '+(d.message||'Échec');
+      btn.disabled=false;btn.textContent='⬇️ Réessayer';
+    }
+  }).catch(function(){btn.disabled=false;btn.textContent='⬇️ Réessayer';});
+}
+checkUpdateStatus();
+setInterval(checkUpdateStatus,30*60*1000);
+</script>
+
 </body>
 </html>
