@@ -574,3 +574,131 @@ async def api_ai_parse_image(project_id: int, request: Request):
         logger.error("parse-image error: %s", e)
         return {"tasks": [], "error": str(e)}
 
+# ═══ IA Agent CRUD ═══
+
+@app.get("/api/projects/{project_id}/context")
+async def api_project_context(project_id: int):
+    project = get_project(project_id)
+    if not project: raise HTTPException(404)
+    return {"project":project,"categories":get_categories(project_id),"tasks":get_tasks(project_id),"milestones":get_milestones(project_id),"risks":get_risks(project_id),"kpis":get_kpis(project_id)}
+
+@app.patch("/api/projects/{project_id}/categories/{cat_id}")
+async def api_update_category(project_id:int,cat_id:int,request:Request):
+    data=await request.json(); allowed={"name","name_en","color","sort_order"}; fields={k:v for k,v in data.items() if k in allowed}
+    if fields:
+        conn=get_db(); sets=", ".join(f"{k}=?" for k in fields); conn.execute(f"UPDATE categories SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[cat_id,project_id]); conn.commit(); conn.close()
+    return {"ok":True}
+
+@app.delete("/api/projects/{project_id}/categories/{cat_id}")
+async def api_delete_category(project_id:int,cat_id:int):
+    conn=get_db(); conn.execute("UPDATE tasks SET category_id=NULL WHERE category_id=? AND project_id=?",(cat_id,project_id)); conn.execute("DELETE FROM categories WHERE id=? AND project_id=?",(cat_id,project_id)); conn.commit(); conn.close(); return {"ok":True}
+
+@app.post("/api/projects/{project_id}/categories/reorder")
+async def api_reorder_categories(project_id:int,request:Request):
+    data=await request.json(); order=data.get("order",[]); conn=get_db()
+    for idx,cid in enumerate(order): conn.execute("UPDATE categories SET sort_order=? WHERE id=? AND project_id=?",(idx,cid,project_id))
+    conn.commit(); conn.close(); return {"ok":True}
+
+@app.post("/api/projects/{project_id}/tasks/reorder")
+async def api_reorder_tasks(project_id:int,request:Request):
+    data=await request.json(); order=data.get("order",[]); conn=get_db()
+    for idx,tid in enumerate(order): conn.execute("UPDATE tasks SET sort_order=? WHERE id=? AND project_id=?",(idx,tid,project_id))
+    conn.commit(); conn.close(); return {"ok":True}
+
+@app.post("/api/projects/{project_id}/tasks/bulk-update")
+async def api_bulk_update_tasks(project_id:int,request:Request):
+    data=await request.json(); updates=data.get("updates",[]); conn=get_db()
+    allowed={"title","title_en","status","progress","date_label","start_date","end_date","category_id","description","ado_item_id","sort_order"}; updated=0
+    for upd in updates:
+        tid=upd.get("id"); fields={k:v for k,v in upd.items() if k in allowed}
+        if tid and fields:
+            fields["updated_at"]=date.today().isoformat(); sets=", ".join(f"{k}=?" for k in fields)
+            conn.execute(f"UPDATE tasks SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[tid,project_id]); updated+=1
+    conn.commit(); conn.close(); return {"ok":True,"updated":updated}
+
+@app.patch("/api/projects/{project_id}/milestones/{ms_id}")
+async def api_update_milestone(project_id:int,ms_id:int,request:Request):
+    data=await request.json(); allowed={"title","baseline_date","current_date","status","sort_order"}; fields={k:v for k,v in data.items() if k in allowed}
+    if fields:
+        conn=get_db(); sets=", ".join(f"{k}=?" for k in fields); conn.execute(f"UPDATE milestones SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[ms_id,project_id]); conn.commit(); conn.close()
+    return {"ok":True}
+
+@app.patch("/api/projects/{project_id}/risks/{risk_id}")
+async def api_update_risk(project_id:int,risk_id:int,request:Request):
+    data=await request.json(); allowed={"risk_type","description","owner","status"}; fields={k:v for k,v in data.items() if k in allowed}
+    if fields:
+        conn=get_db(); sets=", ".join(f"{k}=?" for k in fields); conn.execute(f"UPDATE risks SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[risk_id,project_id]); conn.commit(); conn.close()
+    return {"ok":True}
+
+@app.post("/api/projects/{project_id}/ai/agent")
+async def api_ai_agent(project_id:int,request:Request):
+    import json as _json
+    project=get_project(project_id)
+    if not project: raise HTTPException(404)
+    data=await request.json(); message=data.get("message",""); language=data.get("language",project.get("language","fr")); history=data.get("history",[])
+    if not message.strip(): return {"reply":"Que puis-je faire ?","actions":[],"reload":False}
+    categories=get_categories(project_id); tasks=get_tasks(project_id); milestones=get_milestones(project_id); risks=get_risks(project_id)
+    context={"project_id":project_id,"project_name":project.get("name"),"language":language,
+        "categories":[{"id":c["id"],"name":c["name"],"color":c.get("color")} for c in categories],
+        "tasks":[{"id":t["id"],"title":t["title"],"category_id":t.get("category_id"),"status":t.get("status"),"progress":t.get("progress",0),"start_date":t.get("start_date"),"end_date":t.get("end_date"),"date_label":t.get("date_label")} for t in tasks],
+        "milestones":[{"id":m["id"],"title":m["title"],"baseline_date":m.get("baseline_date"),"current_date":m.get("current_date"),"status":m.get("status")} for m in milestones],
+        "risks":[{"id":r["id"],"description":r["description"],"owner":r.get("owner"),"risk_type":r.get("risk_type"),"status":r.get("status")} for r in risks]}
+    from ai.task_parser import AgentParser
+    agent=AgentParser(os.getenv("GROQ_API_KEY","")); result=agent.run(message=message,context=context,history=history,language=language)
+    executed=[]; reload_needed=False
+    allowed_t={"title","title_en","status","progress","date_label","start_date","end_date","category_id","description","ado_item_id","sort_order"}
+    for action in result.get("actions",[]):
+        atype=action.get("type","")
+        try:
+            if atype=="create_task":
+                p=action.get("params",{}); tid=create_task(project_id=project_id,**{k:v for k,v in p.items() if k in {"title","category_id","status","progress","date_label","start_date","end_date","description","ado_item_id"}}); executed.append({"type":atype,"id":tid,"ok":True}); reload_needed=True
+            elif atype=="update_task":
+                tid=action.get("id"); p=action.get("params",{})
+                if tid: update_task(tid,**{k:v for k,v in p.items() if k in allowed_t})
+                executed.append({"type":atype,"id":tid,"ok":True}); reload_needed=True
+            elif atype=="delete_task":
+                tid=action.get("id")
+                if tid: delete_task(tid)
+                executed.append({"type":atype,"id":tid,"ok":True}); reload_needed=True
+            elif atype=="bulk_update_tasks":
+                updates=action.get("updates",[]); conn=get_db()
+                for upd in updates:
+                    tid=upd.get("id"); fields={k:v for k,v in upd.items() if k in allowed_t}
+                    if tid and fields:
+                        fields["updated_at"]=date.today().isoformat(); sets=", ".join(f"{k}=?" for k in fields)
+                        conn.execute(f"UPDATE tasks SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[tid,project_id])
+                conn.commit(); conn.close(); executed.append({"type":atype,"count":len(updates),"ok":True}); reload_needed=True
+            elif atype=="create_category":
+                p=action.get("params",{}); cid=create_category(project_id,p.get("name",""),p.get("name_en",""),p.get("color","#041E42")); executed.append({"type":atype,"id":cid,"ok":True}); reload_needed=True
+            elif atype=="update_category":
+                cid=action.get("id"); p=action.get("params",{}); fields={k:v for k,v in p.items() if k in {"name","name_en","color","sort_order"}}
+                if cid and fields:
+                    conn=get_db(); sets=", ".join(f"{k}=?" for k in fields); conn.execute(f"UPDATE categories SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[cid,project_id]); conn.commit(); conn.close()
+                executed.append({"type":atype,"id":cid,"ok":True}); reload_needed=True
+            elif atype=="delete_category":
+                cid=action.get("id")
+                if cid:
+                    conn=get_db(); conn.execute("UPDATE tasks SET category_id=NULL WHERE category_id=? AND project_id=?",(cid,project_id)); conn.execute("DELETE FROM categories WHERE id=? AND project_id=?",(cid,project_id)); conn.commit(); conn.close()
+                executed.append({"type":atype,"id":cid,"ok":True}); reload_needed=True
+            elif atype=="reorder_categories":
+                order=action.get("order",[]); conn=get_db()
+                for idx,cid in enumerate(order): conn.execute("UPDATE categories SET sort_order=? WHERE id=? AND project_id=?",(idx,cid,project_id))
+                conn.commit(); conn.close(); executed.append({"type":atype,"ok":True}); reload_needed=True
+            elif atype=="create_milestone":
+                p=action.get("params",{}); mid=create_milestone(project_id,p.get("title",""),p.get("baseline_date",""),p.get("current_date",""),p.get("status","In progress")); executed.append({"type":atype,"id":mid,"ok":True}); reload_needed=True
+            elif atype=="update_milestone":
+                mid=action.get("id"); p=action.get("params",{}); fields={k:v for k,v in p.items() if k in {"title","baseline_date","current_date","status"}}
+                if mid and fields:
+                    conn=get_db(); sets=", ".join(f"{k}=?" for k in fields); conn.execute(f"UPDATE milestones SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[mid,project_id]); conn.commit(); conn.close()
+                executed.append({"type":atype,"id":mid,"ok":True}); reload_needed=True
+            elif atype=="create_risk":
+                p=action.get("params",{}); rid=create_risk(project_id,p.get("description",""),p.get("owner",""),p.get("risk_type","I")); executed.append({"type":atype,"id":rid,"ok":True}); reload_needed=True
+            elif atype=="update_risk":
+                rid=action.get("id"); p=action.get("params",{}); fields={k:v for k,v in p.items() if k in {"risk_type","description","owner","status"}}
+                if rid and fields:
+                    conn=get_db(); sets=", ".join(f"{k}=?" for k in fields); conn.execute(f"UPDATE risks SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[rid,project_id]); conn.commit(); conn.close()
+                executed.append({"type":atype,"id":rid,"ok":True}); reload_needed=True
+        except Exception as ex:
+            executed.append({"type":atype,"ok":False,"error":str(ex)})
+    return {"reply":result.get("reply",""),"actions":executed,"reload":reload_needed}
+
