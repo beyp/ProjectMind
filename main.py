@@ -120,6 +120,7 @@ async def project_view(request: Request, project_id: int):
             "resources":    resources,
             "today":        date.today(),
             "fiscal_q":     get_fiscal_quarter(),
+            "resources":    resources,
         },
     )
 
