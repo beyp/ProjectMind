@@ -21,10 +21,11 @@ from core.models import (
     get_kpis, get_weekly_note, get_milestones, get_risks,
     get_resources, create_resource, update_resource, delete_resource,
     reorder_resources, get_capacity, upsert_capacity, get_capacity_matrix,
-    get_task_assignments, get_project_assignments,
+    get_task, get_task_assignments, get_project_assignments,
     upsert_task_assignment, delete_task_assignment, compute_task_end_date,
     STATUS_COLORS, STATUSES, KPI_ITEMS, get_fiscal_quarter, get_fiscal_year,
-    get_db, delete_project
+    get_db, delete_project,
+    get_role_colors, upsert_role_color, delete_role_color, color_for_role
 )
 from ai.task_parser import TaskParser, VisionTaskParser
 
@@ -469,12 +470,17 @@ Available action types:
 7. Reply message:
    {{"type": "message", "text": "Done. I have created SAMC4 and allocated 25% on weeks 23-26."}}
 
+8. Sync roles from existing resources:
+   {"type": "sync_roles_from_resources"}
+
 Rules:
 - ALWAYS include at least one "message" action
 - Use exact acronyms from existing resources when possible
 - fraction: 0.25=25%=10h/sem, 0.5=50%=20h/sem, 1.0=100%=40h/sem
 - If resource doesn't exist, include create_resource first
 - Current year if not specified: 2026
+- If the user asks to add roles from existing resources, use sync_roles_from_resources.
+- When creating a resource with a role, always create/update the role color first and apply that role color to the resource.
 - Reply ONLY with valid JSON array, no text before/after
 """
 
@@ -536,15 +542,38 @@ Rules:
                     project_id   = project_id,
                     acronym      = acro,
                     full_name    = action.get("full_name", ""),
-                    role         = action.get("role", ""),
+                    role         = action.get("role", "").strip(),
                     is_external  = action.get("is_external", False),
                     max_fraction = float(action.get("max_fraction", 1.0)),
-                    color        = action.get("color", "#1E90FF"),
                 )
+
                 action["executed"] = True
                 action["id"]       = rid
                 resources = get_resources(project_id)
                 res_map   = {r["acronym"].upper(): r for r in resources}
+            executed.append(action)
+
+        # ── sync color from resources ─────────────────────────────────────────────────
+        elif atype == "sync_roles_from_resources":
+            synced = 0
+            updated = 0
+
+            for res in get_resources(project_id):
+                role = (res.get("role") or "").strip()
+                if not role:
+                    continue
+
+                color = color_for_role(role)
+                synced += 1
+
+                if res.get("color") != color:
+                    update_resource(res["id"], color=color)
+                    updated += 1
+
+            action["executed"] = True
+            action["synced_resources"] = synced
+            action["updated_resources"] = updated
+            action["message"] = f"{synced} ressource(s) analysée(s), {updated} couleur(s) mise(s) à jour."
             executed.append(action)
 
         # ── delete_resource ─────────────────────────────────────────────────
@@ -677,6 +706,7 @@ async def capacity_view(request: Request, project_id: int):
             "resources": resources,
             "matrix":    matrix,
             "year":      year,
+            "role_colors": [{"role": r, "color": c} for r, c in get_role_colors().items()],
         },
     )
 
@@ -732,6 +762,23 @@ async def api_delete_resource(resource_id: int):
     ok = delete_resource(resource_id)
     return {"ok": ok}
 
+@app.get("/api/role-colors")
+async def api_get_role_colors():
+    return get_role_colors()
+
+
+@app.put("/api/role-colors/{role}")
+async def api_upsert_role_color(role: str, request: Request):
+    data = await request.json()
+    color = data.get("color", "#1E90FF")
+    upsert_role_color(role, color)
+    return {"ok": True, "role": role, "color": color}
+
+
+@app.delete("/api/role-colors/{role}")
+async def api_delete_role_color(role: str):
+    ok = delete_role_color(role)
+    return {"ok": ok}
 
 @app.get("/api/projects/{project_id}/capacity")
 async def api_get_capacity(project_id: int, year: int | None = None):

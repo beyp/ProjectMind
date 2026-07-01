@@ -40,6 +40,12 @@ KPI_COLORS = {
 
 KPI_ITEMS = ["COST", "SCOPE", "SCHEDULE", "RESOURCES", "RISK", "TRANSITION"]
 
+ROLE_PALETTE = [
+    "#E74C3C", "#3498DB", "#27AE60", "#8E44AD",
+    "#F39C12", "#1ABC9C", "#D35400", "#2ECC71",
+    "#9B59B6", "#16A085", "#E67E22", "#7F8C8D",
+]
+
 
 def get_db() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -289,6 +295,18 @@ def create_category(project_id: int, name: str, name_en: str = "",
     conn.close()
     return cat_id
 
+def get_task(task_id: int) -> dict | None:
+    """Retourne une tâche par son identifiant."""
+    conn = get_db()
+
+    row = conn.execute(
+        "SELECT * FROM tasks WHERE id=?",
+        (task_id,)
+    ).fetchone()
+
+    conn.close()
+
+    return dict(row) if row else None
 
 def get_tasks(project_id: int, category_id: int | None = None) -> list[dict]:
     conn = get_db()
@@ -510,10 +528,25 @@ def get_resources(project_id: int) -> list[dict]:
     conn.close()
     return [dict(r) for r in rows]
 
+def color_for_role(role: str) -> str:
+
+    role_colors = get_role_colors()
+    role = (role or "").strip()
+    if not role:
+        return "#1E90FF"
+    if role in role_colors:
+        return role_colors[role]
+
+    color = ROLE_PALETTE[len(role_colors) % len(ROLE_PALETTE)]
+    upsert_role_color(role, color)
+    role_colors[role] = color
+    return color
 
 def create_resource(project_id: int, acronym: str, full_name: str = "",
                     role: str = "", is_external: bool = False,
-                    max_fraction: float = 1.0, color: str = "#1E90FF") -> int:
+                    max_fraction: float = 1.0, color: str | None = None) -> int:
+    if not color:
+        color = color_for_role(role)
     conn = get_db()
     c    = conn.cursor()
     c.execute("""
@@ -647,3 +680,31 @@ def get_fiscal_quarter(d: date | None = None) -> str:
     else:
         q = "Q4"
     return f"{fy}-{q}"
+
+def get_role_colors() -> dict:
+    conn = get_db()
+    rows = conn.execute("SELECT role, color FROM role_colors ORDER BY role").fetchall()
+    conn.close()
+    return {r["role"]: r["color"] for r in rows}
+
+
+def upsert_role_color(role: str, color: str) -> None:
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO role_colors (role, color)
+        VALUES (?, ?)
+        ON CONFLICT(role)
+        DO UPDATE SET color=excluded.color
+    """, (role, color))
+    conn.commit()
+    conn.close()
+
+
+def delete_role_color(role: str) -> bool:
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("DELETE FROM role_colors WHERE role=?", (role,))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
