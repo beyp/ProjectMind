@@ -1,67 +1,66 @@
-"""ProjectMind - Point d entree principal."""
+"""ProjectMind - Point d entrée principal."""
 import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import date, datetime
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from core.models import (
-    init_db, get_all_projects, get_project, create_project, delete_project,
-    get_categories, create_category,
-    get_tasks, create_task, update_task, delete_task,
-    get_kpis,
-    get_weekly_note,
-    get_milestones, create_milestone, delete_milestone,
-    get_risks, create_risk, delete_risk,
-    get_db,
-    STATUS_COLORS, STATUSES, KPI_ITEMS,
-    get_fiscal_quarter, get_fiscal_year,
+    init_db, get_all_projects, get_project, create_project,
+    get_categories, create_category, get_tasks, create_task, update_task,
+    get_kpis, get_weekly_note, get_milestones, get_risks,
+    get_resources, create_resource, update_resource, delete_resource,
+    reorder_resources, get_capacity, upsert_capacity, get_capacity_matrix,
+    get_task_assignments, get_project_assignments,
+    upsert_task_assignment, delete_task_assignment, compute_task_end_date,
+    STATUS_COLORS, STATUSES, KPI_ITEMS, get_fiscal_quarter, get_fiscal_year,
+    get_db, delete_project
 )
-from ai.task_parser import TaskParser
-from core.updater import ProjectMindUpdater
+from ai.task_parser import TaskParser, VisionTaskParser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-task_parser  = TaskParser(GROQ_API_KEY)
+task_parser        = TaskParser(GROQ_API_KEY)
+vision_task_parser = VisionTaskParser(GROQ_API_KEY)
 
 TEMPLATES_DIR = Path("templates")
 templates     = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # Jinja2 helpers
-templates.env.globals["STATUS_COLORS"]     = STATUS_COLORS
-templates.env.globals["STATUSES"]          = STATUSES
-templates.env.globals["KPI_ITEMS"]         = KPI_ITEMS
+templates.env.globals["STATUS_COLORS"]      = STATUS_COLORS
+templates.env.globals["STATUSES"]           = STATUSES
+templates.env.globals["KPI_ITEMS"]          = KPI_ITEMS
 templates.env.globals["get_fiscal_quarter"] = get_fiscal_quarter
-templates.env.globals["today"]             = date.today
+templates.env.globals["today"]              = date.today()  # valeur, pas callable
 
+# Filtre urlencode pour les URLs ADO
+from urllib.parse import quote as _url_quote
+templates.env.filters["urlencode"] = lambda s: _url_quote(str(s), safe="")
 
-# Instance globale updater
-_updater = ProjectMindUpdater(mode="notify", check_interval=3600)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     Path("data").mkdir(exist_ok=True)
     Path("logs").mkdir(exist_ok=True)
-    _updater.start()
     logger.info("ProjectMind started")
     yield
-    _updater.stop()
     logger.info("ProjectMind stopped")
 
 
-app = FastAPI(title="ProjectMind", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="ProjectMind", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -72,9 +71,9 @@ if Path("static").exists():
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Pages HTML
-# ═══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
+# Pages principales
+# ══════════════════════════════════════════════════════════════════════════════
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -91,17 +90,19 @@ async def project_view(request: Request, project_id: int):
     project = get_project(project_id)
     if not project:
         raise HTTPException(404, "Projet introuvable")
-    categories  = get_categories(project_id)
-    tasks       = get_tasks(project_id)
-    kpis        = get_kpis(project_id)
-    milestones  = get_milestones(project_id)
-    risks       = get_risks(project_id)
+    categories = get_categories(project_id)
+    tasks      = get_tasks(project_id)
+    kpis       = get_kpis(project_id)
+    milestones = get_milestones(project_id)
+    risks      = get_risks(project_id)
     weekly_note = get_weekly_note(project_id)
-
-    tasks_by_cat: dict = {}
+    # Grouper les tâches par catégorie
+    tasks_by_cat: dict[int, list] = {}
     for task in tasks:
         cat_id = task.get("category_id") or 0
         tasks_by_cat.setdefault(cat_id, []).append(task)
+
+    resources = get_resources(project_id)
 
     return templates.TemplateResponse(
         request=request,
@@ -110,10 +111,12 @@ async def project_view(request: Request, project_id: int):
             "project":      project,
             "categories":   categories,
             "tasks_by_cat": tasks_by_cat,
+            "tasks_flat":   tasks,
             "kpis":         kpis,
             "milestones":   milestones,
             "risks":        risks,
             "weekly_note":  weekly_note,
+            "resources":    resources,
             "today":        date.today(),
             "fiscal_q":     get_fiscal_quarter(),
         },
@@ -122,38 +125,52 @@ async def project_view(request: Request, project_id: int):
 
 @app.get("/project/{project_id}/gantt", response_class=HTMLResponse)
 async def gantt_view(request: Request, project_id: int):
+    from datetime import date as dt, timedelta
     project = get_project(project_id)
     if not project:
         raise HTTPException(404, "Projet introuvable")
     tasks      = get_tasks(project_id)
     categories = get_categories(project_id)
     cat_map    = {c["id"]: c["name"] for c in categories}
+
+    # Construire les données Gantt
+    # Inclure TOUTES les tâches (pas seulement celles avec dates)
+    today_str = dt.today().isoformat()
     gantt_tasks = []
-    for t in tasks:
-        if t.get("start_date") or t.get("end_date"):
-            gantt_tasks.append({
-                "id":         t["id"],
-                "text":       t["title"],
-                "start_date": t.get("start_date", ""),
-                "end_date":   t.get("end_date", ""),
-                "progress":   (t.get("progress") or 0) / 100,
-                "category":   cat_map.get(t.get("category_id"), ""),
-            })
+    for i, t in enumerate(tasks):
+        start = t.get("start_date") or ""
+        end   = t.get("end_date")   or ""
+        # Si pas de dates → tâche "flottante" à partir d'aujourd'hui
+        if not start:
+            start = today_str
+        if not end:
+            # Durée par défaut : 7 jours
+            from datetime import date as d2
+            end = (d2.fromisoformat(start) + timedelta(days=7)).isoformat()
+        gantt_tasks.append({
+            "id":         t["id"],
+            "text":       t["title"],
+            "start_date": start,
+            "end_date":   end,
+            "progress":   (t.get("progress") or 0) / 100,
+            "category":   cat_map.get(t.get("category_id"), ""),
+            "has_dates":  bool(t.get("start_date") or t.get("end_date")),
+        })
     return templates.TemplateResponse(
         request=request,
         name="gantt.html",
         context={
-            "project":     project,
+            "project":    project,
             "gantt_tasks": gantt_tasks,
-            "fiscal_q":    get_fiscal_quarter(),
-            "fiscal_y":    get_fiscal_year(),
+            "fiscal_q":   get_fiscal_quarter(),
+            "fiscal_y":   get_fiscal_year(),
         },
     )
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# API — Projets
-# ═══════════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
+# API REST
+# ══════════════════════════════════════════════════════════════════════════════
 
 @app.get("/api/projects")
 async def api_projects():
@@ -176,36 +193,12 @@ async def api_create_project(request: Request):
 
 @app.delete("/api/projects/{project_id}")
 async def api_delete_project(project_id: int):
+    """Supprime un projet et toutes ses donnees."""
     ok = delete_project(project_id)
     if not ok:
         raise HTTPException(404, "Projet introuvable")
-    return {"ok": True}
+    return {"ok": True, "deleted": project_id}
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# API — Catégories
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@app.get("/api/projects/{project_id}/categories")
-async def api_categories(project_id: int):
-    return get_categories(project_id)
-
-
-@app.post("/api/projects/{project_id}/categories")
-async def api_create_category(project_id: int, request: Request):
-    data   = await request.json()
-    cat_id = create_category(
-        project_id = project_id,
-        name       = data.get("name", ""),
-        name_en    = data.get("name_en", ""),
-        color      = data.get("color", "#041E42"),
-    )
-    return {"id": cat_id, "ok": True}
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# API — Tâches
-# ═══════════════════════════════════════════════════════════════════════════════
 
 @app.get("/api/projects/{project_id}/tasks")
 async def api_tasks(project_id: int):
@@ -236,17 +229,22 @@ async def api_update_task(task_id: int, request: Request):
     return {"ok": True}
 
 
-@app.delete("/api/tasks/{task_id}")
-async def api_delete_task(task_id: int):
-    ok = delete_task(task_id)
-    if not ok:
-        raise HTTPException(404, "Tache introuvable")
-    return {"ok": True}
+@app.get("/api/projects/{project_id}/categories")
+async def api_categories(project_id: int):
+    return get_categories(project_id)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# API — Notes hebdomadaires
-# ═══════════════════════════════════════════════════════════════════════════════
+@app.post("/api/projects/{project_id}/categories")
+async def api_create_category(project_id: int, request: Request):
+    data   = await request.json()
+    cat_id = create_category(
+        project_id = project_id,
+        name       = data.get("name", ""),
+        name_en    = data.get("name_en", ""),
+        color      = data.get("color", "#041E42"),
+    )
+    return {"id": cat_id, "ok": True}
+
 
 @app.post("/api/projects/{project_id}/weekly-note")
 async def api_save_weekly_note(project_id: int, request: Request):
@@ -254,26 +252,16 @@ async def api_save_weekly_note(project_id: int, request: Request):
     conn = get_db()
     today_str = date.today().isoformat()
     conn.execute("""
-        INSERT INTO weekly_notes
-            (project_id, week_date, summary, achievements, planned, watch_items)
+        INSERT OR REPLACE INTO weekly_notes
+        (project_id, week_date, summary, achievements, planned, watch_items)
         VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(project_id, week_date)
-        DO UPDATE SET
-            summary=excluded.summary,
-            achievements=excluded.achievements,
-            planned=excluded.planned,
-            watch_items=excluded.watch_items
     """, (project_id, today_str,
-          data.get("summary", ""), data.get("achievements", ""),
-          data.get("planned", ""), data.get("watch_items", "")))
+          data.get("summary",""), data.get("achievements",""),
+          data.get("planned",""), data.get("watch_items","")))
     conn.commit()
     conn.close()
     return {"ok": True}
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# API — KPIs
-# ═══════════════════════════════════════════════════════════════════════════════
 
 @app.post("/api/projects/{project_id}/kpis")
 async def api_update_kpis(project_id: int, request: Request):
@@ -282,98 +270,104 @@ async def api_update_kpis(project_id: int, request: Request):
     today_str = date.today().isoformat()
     for kpi_name, values in data.items():
         conn.execute("""
-            INSERT INTO project_kpis (project_id, kpi_name, prev_value, curr_value, week_date)
+            INSERT OR REPLACE INTO project_kpis
+            (project_id, kpi_name, prev_value, curr_value, week_date)
             VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(project_id, kpi_name, week_date)
-            DO UPDATE SET
-                prev_value=excluded.prev_value,
-                curr_value=excluded.curr_value
         """, (project_id, kpi_name,
-              values.get("prev_value", "G"), values.get("curr_value", "G"),
-              today_str))
+              values.get("prev","G"), values.get("curr","G"), today_str))
     conn.commit()
     conn.close()
     return {"ok": True}
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# API — Jalons (Milestones)
-# ═══════════════════════════════════════════════════════════════════════════════
-
 @app.post("/api/projects/{project_id}/milestones")
 async def api_create_milestone(project_id: int, request: Request):
     data = await request.json()
-    mid = create_milestone(
-        project_id    = project_id,
-        title         = data.get("title", ""),
-        baseline_date = data.get("baseline_date", ""),
-        current_date  = data.get("current_date", ""),
-        status        = data.get("status", "In progress"),
-    )
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("""
+        INSERT INTO milestones (project_id, title, baseline_date, current_date, status)
+        VALUES (?, ?, ?, ?, ?)
+    """, (project_id, data.get("title",""),
+          data.get("baseline_date",""), data.get("current_date",""),
+          data.get("status","In progress")))
+    mid = c.lastrowid
+    conn.commit()
+    conn.close()
     return {"id": mid, "ok": True}
 
-
-@app.delete("/api/milestones/{milestone_id}")
-async def api_delete_milestone(milestone_id: int):
-    ok = delete_milestone(milestone_id)
-    if not ok:
-        raise HTTPException(404, "Jalon introuvable")
-    return {"ok": True}
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# API — Risques
-# ═══════════════════════════════════════════════════════════════════════════════
 
 @app.post("/api/projects/{project_id}/risks")
 async def api_create_risk(project_id: int, request: Request):
     data = await request.json()
-    rid = create_risk(
-        project_id  = project_id,
-        description = data.get("description", ""),
-        owner       = data.get("owner", ""),
-        risk_type   = data.get("risk_type", "I"),
-    )
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("""
+        INSERT INTO risks (project_id, risk_type, description, owner)
+        VALUES (?, ?, ?, ?)
+    """, (project_id, data.get("risk_type","I"),
+          data.get("description",""), data.get("owner","")))
+    rid = c.lastrowid
+    conn.commit()
+    conn.close()
     return {"id": rid, "ok": True}
 
 
-@app.delete("/api/risks/{risk_id}")
-async def api_delete_risk(risk_id: int):
-    ok = delete_risk(risk_id)
-    if not ok:
-        raise HTTPException(404, "Risque introuvable")
+# ── IA : parse texte → tâches ─────────────────────────────────────────────────
+
+@app.get("/api/tasks/{task_id}")
+async def api_get_task(task_id: int):
+    """Récupère une tâche par son ID."""
+    conn   = get_db()
+    row    = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Tache introuvable")
+    return dict(row)
+
+
+@app.put("/api/tasks/{task_id}")
+async def api_update_task_full(task_id: int, request: Request):
+    """Met à jour une tâche complètement."""
+    data = await request.json()
+    update_task(task_id, **data)
     return {"ok": True}
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# API — IA (Groq)
-# ═══════════════════════════════════════════════════════════════════════════════
+@app.delete("/api/tasks/{task_id}")
+async def api_delete_task(task_id: int):
+    """Supprime une tâche."""
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    if not deleted:
+        raise HTTPException(404)
+    return {"ok": True}
+
 
 @app.post("/api/projects/{project_id}/ai/parse")
 async def api_ai_parse(project_id: int, request: Request):
-    """Groq parse texte brut → tâches structurées."""
-    project = get_project(project_id)
-    if not project:
-        raise HTTPException(404, "Projet introuvable")
+    """Parse du texte libre en tâches via Groq."""
     data     = await request.json()
     text     = data.get("text", "")
-    language = data.get("language", project.get("language", "fr"))
-    if not text.strip():
-        return {"tasks": [], "error": "Texte vide"}
+    language = data.get("language", "fr")
+    if not text:
+        return JSONResponse({"error": "Texte vide"}, status_code=400)
     tasks = task_parser.parse_text(text, language)
-    return {"tasks": tasks}
+    return {"tasks": tasks, "count": len(tasks)}
 
 
 @app.post("/api/projects/{project_id}/ai/restructure")
-async def api_ai_restructure(project_id: int):
-    """Groq restructure les tâches existantes."""
-    project = get_project(project_id)
-    if not project:
-        raise HTTPException(404, "Projet introuvable")
+async def api_ai_restructure(project_id: int, request: Request):
+    """Restructure les tâches existantes via Groq."""
+    project  = get_project(project_id)
+    language = project.get("language", "fr") if project else "fr"
     tasks    = get_tasks(project_id)
-    language = project.get("language", "fr")
-    restructured = task_parser.restructure_tasks(tasks, language)
-    return {"tasks": restructured}
+    result   = task_parser.restructure_tasks(tasks, language)
+    return {"tasks": result}
 
 
 @app.post("/api/projects/{project_id}/ai/import")
@@ -411,317 +405,510 @@ async def api_ai_import(project_id: int, request: Request):
     return {"imported": imported, "ok": True}
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# API — Export PowerPoint
-# ═══════════════════════════════════════════════════════════════════════════════
+# ── Export PowerPoint ─────────────────────────────────────────────────────────
 
-@app.get("/api/projects/{project_id}/export/pptx")
-async def api_export_pptx(project_id: int):
+@app.post("/api/projects/{project_id}/ai/capacity")
+async def api_ai_capacity(project_id: int, request: Request):
+    """
+    IA capacity planning - gestion complète des ressources et allocations.
+    Supporte : créer/supprimer ressources, allouer par semaine, assigner aux tâches,
+               effacer capacity, avec ou sans image.
+    """
+    import os, json as _json
+    from ai.task_parser import GROQ_URL, GROQ_VISION_MODEL
+
+    body       = await request.json()
+    text       = body.get("text", "")
+    image_data = body.get("image_data", "")
+    image_mime = body.get("image_mime", "image/jpeg")
+
+    project   = get_project(project_id)
+    resources = get_resources(project_id)
+    tasks     = get_tasks(project_id)
+
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if not groq_key:
+        return {"error": "GROQ_API_KEY non configurée", "actions": []}
+
+    res_list  = ", ".join(
+        f"{r['acronym']} (id:{r['id']}, max:{r['max_fraction']}, role:{r.get('role','')})"
+        for r in resources
+    ) or "aucune"
+    task_list = ", ".join(
+        f"#{t['id']} {t['title'][:30]}"
+        for t in tasks[:20]
+    ) or "aucune"
+
+    system_prompt = f"""You are a project capacity planning assistant.
+Project: {project.get('name', '')}
+Existing resources (acronym, id, max_fraction, role): {res_list}
+Existing tasks: {task_list}
+
+Analyze the instructions and return a JSON array of actions to perform.
+
+Available action types:
+
+1. Create resource:
+   {{"type": "create_resource", "acronym": "SAMC4", "full_name": "Sam C.", "role": "BA", "max_fraction": 1.0, "is_external": false, "color": "#1E90FF"}}
+
+2. Delete resource:
+   {{"type": "delete_resource", "acronym": "SAMC4", "message": "reason"}}
+
+3. Set capacity (allocation per week):
+   {{"type": "set_capacity", "acronym": "SAMC4", "fraction": 0.5, "weeks": [23,24,25,26], "year": 2026}}
+
+4. Clear capacity (reset to 0):
+   {{"type": "clear_capacity", "acronym": "SAMC4", "weeks": [23,24], "year": 2026}}
+
+5. Assign resource to task:
+   {{"type": "assign_resource", "acronym": "SAMC4", "task_id": 5, "hours": 20, "fraction": 0.5}}
+
+6. Remove assignment:
+   {{"type": "remove_assignment", "acronym": "SAMC4", "task_id": 5}}
+
+7. Reply message:
+   {{"type": "message", "text": "Done. I have created SAMC4 and allocated 25% on weeks 23-26."}}
+
+Rules:
+- ALWAYS include at least one "message" action
+- Use exact acronyms from existing resources when possible
+- fraction: 0.25=25%=10h/sem, 0.5=50%=20h/sem, 1.0=100%=40h/sem
+- If resource doesn't exist, include create_resource first
+- Current year if not specified: 2026
+- Reply ONLY with valid JSON array, no text before/after
+"""
+
+    # Build user message (with image if present)
+    if image_data:
+        user_msg = [
+            {"type": "text", "text": text or "Analyze this capacity planning data"},
+            {"type": "image_url", "image_url": {"url": f"data:{image_mime};base64,{image_data}"}}
+        ]
+        model = GROQ_VISION_MODEL
+    else:
+        user_msg = text
+        model    = "llama-3.3-70b-versatile"
+
+    import requests as req
+    try:
+        r = req.post(
+            GROQ_URL,
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model":    model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user",   "content": user_msg},
+                ],
+                "temperature": 0.2,
+                "max_tokens":  2048,
+            },
+            timeout=30,
+        )
+        r.raise_for_status()
+        raw = r.json()["choices"][0]["message"]["content"].strip()
+        if "```json" in raw:
+            raw = raw.split("```json")[1].split("```")[0].strip()
+        elif "```" in raw:
+            raw = raw.split("```")[1].split("```")[0].strip()
+        actions = _json.loads(raw)
+        if not isinstance(actions, list):
+            actions = [actions]
+    except Exception as e:
+        return {"error": str(e), "actions": [{"type": "message", "text": f"IA error: {e}"}]}
+
+    # Refresh resources map
+    resources = get_resources(project_id)
+    res_map   = {r["acronym"].upper(): r for r in resources}
+
+    executed = []
+    for action in actions:
+        atype = action.get("type", "")
+
+        # ── create_resource ─────────────────────────────────────────────────
+        if atype == "create_resource":
+            acro = action.get("acronym", "").upper()
+            if acro in res_map:
+                action["executed"] = False
+                action["note"]     = f"{acro} already exists"
+            else:
+                rid = create_resource(
+                    project_id   = project_id,
+                    acronym      = acro,
+                    full_name    = action.get("full_name", ""),
+                    role         = action.get("role", ""),
+                    is_external  = action.get("is_external", False),
+                    max_fraction = float(action.get("max_fraction", 1.0)),
+                    color        = action.get("color", "#1E90FF"),
+                )
+                action["executed"] = True
+                action["id"]       = rid
+                resources = get_resources(project_id)
+                res_map   = {r["acronym"].upper(): r for r in resources}
+            executed.append(action)
+
+        # ── delete_resource ─────────────────────────────────────────────────
+        elif atype == "delete_resource":
+            acro = action.get("acronym", "").upper()
+            res  = res_map.get(acro)
+            if res:
+                delete_resource(res["id"])
+                action["executed"] = True
+                resources = get_resources(project_id)
+                res_map   = {r["acronym"].upper(): r for r in resources}
+            else:
+                action["executed"] = False
+                action["note"]     = f"{acro} not found"
+            executed.append(action)
+
+        # ── set_capacity ─────────────────────────────────────────────────────
+        elif atype == "set_capacity":
+            acro = action.get("acronym", "").upper()
+            res  = res_map.get(acro)
+            if res:
+                year     = int(action.get("year", 2026))
+                weeks    = action.get("weeks", [])
+                fraction = float(action.get("fraction", 0.5))
+                for week in weeks:
+                    upsert_capacity(project_id, res["id"], year, int(week), fraction)
+                action["executed"] = True
+            else:
+                action["executed"] = False
+                action["note"]     = f"{acro} not found"
+            executed.append(action)
+
+        # ── clear_capacity ───────────────────────────────────────────────────
+        elif atype == "clear_capacity":
+            acro = action.get("acronym", "").upper()
+            res  = res_map.get(acro)
+            if res:
+                year  = int(action.get("year", 2026))
+                weeks = action.get("weeks", [])
+                for week in weeks:
+                    upsert_capacity(project_id, res["id"], year, int(week), 0.0)
+                action["executed"] = True
+            else:
+                action["executed"] = False
+                action["note"]     = f"{acro} not found"
+            executed.append(action)
+
+        # ── assign_resource ──────────────────────────────────────────────────
+        elif atype == "assign_resource":
+            from core.models import upsert_task_assignment
+            acro = action.get("acronym", "").upper()
+            res  = res_map.get(acro)
+            tid  = action.get("task_id")
+            if res and tid:
+                upsert_task_assignment(
+                    task_id     = int(tid),
+                    resource_id = res["id"],
+                    hours       = float(action.get("hours", 0)),
+                    fraction    = float(action.get("fraction", 0)),
+                    notes       = action.get("notes", ""),
+                )
+                action["executed"] = True
+            else:
+                action["executed"] = False
+                action["note"]     = f"Resource {acro} or task {tid} not found"
+            executed.append(action)
+
+        # ── remove_assignment ────────────────────────────────────────────────
+        elif atype == "remove_assignment":
+            from core.models import delete_task_assignment
+            acro = action.get("acronym", "").upper()
+            res  = res_map.get(acro)
+            tid  = action.get("task_id")
+            if res and tid:
+                delete_task_assignment(int(tid), res["id"])
+                action["executed"] = True
+            else:
+                action["executed"] = False
+                action["note"]     = f"Resource {acro} or task {tid} not found"
+            executed.append(action)
+
+        # ── message ──────────────────────────────────────────────────────────
+        elif atype == "message":
+            executed.append(action)
+
+    return {"actions": executed, "ok": True}
+@app.post("/api/projects/{project_id}/ai/parse-image")
+async def api_ai_parse_image(project_id: int, request: Request):
+    """
+    Analyse une image via Groq llama-4-scout (vision) et extrait les tâches.
+    Body JSON : { image_data: base64, image_mime: str, text_context: str, language: str }
+    """
     project = get_project(project_id)
     if not project:
         raise HTTPException(404, "Projet introuvable")
+
+    body      = await request.json()
+    image_data  = body.get("image_data", "")
+    image_mime  = body.get("image_mime", "image/jpeg")
+    text_context = body.get("text_context", "")
+    language    = body.get("language", project.get("language", "fr"))
+
+    if not image_data:
+        return JSONResponse({"error": "image_data manquant"}, status_code=400)
+
+    tasks = vision_task_parser.parse_image(
+        image_data   = image_data,
+        image_mime   = image_mime,
+        text_context = text_context,
+        language     = language,
+    )
+    return {"tasks": tasks, "count": len(tasks), "model": "llama-4-scout-17b"}
+
+
+@app.get("/capacity/{project_id}", response_class=HTMLResponse)
+async def capacity_view(request: Request, project_id: int):
+    """Page Capacity Planning."""
+    from datetime import date as dt
+    project   = get_project(project_id)
+    if not project:
+        raise HTTPException(404)
+    resources = get_resources(project_id)
+    year      = dt.today().year
+    matrix    = get_capacity_matrix(project_id, year)
+    return templates.TemplateResponse(
+        request=request,
+        name="capacity.html",
+        context={
+            "project":   project,
+            "resources": resources,
+            "matrix":    matrix,
+            "year":      year,
+        },
+    )
+
+
+@app.get("/api/projects/{project_id}/resources")
+async def api_get_resources(project_id: int):
+    return get_resources(project_id)
+
+
+@app.post("/api/projects/{project_id}/resources")
+async def api_create_resource(project_id: int, request: Request):
+    data = await request.json()
+    rid  = create_resource(
+        project_id   = project_id,
+        acronym      = data.get("acronym", "").upper(),
+        full_name    = data.get("full_name", ""),
+        role         = data.get("role", ""),
+        is_external  = data.get("is_external", False),
+        max_fraction = float(data.get("max_fraction", 1.0)),
+        color        = data.get("color", "#1E90FF"),
+    )
+    return {"id": rid, "ok": True}
+
+
+@app.patch("/api/projects/{project_id}/resources/reorder")
+async def api_reorder_resources(project_id: int, request: Request):
+    data = await request.json()
+    reorder_resources(project_id, data.get("ordered_ids", []))
+    return {"ok": True}
+
+
+@app.get("/api/resources/{resource_id}")
+async def api_get_resource(resource_id: int):
+    """Récupère une ressource par son ID."""
+    conn = get_db()
+    row  = conn.execute("SELECT * FROM resources WHERE id=?", (resource_id,)).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404)
+    return dict(row)
+
+
+@app.put("/api/resources/{resource_id}")
+async def api_update_resource(resource_id: int, request: Request):
+    """Met à jour une ressource."""
+    data = await request.json()
+    update_resource(resource_id, **data)
+    return {"ok": True}
+
+
+@app.delete("/api/resources/{resource_id}")
+async def api_delete_resource(resource_id: int):
+    ok = delete_resource(resource_id)
+    return {"ok": ok}
+
+
+@app.get("/api/projects/{project_id}/capacity")
+async def api_get_capacity(project_id: int, year: int | None = None):
+    from datetime import date as dt
+    y      = year or dt.today().year
+    matrix = get_capacity_matrix(project_id, y)
+    return matrix
+
+
+@app.post("/api/projects/{project_id}/capacity/bulk")
+async def api_bulk_capacity(project_id: int, request: Request):
+    """Sauvegarder plusieurs cellules capacity d un coup."""
+    data    = await request.json()
+    entries = data.get("entries", [])
+    for e in entries:
+        upsert_capacity(
+            project_id  = project_id,
+            resource_id = int(e["resource_id"]),
+            year        = int(e["year"]),
+            week        = int(e["week"]),
+            fraction    = float(e.get("fraction", 0.0)),
+        )
+    return {"ok": True, "saved": len(entries)}
+
+
+# ── Task Assignments ─────────────────────────────────────────────────────────
+
+@app.get("/api/tasks/{task_id}/assignments")
+async def api_get_assignments(task_id: int):
+    from core.models import get_task_assignments
+    return get_task_assignments(task_id)
+
+
+@app.post("/api/tasks/{task_id}/assignments")
+async def api_upsert_assignment(task_id: int, request: Request):
+    from core.models import upsert_task_assignment, compute_task_end_date, update_task
+    data       = await request.json()
+    resource_id = int(data["resource_id"])
+    hours      = float(data.get("hours", 0))
+    fraction   = float(data.get("fraction", 0))
+    notes      = data.get("notes", "")
+    upsert_task_assignment(task_id, resource_id, hours, fraction, notes)
+    # Recalculer la date de fin si pas forcée
+    task = get_task(task_id) if hasattr(get_task, '__call__') else None
+    if task and not task.get("end_date"):
+        end = compute_task_end_date(task_id)
+        if end:
+            update_task(task_id, end_date=end)
+    return {"ok": True}
+
+
+@app.delete("/api/tasks/{task_id}/assignments/{resource_id}")
+async def api_delete_assignment(task_id: int, resource_id: int):
+    from core.models import delete_task_assignment
+    ok = delete_task_assignment(task_id, resource_id)
+    return {"ok": ok}
+
+
+@app.get("/api/projects/{project_id}/assignments")
+async def api_project_assignments(project_id: int):
+    from core.models import get_project_assignments
+    return get_project_assignments(project_id)
+
+
+@app.post("/api/projects/{project_id}/ai/capacity-parse")
+async def api_capacity_parse(project_id: int, request: Request):
+    """
+    Parse du texte pour la gestion des ressources et du capacity planning.
+    Comprend : ajouter ressources, définir fractions, assigner aux tâches.
+    Retourne une liste d'actions à appliquer.
+    """
+    import os
+    from ai.task_parser import TaskParser
+
+    data      = await request.json()
+    text      = data.get("text", "")
+    resources_ctx = data.get("resources", "")
+    language  = data.get("language", "fr")
+    project   = get_project(project_id)
+    if not project:
+        raise HTTPException(404)
+
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if not groq_key:
+        return JSONResponse({"error": "GROQ_API_KEY non configuree"})
+
+    # Système prompt spécialisé capacity
+    system_fr = """Tu es un assistant expert en gestion de capacite de projet.
+Tu analyses du texte décrivant des besoins en ressources et retournes un JSON structuré.
+
+Ressources disponibles dans le projet: """ + resources_ctx + """
+
+Pour chaque action identifiée, génère un objet JSON :
+- Pour ajouter une ressource :
+  {"type": "add_resource", "acronym": "SAMC4", "full_name": "Samuel C.", "max_fraction": 0.25, "color": "#1E90FF", "is_external": false, "message": "explication"}
+
+- Pour définir la capacité hebdomadaire :
+  {"type": "set_capacity", "acronym": "SAMC4", "fraction": 0.25, "weeks": [23,24,25,26], "year": 2026, "entries": [{"resource_id": null, "year": 2026, "week": 23, "fraction": 0.25}], "message": "explication"}
+
+- Pour donner une information :
+  {"type": "info", "message": "explication"}
+
+Règles :
+- fraction 0.25 = 25% = 10h/sem sur base 40h
+- Si l'utilisateur dit "à 25%" → max_fraction = 0.25
+- Si resource_id est inconnu, mettre null (à résoudre côté client)
+- Retourne UNIQUEMENT un JSON valide : {"actions": [...]}
+"""
+
+    import requests as req
     try:
-        from core.pptx_generator import generate_pptx
-        pptx_bytes = generate_pptx(
+        r = req.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model":    "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system",  "content": system_fr},
+                    {"role": "user",    "content": text},
+                ],
+                "temperature": 0.2,
+                "max_tokens":  1024,
+            },
+            timeout=30,
+        )
+        r.raise_for_status()
+        content = r.json()["choices"][0]["message"]["content"].strip()
+
+        import re as _re, json as _json
+        # Extraire le JSON
+        m = _re.search(r'\{.*\}', content, _re.DOTALL)
+        if m:
+            result = _json.loads(m.group(0))
+            actions = result.get("actions", [])
+        else:
+            actions = [{"type": "info", "message": content}]
+
+        # Résoudre les resource_id pour les actions set_capacity
+        res_map = {r["acronym"].upper(): r["id"] for r in get_resources(project_id)}
+        for action in actions:
+            if action.get("type") == "set_capacity":
+                acro = action.get("acronym", "").upper()
+                rid  = res_map.get(acro)
+                if rid and action.get("entries"):
+                    for entry in action["entries"]:
+                        entry["resource_id"] = rid
+
+        return {"actions": actions, "count": len(actions)}
+
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)})
+
+
+@app.get("/api/projects/{project_id}/export/pptx")
+async def export_pptx(project_id: int):
+    """Génère et télécharge le Weekly Status PowerPoint."""
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(404)
+    try:
+        from core.pptx_generator import generate_weekly_pptx
+        pptx_bytes = generate_weekly_pptx(
             project     = project,
+            tasks       = get_tasks(project_id),
+            categories  = get_categories(project_id),
             kpis        = get_kpis(project_id),
             milestones  = get_milestones(project_id),
             risks       = get_risks(project_id),
             weekly_note = get_weekly_note(project_id),
+            language    = project.get("language", "fr"),
         )
-        filename = f"weekly_{project['name'].replace(' ', '_')}_{date.today()}.pptx"
+        filename = f"WeeklyStatus_{project['name'].replace(' ','_')}.pptx"
         return Response(
             content     = pptx_bytes,
             media_type  = "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            headers     = {"Content-Disposition": f"attachment; filename=\"{filename}\""},
+            headers     = {"Content-Disposition": f"attachment; filename={filename}"},
         )
     except Exception as e:
-        logger.error("Export PPTX error: %s", e)
-        raise HTTPException(500, f"Erreur export PPTX: {e}")
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# API — Docker Config (healthcheck, port, restart)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@app.get("/api/projects/{project_id}/docker-config")
-async def api_get_docker_config(project_id: int):
-    """Retourne la config Docker sauvegardee pour ce projet."""
-    import json as _json
-    conn = get_db()
-    # Migration safe: ajouter colonne si manquante
-    try:
-        conn.execute("ALTER TABLE projects ADD COLUMN docker_config TEXT")
-        conn.commit()
-    except Exception:
-        pass
-    row = conn.execute("SELECT docker_config FROM projects WHERE id=?", (project_id,)).fetchone()
-    conn.close()
-    if not row:
-        raise HTTPException(404, "Projet introuvable")
-    try:
-        cfg = _json.loads(row["docker_config"] or "{}")
-    except Exception:
-        cfg = {}
-    return {
-        "port":        cfg.get("port",        8766),
-        "restart":     cfg.get("restart",     "unless-stopped"),
-        "hc_interval": cfg.get("hc_interval", 60),
-        "hc_timeout":  cfg.get("hc_timeout",  10),
-        "hc_retries":  cfg.get("hc_retries",  3),
-        "hc_start":    cfg.get("hc_start",    15),
-    }
-
-
-@app.post("/api/projects/{project_id}/docker-config")
-async def api_save_docker_config(project_id: int, request: Request):
-    """Sauvegarde la config Docker et regenere docker-compose.yml."""
-    import json as _json
-    data = await request.json()
-    cfg  = {
-        "port":        int(data.get("port",        8766)),
-        "restart":     data.get("restart",          "unless-stopped"),
-        "hc_interval": int(data.get("hc_interval", 60)),
-        "hc_timeout":  int(data.get("hc_timeout",  10)),
-        "hc_retries":  int(data.get("hc_retries",  3)),
-        "hc_start":    int(data.get("hc_start",    15)),
-    }
-    conn = get_db()
-    try:
-        conn.execute("ALTER TABLE projects ADD COLUMN docker_config TEXT")
-        conn.commit()
-    except Exception:
-        pass
-    conn.execute("UPDATE projects SET docker_config=? WHERE id=?", (_json.dumps(cfg), project_id))
-    conn.commit()
-    conn.close()
-    _regen_docker_compose(cfg)
-    return {"ok": True, "config": cfg}
-
-
-def _regen_docker_compose(cfg: dict) -> None:
-    """Regenere docker-compose.yml avec la config fournie."""
-    port     = cfg.get("port",        8766)
-    restart  = cfg.get("restart",     "unless-stopped")
-    interval = cfg.get("hc_interval", 60)
-    timeout  = cfg.get("hc_timeout",  10)
-    retries  = cfg.get("hc_retries",  3)
-    start    = cfg.get("hc_start",    15)
-    content  = f"""services:
-  projectmind:
-    build: .
-    container_name: projectmind
-    ports:
-      - "{port}:{port}"
-    volumes:
-      - ./data:/app/data
-      - ./templates:/app/templates
-      - ./logs:/app/logs
-    env_file:
-      - .env
-    restart: {restart}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:{port}/api/projects"]
-      interval: {interval}s
-      timeout: {timeout}s
-      retries: {retries}
-      start_period: {start}s
-
-networks:
-  default:
-    name: projectmind-network
-"""
-    try:
-        dc_path = Path(__file__).parent / "docker-compose.yml"
-        dc_path.write_text(content, encoding="utf-8")
-        logger.info("docker-compose.yml regenere (port=%s, hc=%ss)", port, interval)
-    except Exception as e:
-        logger.warning("Impossible regenerer docker-compose.yml: %s", e)
-
-# Lancement uvicorn par python .\main.py
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8766, reload=True)
-
-
-# ── IA : parse image → tâches (llama-4-scout vision) ──────────────────────────
-
-@app.post("/api/projects/{project_id}/ai/parse-image")
-async def api_ai_parse_image(project_id: int, request: Request):
-    """Groq llama-4-scout analyse une image et extrait les taches."""
-    project = get_project(project_id)
-    if not project:
-        raise HTTPException(404, "Projet introuvable")
-    data = await request.json()
-    image_data   = data.get("image_data", "")    # base64
-    image_mime   = data.get("image_mime", "image/png")
-    text_context = data.get("text_context", "")
-    language     = data.get("language", project.get("language", "fr"))
-
-    if not image_data:
-        return {"tasks": [], "error": "Aucune image fournie"}
-
-    # Nettoyer le préfixe data URI si présent (ex: data:image/png;base64,xxx)
-    if "," in image_data:
-        image_data = image_data.split(",", 1)[1]
-
-    try:
-        from ai.task_parser import VisionTaskParser
-        vision_parser = VisionTaskParser(GROQ_API_KEY)
-        tasks = vision_parser.parse_image(
-            image_data   = image_data,
-            image_mime   = image_mime,
-            text_context = text_context,
-            language     = language,
-        )
-        model_used = "llama-4-scout (vision)"
-        return {"tasks": tasks, "model": model_used, "ok": True}
-    except Exception as e:
-        logger.error("parse-image error: %s", e)
-        return {"tasks": [], "error": str(e)}
-
-# ═══ IA Agent CRUD ═══
-
-@app.get("/api/projects/{project_id}/context")
-async def api_project_context(project_id: int):
-    project = get_project(project_id)
-    if not project: raise HTTPException(404)
-    return {"project":project,"categories":get_categories(project_id),"tasks":get_tasks(project_id),"milestones":get_milestones(project_id),"risks":get_risks(project_id),"kpis":get_kpis(project_id)}
-
-@app.patch("/api/projects/{project_id}/categories/{cat_id}")
-async def api_update_category(project_id:int,cat_id:int,request:Request):
-    data=await request.json(); allowed={"name","name_en","color","sort_order"}; fields={k:v for k,v in data.items() if k in allowed}
-    if fields:
-        conn=get_db(); sets=", ".join(f"{k}=?" for k in fields); conn.execute(f"UPDATE categories SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[cat_id,project_id]); conn.commit(); conn.close()
-    return {"ok":True}
-
-@app.delete("/api/projects/{project_id}/categories/{cat_id}")
-async def api_delete_category(project_id:int,cat_id:int):
-    conn=get_db(); conn.execute("UPDATE tasks SET category_id=NULL WHERE category_id=? AND project_id=?",(cat_id,project_id)); conn.execute("DELETE FROM categories WHERE id=? AND project_id=?",(cat_id,project_id)); conn.commit(); conn.close(); return {"ok":True}
-
-@app.post("/api/projects/{project_id}/categories/reorder")
-async def api_reorder_categories(project_id:int,request:Request):
-    data=await request.json(); order=data.get("order",[]); conn=get_db()
-    for idx,cid in enumerate(order): conn.execute("UPDATE categories SET sort_order=? WHERE id=? AND project_id=?",(idx,cid,project_id))
-    conn.commit(); conn.close(); return {"ok":True}
-
-@app.post("/api/projects/{project_id}/tasks/reorder")
-async def api_reorder_tasks(project_id:int,request:Request):
-    data=await request.json(); order=data.get("order",[]); conn=get_db()
-    for idx,tid in enumerate(order): conn.execute("UPDATE tasks SET sort_order=? WHERE id=? AND project_id=?",(idx,tid,project_id))
-    conn.commit(); conn.close(); return {"ok":True}
-
-@app.post("/api/projects/{project_id}/tasks/bulk-update")
-async def api_bulk_update_tasks(project_id:int,request:Request):
-    data=await request.json(); updates=data.get("updates",[]); conn=get_db()
-    allowed={"title","title_en","status","progress","date_label","start_date","end_date","category_id","description","ado_item_id","sort_order"}; updated=0
-    for upd in updates:
-        tid=upd.get("id"); fields={k:v for k,v in upd.items() if k in allowed}
-        if tid and fields:
-            fields["updated_at"]=date.today().isoformat(); sets=", ".join(f"{k}=?" for k in fields)
-            conn.execute(f"UPDATE tasks SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[tid,project_id]); updated+=1
-    conn.commit(); conn.close(); return {"ok":True,"updated":updated}
-
-@app.patch("/api/projects/{project_id}/milestones/{ms_id}")
-async def api_update_milestone(project_id:int,ms_id:int,request:Request):
-    data=await request.json(); allowed={"title","baseline_date","current_date","status","sort_order"}; fields={k:v for k,v in data.items() if k in allowed}
-    if fields:
-        conn=get_db(); sets=", ".join(f"{k}=?" for k in fields); conn.execute(f"UPDATE milestones SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[ms_id,project_id]); conn.commit(); conn.close()
-    return {"ok":True}
-
-@app.patch("/api/projects/{project_id}/risks/{risk_id}")
-async def api_update_risk(project_id:int,risk_id:int,request:Request):
-    data=await request.json(); allowed={"risk_type","description","owner","status"}; fields={k:v for k,v in data.items() if k in allowed}
-    if fields:
-        conn=get_db(); sets=", ".join(f"{k}=?" for k in fields); conn.execute(f"UPDATE risks SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[risk_id,project_id]); conn.commit(); conn.close()
-    return {"ok":True}
-
-@app.post("/api/projects/{project_id}/ai/agent")
-async def api_ai_agent(project_id:int,request:Request):
-    import json as _json
-    project=get_project(project_id)
-    if not project: raise HTTPException(404)
-    data=await request.json(); message=data.get("message",""); language=data.get("language",project.get("language","fr")); history=data.get("history",[])
-    if not message.strip(): return {"reply":"Que puis-je faire ?","actions":[],"reload":False}
-    categories=get_categories(project_id); tasks=get_tasks(project_id); milestones=get_milestones(project_id); risks=get_risks(project_id)
-    context={"project_id":project_id,"project_name":project.get("name"),"language":language,
-        "categories":[{"id":c["id"],"name":c["name"],"color":c.get("color")} for c in categories],
-        "tasks":[{"id":t["id"],"title":t["title"],"category_id":t.get("category_id"),"status":t.get("status"),"progress":t.get("progress",0),"start_date":t.get("start_date"),"end_date":t.get("end_date"),"date_label":t.get("date_label")} for t in tasks],
-        "milestones":[{"id":m["id"],"title":m["title"],"baseline_date":m.get("baseline_date"),"current_date":m.get("current_date"),"status":m.get("status")} for m in milestones],
-        "risks":[{"id":r["id"],"description":r["description"],"owner":r.get("owner"),"risk_type":r.get("risk_type"),"status":r.get("status")} for r in risks]}
-    from ai.task_parser import AgentParser
-    agent=AgentParser(os.getenv("GROQ_API_KEY","")); result=agent.run(message=message,context=context,history=history,language=language)
-    executed=[]; reload_needed=False
-    allowed_t={"title","title_en","status","progress","date_label","start_date","end_date","category_id","description","ado_item_id","sort_order"}
-    for action in result.get("actions",[]):
-        atype=action.get("type","")
-        try:
-            if atype=="create_task":
-                p=action.get("params",{}); tid=create_task(project_id=project_id,**{k:v for k,v in p.items() if k in {"title","category_id","status","progress","date_label","start_date","end_date","description","ado_item_id"}}); executed.append({"type":atype,"id":tid,"ok":True}); reload_needed=True
-            elif atype=="update_task":
-                tid=action.get("id"); p=action.get("params",{})
-                if tid: update_task(tid,**{k:v for k,v in p.items() if k in allowed_t})
-                executed.append({"type":atype,"id":tid,"ok":True}); reload_needed=True
-            elif atype=="delete_task":
-                tid=action.get("id")
-                if tid: delete_task(tid)
-                executed.append({"type":atype,"id":tid,"ok":True}); reload_needed=True
-            elif atype=="bulk_update_tasks":
-                updates=action.get("updates",[]); conn=get_db()
-                for upd in updates:
-                    tid=upd.get("id"); fields={k:v for k,v in upd.items() if k in allowed_t}
-                    if tid and fields:
-                        fields["updated_at"]=date.today().isoformat(); sets=", ".join(f"{k}=?" for k in fields)
-                        conn.execute(f"UPDATE tasks SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[tid,project_id])
-                conn.commit(); conn.close(); executed.append({"type":atype,"count":len(updates),"ok":True}); reload_needed=True
-            elif atype=="create_category":
-                p=action.get("params",{}); cid=create_category(project_id,p.get("name",""),p.get("name_en",""),p.get("color","#041E42")); executed.append({"type":atype,"id":cid,"ok":True}); reload_needed=True
-            elif atype=="update_category":
-                cid=action.get("id"); p=action.get("params",{}); fields={k:v for k,v in p.items() if k in {"name","name_en","color","sort_order"}}
-                if cid and fields:
-                    conn=get_db(); sets=", ".join(f"{k}=?" for k in fields); conn.execute(f"UPDATE categories SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[cid,project_id]); conn.commit(); conn.close()
-                executed.append({"type":atype,"id":cid,"ok":True}); reload_needed=True
-            elif atype=="delete_category":
-                cid=action.get("id")
-                if cid:
-                    conn=get_db(); conn.execute("UPDATE tasks SET category_id=NULL WHERE category_id=? AND project_id=?",(cid,project_id)); conn.execute("DELETE FROM categories WHERE id=? AND project_id=?",(cid,project_id)); conn.commit(); conn.close()
-                executed.append({"type":atype,"id":cid,"ok":True}); reload_needed=True
-            elif atype=="reorder_categories":
-                order=action.get("order",[]); conn=get_db()
-                for idx,cid in enumerate(order): conn.execute("UPDATE categories SET sort_order=? WHERE id=? AND project_id=?",(idx,cid,project_id))
-                conn.commit(); conn.close(); executed.append({"type":atype,"ok":True}); reload_needed=True
-            elif atype=="create_milestone":
-                p=action.get("params",{}); mid=create_milestone(project_id,p.get("title",""),p.get("baseline_date",""),p.get("current_date",""),p.get("status","In progress")); executed.append({"type":atype,"id":mid,"ok":True}); reload_needed=True
-            elif atype=="update_milestone":
-                mid=action.get("id"); p=action.get("params",{}); fields={k:v for k,v in p.items() if k in {"title","baseline_date","current_date","status"}}
-                if mid and fields:
-                    conn=get_db(); sets=", ".join(f"{k}=?" for k in fields); conn.execute(f"UPDATE milestones SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[mid,project_id]); conn.commit(); conn.close()
-                executed.append({"type":atype,"id":mid,"ok":True}); reload_needed=True
-            elif atype=="create_risk":
-                p=action.get("params",{}); rid=create_risk(project_id,p.get("description",""),p.get("owner",""),p.get("risk_type","I")); executed.append({"type":atype,"id":rid,"ok":True}); reload_needed=True
-            elif atype=="update_risk":
-                rid=action.get("id"); p=action.get("params",{}); fields={k:v for k,v in p.items() if k in {"risk_type","description","owner","status"}}
-                if rid and fields:
-                    conn=get_db(); sets=", ".join(f"{k}=?" for k in fields); conn.execute(f"UPDATE risks SET {sets} WHERE id=? AND project_id=?",list(fields.values())+[rid,project_id]); conn.commit(); conn.close()
-                executed.append({"type":atype,"id":rid,"ok":True}); reload_needed=True
-        except Exception as ex:
-            executed.append({"type":atype,"ok":False,"error":str(ex)})
-    return {"reply":result.get("reply",""),"actions":executed,"reload":reload_needed}
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# API — Mise à jour
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@app.get("/api/update/status")
-async def api_update_status():
-    return _updater.get_state()
-
-@app.post("/api/update/check")
-async def api_update_check():
-    return _updater.check_now()
-
-@app.post("/api/update/apply")
-async def api_update_apply():
-    return _updater.apply_update()
-
+        logger.error("PPTX export error: %s", e)
+        raise HTTPException(500, str(e))

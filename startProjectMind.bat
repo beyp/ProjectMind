@@ -1,6 +1,5 @@
 @echo off
 title ProjectMind — FastAPI Server
-cd /d C:\AION_APPS\repos\ProjectMind
 
 echo.
 echo  ============================================
@@ -11,8 +10,8 @@ echo  ============================================
 echo.
 
 :: Activer l environnement virtuel
-if exist .venv\Scripts\activate.bat (
-    call .venv\Scripts\activate.bat
+if exist .venv\Scripts\activate (
+    call .venv\Scripts\activate
 ) else (
     echo [WARN] Pas de .venv trouve - utilisation du Python systeme
 )
