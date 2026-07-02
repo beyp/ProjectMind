@@ -43,6 +43,38 @@ class ProjectActionExecutor:
                     action["id"] = task_id
                     executed.append(action)
 
+                elif atype == "update_task":
+                    update_task(int(action["id"]), **{
+                        k: v for k, v in action.items()
+                        if k not in ("type", "id")
+                    })
+                    action["executed"] = True
+                    executed.append(action)
+
+                elif atype == "delete_task":
+                    action["executed"] = self._delete_task(action)
+                    executed.append(action)
+
+                elif atype == "create_category":
+                    cat_id = create_category(
+                        project_id=project_id,
+                        name=action.get("name", ""),
+                        name_en=action.get("name_en", ""),
+                        color=action.get("color", "#041E42"),
+                    )
+                    action["executed"] = True
+                    action["id"] = cat_id
+                    executed.append(action)
+
+                elif atype == "update_category":
+                    self._update_category(action)
+                    action["executed"] = True
+                    executed.append(action)
+
+                elif atype == "delete_category":
+                    action["executed"] = self._delete_category(action)
+                    executed.append(action)
+
                 elif atype == "create_milestone":
                     mid = self._create_milestone(project_id, action)
                     action["executed"] = True
@@ -164,6 +196,42 @@ class ProjectActionExecutor:
         conn = get_db()
         cur = conn.cursor()
         cur.execute("DELETE FROM risks WHERE id=?", (int(action.get("id")),))
+        deleted = cur.rowcount > 0
+        conn.commit()
+        conn.close()
+        return deleted
+
+    def _delete_task(self, action: dict) -> bool:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM tasks WHERE id=?", (int(action.get("id")),))
+        deleted = cur.rowcount > 0
+        conn.commit()
+        conn.close()
+        return deleted
+
+
+    def _update_category(self, action: dict) -> None:
+        conn = get_db()
+        conn.execute("""
+            UPDATE categories
+            SET name=?, name_en=?, color=?
+            WHERE id=?
+        """, (
+            action.get("name", ""),
+            action.get("name_en", ""),
+            action.get("color", "#041E42"),
+            int(action.get("id")),
+        ))
+        conn.commit()
+        conn.close()
+
+
+    def _delete_category(self, action: dict) -> bool:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("UPDATE tasks SET category_id=NULL WHERE category_id=?", (int(action.get("id")),))
+        cur.execute("DELETE FROM categories WHERE id=?", (int(action.get("id")),))
         deleted = cur.rowcount > 0
         conn.commit()
         conn.close()
