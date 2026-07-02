@@ -30,6 +30,7 @@ from core.models import (
 from ai.task_parser import TaskParser, VisionTaskParser
 from ai.projectmind_agent import ProjectMindAgent
 from services.project_action_executor import ProjectActionExecutor
+from services.project_context import ProjectContextBuilder
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ task_parser        = TaskParser(GROQ_API_KEY)
 vision_task_parser = VisionTaskParser(GROQ_API_KEY)
 projectmind_agent = ProjectMindAgent(GROQ_API_KEY)
 project_action_executor = ProjectActionExecutor()
+project_context_builder = ProjectContextBuilder()
 
 TEMPLATES_DIR = Path("templates")
 templates     = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -1329,22 +1331,14 @@ async def api_projectmind_ai(project_id: int, request: Request):
     image_data = body.get("image_data", "")
     image_mime = body.get("image_mime", "image/jpeg")
 
-    project = get_project(project_id)
-    if not project:
-        raise HTTPException(404, "Projet introuvable")
-
-    context = {
-        "project": project,
-        "tasks": get_tasks(project_id),
-        "categories": get_categories(project_id),
-        "milestones": get_milestones(project_id),
-        "risks": get_risks(project_id),
-        "resources": get_resources(project_id),
-        "assignments": get_project_assignments(project_id),
-    }
+    ctx = project_context_builder.build(
+        project_id,
+        include_capacity=True,
+        year=date.today().year
+    )
 
     result = projectmind_agent.run(
-        project_context=context,
+        context=ctx,
         user_text=text,
         image_data=image_data,
         image_mime=image_mime,
