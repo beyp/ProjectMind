@@ -310,6 +310,35 @@ async def api_create_milestone(project_id: int, request: Request):
     conn.close()
     return {"id": mid, "ok": True}
 
+@app.put("/api/milestones/{milestone_id}")
+async def api_update_milestone(milestone_id: int, request: Request):
+    data = await request.json()
+    conn = get_db()
+    conn.execute("""
+        UPDATE milestones
+        SET title=?, baseline_date=?, current_date=?, status=?
+        WHERE id=?
+    """, (
+        data.get("title", ""),
+        data.get("baseline_date", ""),
+        data.get("current_date", ""),
+        data.get("status", "In progress"),
+        milestone_id,
+    ))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@app.delete("/api/milestones/{milestone_id}")
+async def api_delete_milestone(milestone_id: int):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("DELETE FROM milestones WHERE id=?", (milestone_id,))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return {"ok": deleted}
 
 @app.post("/api/projects/{project_id}/risks")
 async def api_create_risk(project_id: int, request: Request):
@@ -326,6 +355,34 @@ async def api_create_risk(project_id: int, request: Request):
     conn.close()
     return {"id": rid, "ok": True}
 
+@app.put("/api/risks/{risk_id}")
+async def api_update_risk(risk_id: int, request: Request):
+    data = await request.json()
+    conn = get_db()
+    conn.execute("""
+        UPDATE risks
+        SET risk_type=?, description=?, owner=?
+        WHERE id=?
+    """, (
+        data.get("risk_type", "I"),
+        data.get("description", ""),
+        data.get("owner", ""),
+        risk_id,
+    ))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@app.delete("/api/risks/{risk_id}")
+async def api_delete_risk(risk_id: int):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("DELETE FROM risks WHERE id=?", (risk_id,))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return {"ok": deleted}
 
 # ── IA : parse texte → tâches ─────────────────────────────────────────────────
 
@@ -439,6 +496,18 @@ async def api_ai_capacity(project_id: int, request: Request):
     project   = get_project(project_id)
     resources = get_resources(project_id)
     tasks     = get_tasks(project_id)
+    milestones = get_milestones(project_id)
+    risks = get_risks(project_id)
+
+    milestone_list = ", ".join(
+        f"#{m['id']} {m.get('title','')} baseline:{m.get('baseline_date','')} current:{m.get('current_date','')} status:{m.get('status','')}"
+        for m in milestones
+    ) or "aucun"
+
+    risk_list = ", ".join(
+        f"#{r['id']} [{r.get('risk_type','')}] {r.get('description','')} owner:{r.get('owner','')}"
+        for r in risks
+    ) or "aucun"
 
     groq_key = os.getenv("GROQ_API_KEY", "")
     if not groq_key:
@@ -457,37 +526,48 @@ async def api_ai_capacity(project_id: int, request: Request):
 Project: {project.get('name', '')}
 Existing resources (acronym, id, max_fraction, role): {res_list}
 Existing tasks: {task_list}
+Existing milestones: {milestone_list}
+Existing risks/issues/decisions: {risk_list}
 
 Analyze the instructions and return a JSON array of actions to perform.
 
-Available action types:
-
+Project management actions:
 1. Create resource:
    {{"type": "create_resource", "acronym": "SAMC4", "full_name": "Sam C.", "role": "BA", "max_fraction": 1.0, "is_external": false, "color": "#1E90FF"}}
-
 2. Delete resource:
    {{"type": "delete_resource", "acronym": "SAMC4", "message": "reason"}}
-
 3. Set capacity (allocation per week):
    {{"type": "set_capacity", "acronym": "SAMC4", "fraction": 0.5, "weeks": [23,24,25,26], "year": 2026}}
-
 4. Clear capacity (reset to 0):
    {{"type": "clear_capacity", "acronym": "SAMC4", "weeks": [23,24], "year": 2026}}
-
 5. Assign resource to task:
    {{"type": "assign_resource", "acronym": "SAMC4", "task_id": 5, "hours": 20, "fraction": 0.5}}
-
 6. Remove assignment:
    {{"type": "remove_assignment", "acronym": "SAMC4", "task_id": 5}}
-
 7. Reply message:
    {{"type": "message", "text": "Done. I have created SAMC4 and allocated 25% on weeks 23-26."}}
-
 8. Sync roles from existing resources:
    {{"type": "sync_roles_from_resources"}}
+9. Create milestone:
+   {{"type": "create_milestone", "title": "UAT completed", "baseline_date": "2026-07-15", "current_date": "2026-07-20", "status": "At Risk"}}
+10. Update milestone:
+   {{"type": "update_milestone", "id": 3, "title": "UAT completed", "baseline_date": "2026-07-15", "current_date": "2026-07-20", "status": "Completed"}}
+11. Delete milestone:
+   {{"type": "delete_milestone", "id": 3}}
+12. Create risk:
+   {{"type": "create_risk", "risk_type": "R", "description": "Retard validation métier", "owner": "Pascal"}}
+13. Update risk:
+   {{"type": "update_risk", "id": 2, "risk_type": "I", "description": "Blocage confirmé", "owner": "Pascal"}}
+14. Delete risk:
+   {{"type": "delete_risk", "id": 2}}
 
 Rules:
-- ALWAYS include at least one "message" action
+- IA Chat is a project management assistant, not only a task creator.
+- If the user asks to delete, update, close, rename, or modify a risk, issue, decision, milestone, resource, category, or capacity allocation, perform the corresponding action. Do NOT create a task.
+- Use create_task only when the user clearly asks to create a new work activity/task.
+- For risk_type use: R = Risk, I = Issue, D = Decision.
+- For update/delete, match by id if given; otherwise use the closest title/description from Existing milestones or Existing risks.
+- Always include one message action explaining what was done.
 - A resource can be referenced by acronym, full name, first name, last name, or the "resource" field.
 - Use exact acronyms from existing resources when possible.
 - If the user says a first name like "Camille" or "Noémie", match the existing resource whose full_name contains that first name.
@@ -498,7 +578,15 @@ Rules:
 - Current year if not specified: 2026
 - If the user asks to add roles from existing resources, use sync_roles_from_resources.
 - When creating a resource with a role, always create/update the role color first and apply that role color to the resource.
+- For milestones, use create_milestone, update_milestone, or delete_milestone.
+- For risks/issues/decisions, use create_risk, update_risk, or delete_risk.
+- risk_type must be one of: R for Risk, I for Issue, D for Decision.
+- For updates or deletes, prefer using the explicit id if available.
+- If the user refers to a milestone or risk by title/description, choose the closest matching existing item.
+- Do not create a task when the user asks to modify, delete, update, or remove an existing risk, issue, decision, milestone, resource, category, or capacity allocation.
+- If the user asks for such an administrative action, return an error/message saying this must be done through the project management assistant, not as a task.
 - Reply ONLY with valid JSON array, no text before/after
+
 """
 
     # Build user message (with image if present)
@@ -780,6 +868,121 @@ Rules:
         elif atype == "message":
             executed.append(action)
 
+        # ── milestones ──────────────────────────────────────────────────────────
+        elif atype == "create_milestone":
+            conn = get_db()
+            c = conn.cursor()
+            c.execute("""
+                INSERT INTO milestones (project_id, title, baseline_date, current_date, status)
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                project_id,
+                action.get("title", ""),
+                action.get("baseline_date", ""),
+                action.get("current_date", ""),
+                action.get("status", "In progress"),
+            ))
+            mid = c.lastrowid
+            conn.commit()
+            conn.close()
+            action["executed"] = True
+            action["id"] = mid
+            executed.append(action)
+
+        elif atype == "update_milestone":
+            mid = action.get("id")
+            if mid:
+                conn = get_db()
+                conn.execute("""
+                    UPDATE milestones
+                    SET title=?, baseline_date=?, current_date=?, status=?
+                    WHERE id=?
+                """, (
+                    action.get("title", ""),
+                    action.get("baseline_date", ""),
+                    action.get("current_date", ""),
+                    action.get("status", "In progress"),
+                    int(mid),
+                ))
+                conn.commit()
+                conn.close()
+                action["executed"] = True
+            else:
+                action["executed"] = False
+                action["note"] = "milestone id missing"
+            executed.append(action)
+
+        elif atype == "delete_milestone":
+            mid = action.get("id")
+            if mid:
+                conn = get_db()
+                c = conn.cursor()
+                c.execute("DELETE FROM milestones WHERE id=?", (int(mid),))
+                deleted = c.rowcount > 0
+                conn.commit()
+                conn.close()
+                action["executed"] = deleted
+            else:
+                action["executed"] = False
+                action["note"] = "milestone id missing"
+            executed.append(action)
+
+        # ── risks ──────────────────────────────────────────────────────────
+        elif atype == "create_risk":
+            conn = get_db()
+            c = conn.cursor()
+            c.execute("""
+                INSERT INTO risks (project_id, risk_type, description, owner)
+                VALUES (?, ?, ?, ?)
+            """, (
+                project_id,
+                action.get("risk_type", "R"),
+                action.get("description", ""),
+                action.get("owner", ""),
+            ))
+            rid = c.lastrowid
+            conn.commit()
+            conn.close()
+            action["executed"] = True
+            action["id"] = rid
+            executed.append(action)
+
+        elif atype == "update_risk":
+            rid = action.get("id")
+            if rid:
+                conn = get_db()
+                conn.execute("""
+                    UPDATE risks
+                    SET risk_type=?, description=?, owner=?
+                    WHERE id=?
+                """, (
+                    action.get("risk_type", "R"),
+                    action.get("description", ""),
+                    action.get("owner", ""),
+                    int(rid),
+                ))
+                conn.commit()
+                conn.close()
+                action["executed"] = True
+            else:
+                action["executed"] = False
+                action["note"] = "risk id missing"
+            executed.append(action)
+
+        elif atype == "delete_risk":
+            rid = action.get("id")
+            if rid:
+                conn = get_db()
+                c = conn.cursor()
+                c.execute("DELETE FROM risks WHERE id=?", (int(rid),))
+                deleted = c.rowcount > 0
+                conn.commit()
+                conn.close()
+                action["executed"] = deleted
+            else:
+                action["executed"] = False
+                action["note"] = "risk id missing"
+            executed.append(action)
     return {"actions": executed, "ok": True}
 @app.post("/api/projects/{project_id}/ai/parse-image")
 async def api_ai_parse_image(project_id: int, request: Request):

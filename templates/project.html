@@ -88,6 +88,16 @@ header h1{color:var(--accent);font-size:1.1rem;}
   font-family:inherit;resize:vertical;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.click-edit {
+    cursor: pointer;
+    transition: color .15s ease;
+}
+
+.click-edit:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    color: var(--accent);
+}
 </style>
 </head>
 <body>
@@ -296,7 +306,13 @@ header h1{color:var(--accent);font-size:1.1rem;}
           <tbody>
             {% for m in milestones %}
             <tr>
-              <td>{{ m.title }}</td>
+              <td>
+                <span onclick="openMilestoneEdit({{ m.id }})"
+                      title="Cliquez ici pour éditer"
+                      class="click-edit">
+                  {{ m.title }}
+                </span>
+              </td>
               <td style="text-align:center;font-size:0.8rem;">{{ m.baseline_date }}</td>
               <td style="text-align:center;font-size:0.8rem;">{{ m.current_date }}</td>
               <td style="text-align:center;font-size:0.78rem;color:var(--dim);">{{ m.status }}</td>
@@ -323,7 +339,13 @@ header h1{color:var(--accent);font-size:1.1rem;}
             {% for r in risks %}
             <tr>
               <td style="text-align:center;font-weight:700;color:var(--orange);">{{ r.risk_type }}:</td>
-              <td style="font-size:0.82rem;">{{ r.description }}</td>
+              <td style="font-size:0.82rem;">
+                <span onclick="openRiskEdit({{ r.id }})"
+                      title="Cliquez ici pour éditer"
+                      class="click-edit">
+                    {{ r.description }}
+                </span>
+              </td>
               <td style="font-size:0.78rem;color:var(--dim);">{{ r.owner }}</td>
             </tr>
             {% endfor %}
@@ -540,6 +562,56 @@ header h1{color:var(--accent);font-size:1.1rem;}
   </div>
 </div>
 
+<div class="moverlay" id="modal-ms-edit">
+  <div class="mbox">
+    <h3 style="color:var(--accent);margin-bottom:14px;">Modifier le jalon</h3>
+    <input type="hidden" id="em-id">
+    <div class="fg"><label>Titre *</label><input id="em-title" type="text"></div>
+    <div class="fg2">
+      <div class="fg"><label>Baseline</label><input id="em-base" type="text"></div>
+      <div class="fg"><label>Actuelle</label><input id="em-current" type="text"></div>
+      <div class="fg"><label>Statut</label>
+        <select id="em-status">
+          <option>In progress</option>
+          <option>Completed</option>
+          <option>At Risk</option>
+          <option>Delayed</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:10px;">
+      <button class="btn btn-r" id="btn-del-ms-edit">Supprimer</button>
+      <div>
+        <button class="btn btn-n" id="btn-cancel-ms-edit">Annuler</button>
+        <button class="btn btn-p" id="btn-save-ms-edit">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="moverlay" id="modal-risk-edit">
+  <div class="mbox">
+    <h3 style="color:var(--accent);margin-bottom:14px;">Modifier le risque / issue</h3>
+    <input type="hidden" id="er-id">
+    <div class="fg"><label>Type</label>
+      <select id="er-type">
+        <option value="I">I: Issue</option>
+        <option value="R">R: Risk</option>
+        <option value="D">D: Decision</option>
+      </select>
+    </div>
+    <div class="fg"><label>Description *</label><textarea id="er-desc" rows="3"></textarea></div>
+    <div class="fg"><label>Owner</label><input id="er-owner" type="text"></div>
+    <div style="display:flex;justify-content:space-between;gap:10px;">
+      <button class="btn btn-r" id="btn-del-risk-edit">Supprimer</button>
+      <div>
+        <button class="btn btn-n" id="btn-cancel-risk-edit">Annuler</button>
+        <button class="btn btn-p" id="btn-save-risk-edit">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Données projet ────────────────────────────────────────────────────────────
 var PID       = {{ project.id }};
@@ -547,7 +619,8 @@ var LANG      = "{{ project.language }}";
 var TASKS_ALL = {{ tasks_by_cat.values() | sum(start=[]) | list | tojson }};
 var RESOURCES = {{ resources | default([]) | tojson }};
 var CATEGORIES = {{ categories | default([]) | tojson }};
-
+var MILESTONES = {{ milestones | default([]) | tojson }};
+var RISKS = {{ risks | default([]) | tojson }};
 
 // ── Project language ──────────────────────────────────────────────────────────────────────
 var projectLang = document.getElementById('project-lang');
@@ -574,6 +647,7 @@ function showTab(name) {
   if (tc)    tc.classList.add('active');
   if (tab)   tab.classList.add('active');
   if (sbbtn) sbbtn.classList.add('active');
+  localStorage.setItem('pm_active_tab_' + PID, name);
 }
 
 // Attacher les événements tabs via addEventListener (PAS onclick dans le HTML)
@@ -584,7 +658,10 @@ document.getElementById('tab-ms').addEventListener('click', function() { showTab
 document.getElementById('tab-risks').addEventListener('click', function() { showTab('risks'); });
 document.getElementById('tab-kpis').addEventListener('click', function() { showTab('kpis'); });
 document.getElementById('tab-cfg').addEventListener('click', function() { showTab('cfg'); });
-
+var savedTab = localStorage.getItem('pm_active_tab_' + PID);
+if (savedTab) {
+  showTab(savedTab);
+}
 // Sidebar
 document.getElementById('sb-ai').addEventListener('click', function() { showTab('ai'); });
 document.getElementById('sb-weekly').addEventListener('click', function() { showTab('weekly'); });
@@ -602,7 +679,73 @@ document.getElementById('btn-add').addEventListener('click', function() { openMo
 // Bouton dans tab-status
 document.getElementById('tc-add-btn').addEventListener('click', function() { openModal(); });
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
+// ── Modal Milestones & Risks ─────────────────────────────────────────────────────────────────────
+
+function openMilestoneEdit(id) {
+  var m = MILESTONES.find(x => x.id === id);
+  if (!m) return;
+  document.getElementById('em-id').value = m.id;
+  document.getElementById('em-title').value = m.title || '';
+  document.getElementById('em-base').value = m.baseline_date || '';
+  document.getElementById('em-current').value = m.current_date || '';
+  document.getElementById('em-status').value = m.status || 'In progress';
+  document.getElementById('modal-ms-edit').classList.add('open');
+}
+
+function openRiskEdit(id) {
+  var r = RISKS.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('er-id').value = r.id;
+  document.getElementById('er-type').value = r.risk_type || 'I';
+  document.getElementById('er-desc').value = r.description || '';
+  document.getElementById('er-owner').value = r.owner || '';
+  document.getElementById('modal-risk-edit').classList.add('open');
+}
+
+document.getElementById('btn-save-ms-edit').onclick = function() {
+  var id = document.getElementById('em-id').value;
+  fetch('/api/milestones/' + id, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      title: document.getElementById('em-title').value,
+      baseline_date: document.getElementById('em-base').value,
+      current_date: document.getElementById('em-current').value,
+      status: document.getElementById('em-status').value
+    })
+  }).then(() => location.reload());
+};
+
+document.getElementById('btn-del-ms-edit').onclick = function() {
+  var id = document.getElementById('em-id').value;
+  if (!confirm('Supprimer ce jalon ?')) return;
+  fetch('/api/milestones/' + id, {method:'DELETE'}).then(() => location.reload());
+};
+
+document.getElementById('btn-save-risk-edit').onclick = function() {
+  var id = document.getElementById('er-id').value;
+  fetch('/api/risks/' + id, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      risk_type: document.getElementById('er-type').value,
+      description: document.getElementById('er-desc').value,
+      owner: document.getElementById('er-owner').value
+    })
+  }).then(() => location.reload());
+};
+
+document.getElementById('btn-del-risk-edit').onclick = function() {
+  var id = document.getElementById('er-id').value;
+  if (!confirm('Supprimer ce risque / issue ?')) return;
+  fetch('/api/risks/' + id, {method:'DELETE'}).then(() => location.reload());
+};
+
+document.getElementById('btn-cancel-ms-edit').onclick = () => document.getElementById('modal-ms-edit').classList.remove('open');
+document.getElementById('btn-cancel-risk-edit').onclick = () => document.getElementById('modal-risk-edit').classList.remove('open');
+
+
+// ── Modal Tasks ─────────────────────────────────────────────────────────────────────
 function openModal() {
   document.getElementById('modal-task').classList.add('open');
   setTimeout(function() { document.getElementById('nt-t').focus(); }, 50);
@@ -779,14 +922,15 @@ function doAIAnalysis() {
     '<div id="ai-load" style="color:#888;">&#x23F3; Analyse ' + model_label + ' en cours...</div>');
   hist.scrollTop = hist.scrollHeight;
 
-  var url     = hasImage
-    ? '/api/projects/' + PID + '/ai/parse-image'
-    : '/api/projects/' + PID + '/ai/parse';
+  var url = '/api/projects/' + PID + '/ai/capacity';
 
   var payload = hasImage
-    ? { image_data: window._pm_image.data, image_mime: window._pm_image.mime,
-        text_context: text, language: LANG }
-    : { text: text, language: LANG };
+    ? {
+        text: text,
+        image_data: window._pm_image.data,
+        image_mime: window._pm_image.mime
+      }
+    : { text: text };
 
   fetch(url, {
     method: 'POST',
