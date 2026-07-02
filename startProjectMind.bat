@@ -20,7 +20,7 @@ if exist .venv\Scripts\activate (
 :: git pull origin main
 
 :: Lancer uvicorn
-uvicorn main:app --reload --port 8766
+uvicorn main:app --host 0.0.0.0 --reload --port 8766
 
 :: Si uvicorn se ferme, pause pour voir l erreur
 echo.

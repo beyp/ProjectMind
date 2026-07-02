@@ -968,6 +968,15 @@ function doAIAnalysis() {
     hist.scrollTop = hist.scrollHeight;
     document.getElementById('cinput').value = '';
     if (hasImage) clearImage();
+    var shouldReload = actions.some(function(a) {
+      return a.executed !== false && a.type !== 'message';
+    });
+
+    if (shouldReload) {
+      setTimeout(function() {
+        location.reload();
+      }, 800);
+    }
   })
   .catch(function(err) {
     var ld = document.getElementById('ai-load');

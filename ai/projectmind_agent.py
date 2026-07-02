@@ -13,14 +13,27 @@ class ProjectMindAgent:
 
     def run(
         self,
-        project_context: ProjectContext,
+        context,
         user_text: str,
         image_data: str = "",
         image_mime: str = "",
     ) -> dict:
-        prompt = self.prompt_builder.build(project_context, user_text)
-        raw = self._call_llm(prompt, image_data, image_mime)
-        actions = self._parse_actions(raw)
+        prompt = self.prompt_builder.build(context, user_text)
+        try:
+            raw = self._call_llm(prompt, image_data, image_mime)
+            actions = self._parse_actions(raw)
+        except Exception as exc:
+            return {
+                "actions": [
+                    {
+                        "type": "message",
+                        "text": f"Erreur IA : {exc}",
+                        "executed": False,
+                    }
+                ],
+                "message": f"Erreur IA : {exc}",
+                "raw": "",
+            }
 
         return {
             "actions": actions,
@@ -58,6 +71,9 @@ class ProjectMindAgent:
             },
             timeout=30,
         )
+        if response.status_code == 429:
+            raise RuntimeError("Limite Groq atteinte. Réessaie dans quelques secondes.")
+
         response.raise_for_status()
 
         return response.json()["choices"][0]["message"]["content"].strip()
