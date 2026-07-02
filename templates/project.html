@@ -374,25 +374,33 @@ header h1{color:var(--accent);font-size:1.1rem;}
 
     <div class="tab-content" id="tc-cfg">
       <div class="card">
+        <div class="card-ttl">Infos projet</div>
+
+          <div class="fg">
+            <label>Langue du projet</label>
+            <select id="project-lang">
+              <option value="fr" {% if project.language == "fr" %}selected{% endif %}>Français</option>
+              <option value="en" {% if project.language == "en" %}selected{% endif %}>English</option>
+            </select>
+          </div>
+
+          <p style="font-size:0.83rem;color:var(--dim);">
+            ID: {{ project.id }}
+            {% if project.ado_project %} | ADO: {{ project.ado_project }}{% endif %}
+          </p>
+        </div>
         <div class="card">
           <div class="card-ttl">Categories existantes</div>
           <div id="cat-list"></div>
+          <div class="card-ttl">Ajouter une categorie</div>
+          <div class="fg2">
+            <div class="fg"><label>Nom FR *</label><input id="c-n" type="text" placeholder="ex: OCM"></div>
+            <div class="fg"><label>Nom EN</label><input id="c-en" type="text" placeholder="ex: Change Management"></div>
+            <div class="fg"><label>Couleur</label><input id="c-col" type="color" value="#041E42"></div>
+          </div>
+          <button class="btn btn-p" id="btn-add-cat">+ Ajouter categorie</button>
+          <span id="cat-ok" style="margin-left:10px;color:var(--green);font-size:0.8rem;"></span>
         </div>
-        <div class="card-ttl">Ajouter une categorie</div>
-        <div class="fg2">
-          <div class="fg"><label>Nom FR *</label><input id="c-n" type="text" placeholder="ex: OCM"></div>
-          <div class="fg"><label>Nom EN</label><input id="c-en" type="text" placeholder="ex: Change Management"></div>
-          <div class="fg"><label>Couleur</label><input id="c-col" type="color" value="#041E42"></div>
-        </div>
-        <button class="btn btn-p" id="btn-add-cat">+ Ajouter categorie</button>
-        <span id="cat-ok" style="margin-left:10px;color:var(--green);font-size:0.8rem;"></span>
-      </div>
-      <div class="card">
-        <div class="card-ttl">Infos projet</div>
-        <p style="font-size:0.83rem;color:var(--dim);">
-          ID: {{ project.id }} | Langue: {{ project.language|upper }}
-          {% if project.ado_project %} | ADO: {{ project.ado_project }}{% endif %}
-        </p>
       </div>
     </div>
   </div>
@@ -539,6 +547,21 @@ var LANG      = "{{ project.language }}";
 var TASKS_ALL = {{ tasks_by_cat.values() | sum(start=[]) | list | tojson }};
 var RESOURCES = {{ resources | default([]) | tojson }};
 var CATEGORIES = {{ categories | default([]) | tojson }};
+
+
+// ── Project language ──────────────────────────────────────────────────────────────────────
+var projectLang = document.getElementById('project-lang');
+if (projectLang) {
+  projectLang.addEventListener('change', function() {
+    fetch('/api/projects/' + PID, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language: this.value })
+    }).then(function() {
+      location.reload();
+    });
+  });
+}
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 function showTab(name) {
