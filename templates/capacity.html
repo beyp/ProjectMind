@@ -274,6 +274,29 @@ function weeks(sw, ew) {
   else { for (let i=sw;i<=53;i++) out.push(i); for (let i=1;i<=ew;i++) out.push(i); }
   return out;
 }
+
+const USER_LOCALE = 'fr-FR'; // plus tard depuis settings
+
+function weekStartDate(year, week) {
+  // ISO-like : lundi de la semaine
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = jan4.getDay() || 7;
+  const week1Monday = new Date(jan4);
+  week1Monday.setDate(jan4.getDate() - jan4Day + 1);
+
+  const d = new Date(week1Monday);
+  d.setDate(week1Monday.getDate() + (week - 1) * 7);
+  return d;
+}
+
+function shortWeekDate(year, week) {
+  const d = weekStartDate(year, week);
+  return d.toLocaleDateString(USER_LOCALE, {
+    day: '2-digit',
+    month: '2-digit'
+  });
+}
+
 function currentWeek() { return weekNo(new Date()); }
 
 function loadCurrentWeek() {
@@ -335,7 +358,12 @@ function renderTable(q, year) {
   const ws = weeks(q.sw, q.ew);
   const table = document.getElementById('ctable');
   let html = '<thead><tr><th class="th-l">Ressource</th><th class="th-m">Max</th>';
-  ws.forEach(w => html += '<th>S'+w+'</th>');
+  ws.forEach(w => {
+    html += '<th>S' + w +
+            '<br><span style="font-size:.62rem;color:#b8c7e0;font-weight:400;">' +
+            shortWeekDate(year, w) +
+            '</span></th>';
+  });
   html += '<th class="c-tot" style="min-width:55px;">Total</th></tr></thead><tbody>';
   RESOURCES.forEach(res => {
     let tot = 0;

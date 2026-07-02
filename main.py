@@ -433,7 +433,7 @@ async def api_ai_capacity(project_id: int, request: Request):
         return {"error": "GROQ_API_KEY non configurée", "actions": []}
 
     res_list  = ", ".join(
-        f"{r['acronym']} (id:{r['id']}, max:{r['max_fraction']}, role:{r.get('role','')})"
+        f"{r['acronym']} (id:{r['id']}, name:{r.get('full_name','')}, max:{r['max_fraction']}, role:{r.get('role','')})"
         for r in resources
     ) or "aucune"
     task_list = ", ".join(
@@ -472,13 +472,17 @@ Available action types:
    {{"type": "message", "text": "Done. I have created SAMC4 and allocated 25% on weeks 23-26."}}
 
 8. Sync roles from existing resources:
-   {"type": "sync_roles_from_resources"}
+   {{"type": "sync_roles_from_resources"}}
 
 Rules:
 - ALWAYS include at least one "message" action
-- Use exact acronyms from existing resources when possible
+- A resource can be referenced by acronym, full name, first name, last name, or the "resource" field.
+- Use exact acronyms from existing resources when possible.
+- If the user says a first name like "Camille" or "Noémie", match the existing resource whose full_name contains that first name.
+- Do NOT create a resource if an existing resource matches by acronym, full name, first name, or last name.
+- For set_capacity, clear_capacity, assign_resource and remove_assignment, you may use either "acronym" or "resource".
 - fraction: 0.25=25%=10h/sem, 0.5=50%=20h/sem, 1.0=100%=40h/sem
-- If resource doesn't exist, include create_resource first
+- If resource doesn't exist after checking acronym/full name/first name/last name, include create_resource first
 - Current year if not specified: 2026
 - If the user asks to add roles from existing resources, use sync_roles_from_resources.
 - When creating a resource with a role, always create/update the role color first and apply that role color to the resource.
@@ -525,8 +529,92 @@ Rules:
         return {"error": str(e), "actions": [{"type": "message", "text": f"IA error: {e}"}]}
 
     # Refresh resources map
-    resources = get_resources(project_id)
-    res_map   = {r["acronym"].upper(): r for r in resources}
+    def norm(s: str) -> str:
+        """Normalize text for resource matching: case-insensitive and accent-insensitive."""
+        import re
+        import unicodedata
+
+        value = unicodedata.normalize("NFKD", str(s or ""))
+        value = "".join(ch for ch in value if not unicodedata.combining(ch))
+        value = value.lower().strip()
+        value = re.sub(r"[^a-z0-9]+", " ", value)
+        return " ".join(value.split())
+
+    def build_resource_map(resources_list: list[dict]) -> dict:
+        """
+        Build a robust lookup map for resources.
+
+        Supported aliases:
+        - acronym: SAMC4
+        - full name: Camille Samain
+        - first name / last name: Camille, Samain
+        - name tokens >= 3 chars
+        Ambiguous aliases are marked as None to avoid assigning the wrong person.
+        """
+        aliases: dict[str, dict | None] = {}
+
+        def add_alias(alias: str, resource: dict) -> None:
+            key = norm(alias)
+            if not key:
+                return
+
+            existing = aliases.get(key, "__missing__")
+            if existing == "__missing__":
+                aliases[key] = resource
+            elif existing and existing.get("id") != resource.get("id"):
+                aliases[key] = None
+
+        for r in resources_list:
+            add_alias(r.get("acronym", ""), r)
+            add_alias(r.get("full_name", ""), r)
+
+            full_name = r.get("full_name", "") or ""
+            for part in full_name.replace("-", " ").split():
+                if len(norm(part)) >= 3:
+                    add_alias(part, r)
+
+        return aliases
+
+    def refresh_resource_lookup() -> tuple[list[dict], dict]:
+        resources_list = get_resources(project_id)
+        return resources_list, build_resource_map(resources_list)
+
+    def resource_ref(action: dict) -> str:
+        """Return the best user/AI-provided resource reference."""
+        return (
+            action.get("resource")
+            or action.get("name")
+            or action.get("full_name")
+            or action.get("acronym")
+            or ""
+        )
+
+    def find_resource(action: dict, lookup: dict) -> tuple[dict | None, str, bool]:
+        """
+        Resolve a resource from action fields.
+        Returns: (resource, reference_used, ambiguous)
+        """
+        candidates = [
+            action.get("acronym"),
+            action.get("resource"),
+            action.get("name"),
+            action.get("full_name"),
+        ]
+
+        for candidate in candidates:
+            key = norm(candidate)
+            if not key:
+                continue
+
+            if key in lookup:
+                match = lookup[key]
+                if match is None:
+                    return None, str(candidate), True
+                return match, str(candidate), False
+
+        return None, str(resource_ref(action)), False
+
+    resources, res_map = refresh_resource_lookup()
 
     executed = []
     for action in actions:
@@ -534,24 +622,30 @@ Rules:
 
         # ── create_resource ─────────────────────────────────────────────────
         if atype == "create_resource":
-            acro = action.get("acronym", "").upper()
-            if acro in res_map:
+            acro = action.get("acronym", "").upper().strip()
+            existing, ref, ambiguous = find_resource(action, res_map)
+
+            if existing:
                 action["executed"] = False
-                action["note"]     = f"{acro} already exists"
+                action["note"]     = f"{ref} already exists as {existing.get('acronym')}"
+            elif ambiguous:
+                action["executed"] = False
+                action["note"]     = f"{ref} is ambiguous; please use the exact acronym or full name"
             else:
+                role = action.get("role", "").strip()
                 rid = create_resource(
                     project_id   = project_id,
                     acronym      = acro,
                     full_name    = action.get("full_name", ""),
-                    role         = action.get("role", "").strip(),
+                    role         = role,
                     is_external  = action.get("is_external", False),
                     max_fraction = float(action.get("max_fraction", 1.0)),
+                    color        = color_for_role(role),
                 )
 
                 action["executed"] = True
                 action["id"]       = rid
-                resources = get_resources(project_id)
-                res_map   = {r["acronym"].upper(): r for r in resources}
+                resources, res_map = refresh_resource_lookup()
             executed.append(action)
 
         # ── sync color from resources ─────────────────────────────────────────────────
@@ -579,22 +673,23 @@ Rules:
 
         # ── delete_resource ─────────────────────────────────────────────────
         elif atype == "delete_resource":
-            acro = action.get("acronym", "").upper()
-            res  = res_map.get(acro)
+            res, ref, ambiguous = find_resource(action, res_map)
             if res:
                 delete_resource(res["id"])
                 action["executed"] = True
-                resources = get_resources(project_id)
-                res_map   = {r["acronym"].upper(): r for r in resources}
+                action["matched_resource"] = res.get("acronym")
+                resources, res_map = refresh_resource_lookup()
             else:
                 action["executed"] = False
-                action["note"]     = f"{acro} not found"
+                action["note"] = (
+                    f"{ref} is ambiguous; please use the exact acronym or full name"
+                    if ambiguous else f"{ref} not found"
+                )
             executed.append(action)
 
         # ── set_capacity ─────────────────────────────────────────────────────
         elif atype == "set_capacity":
-            acro = action.get("acronym", "").upper()
-            res  = res_map.get(acro)
+            res, ref, ambiguous = find_resource(action, res_map)
             if res:
                 year     = int(action.get("year", 2026))
                 weeks    = action.get("weeks", [])
@@ -602,31 +697,37 @@ Rules:
                 for week in weeks:
                     upsert_capacity(project_id, res["id"], year, int(week), fraction)
                 action["executed"] = True
+                action["matched_resource"] = res.get("acronym")
             else:
                 action["executed"] = False
-                action["note"]     = f"{acro} not found"
+                action["note"] = (
+                    f"{ref} is ambiguous; please use the exact acronym or full name"
+                    if ambiguous else f"{ref} not found"
+                )
             executed.append(action)
 
         # ── clear_capacity ───────────────────────────────────────────────────
         elif atype == "clear_capacity":
-            acro = action.get("acronym", "").upper()
-            res  = res_map.get(acro)
+            res, ref, ambiguous = find_resource(action, res_map)
             if res:
                 year  = int(action.get("year", 2026))
                 weeks = action.get("weeks", [])
                 for week in weeks:
                     upsert_capacity(project_id, res["id"], year, int(week), 0.0)
                 action["executed"] = True
+                action["matched_resource"] = res.get("acronym")
             else:
                 action["executed"] = False
-                action["note"]     = f"{acro} not found"
+                action["note"] = (
+                    f"{ref} is ambiguous; please use the exact acronym or full name"
+                    if ambiguous else f"{ref} not found"
+                )
             executed.append(action)
 
         # ── assign_resource ──────────────────────────────────────────────────
         elif atype == "assign_resource":
             from core.models import upsert_task_assignment
-            acro = action.get("acronym", "").upper()
-            res  = res_map.get(acro)
+            res, ref, ambiguous = find_resource(action, res_map)
             tid  = action.get("task_id")
             if res and tid:
                 upsert_task_assignment(
@@ -637,23 +738,30 @@ Rules:
                     notes       = action.get("notes", ""),
                 )
                 action["executed"] = True
+                action["matched_resource"] = res.get("acronym")
             else:
                 action["executed"] = False
-                action["note"]     = f"Resource {acro} or task {tid} not found"
+                if ambiguous:
+                    action["note"] = f"Resource {ref} is ambiguous; please use the exact acronym or full name"
+                else:
+                    action["note"] = f"Resource {ref} or task {tid} not found"
             executed.append(action)
 
         # ── remove_assignment ────────────────────────────────────────────────
         elif atype == "remove_assignment":
             from core.models import delete_task_assignment
-            acro = action.get("acronym", "").upper()
-            res  = res_map.get(acro)
+            res, ref, ambiguous = find_resource(action, res_map)
             tid  = action.get("task_id")
             if res and tid:
                 delete_task_assignment(int(tid), res["id"])
                 action["executed"] = True
+                action["matched_resource"] = res.get("acronym")
             else:
                 action["executed"] = False
-                action["note"]     = f"Resource {acro} or task {tid} not found"
+                if ambiguous:
+                    action["note"] = f"Resource {ref} is ambiguous; please use the exact acronym or full name"
+                else:
+                    action["note"] = f"Resource {ref} or task {tid} not found"
             executed.append(action)
 
         # ── message ──────────────────────────────────────────────────────────

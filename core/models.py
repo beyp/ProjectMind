@@ -622,7 +622,7 @@ def upsert_capacity(project_id: int, resource_id: int, year: int, week: int,
     conn.execute("""
         INSERT INTO capacity (project_id, resource_id, year, week, fraction)
         VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(resource_id, task_id, year, week)
+        ON CONFLICT(project_id, resource_id, year, week)
         DO UPDATE SET fraction=excluded.fraction
     """, (project_id, resource_id, year, week, fraction))
     conn.commit()

@@ -954,6 +954,88 @@ document.getElementById('btn-del-task').addEventListener('click', function() {
 
 // ── Ressources assignees aux taches ──────────────────────────────────────────
 var _RES = RESOURCES || [];
+var _CURRENT_ASSIGNMENTS = [];
+
+function num(v) {
+  var n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+
+function syncAssignFromHours() {
+  var hoursEl = document.getElementById('et-hours');
+  var fracEl  = document.getElementById('et-frac');
+  if (!hoursEl || !fracEl) return;
+
+  var h = num(hoursEl.value);
+  fracEl.value = h > 0 ? (h / 40).toFixed(2) : '';
+  refreshAssignmentTotal();
+}
+
+function syncAssignFromFraction() {
+  var hoursEl = document.getElementById('et-hours');
+  var fracEl  = document.getElementById('et-frac');
+  if (!hoursEl || !fracEl) return;
+
+  var f = num(fracEl.value);
+  hoursEl.value = f > 0 ? (f * 40).toFixed(1) : '';
+  refreshAssignmentTotal();
+}
+
+function assignmentTotals(includeDraft) {
+  var totalHours = 0;
+  var totalFraction = 0;
+
+  (_CURRENT_ASSIGNMENTS || []).forEach(function(a) {
+    totalHours += num(a.hours);
+    totalFraction += num(a.fraction);
+  });
+
+  if (includeDraft) {
+    totalHours += num(document.getElementById('et-hours')?.value);
+    totalFraction += num(document.getElementById('et-frac')?.value);
+  }
+
+  return { hours: totalHours, fraction: totalFraction };
+}
+
+function renderAssignmentTotal(includeDraft) {
+  var totals = assignmentTotals(includeDraft);
+  var draftTxt = includeDraft ? ' <span style="color:var(--dim);font-weight:400;">(avec saisie en cours)</span>' : '';
+
+  return '<div id="et-assign-total" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);font-size:0.78rem;color:var(--accent);font-weight:600;">' +
+         'Total : ' + totals.hours.toFixed(1) + 'h' +
+         ' / ' + (totals.fraction * 100).toFixed(0) + '%' +
+         draftTxt +
+         '</div>';
+}
+
+function refreshAssignmentTotal() {
+  var totalEl = document.getElementById('et-assign-total');
+  if (!totalEl) return;
+
+  var hasDraft =
+    num(document.getElementById('et-hours')?.value) > 0 ||
+    num(document.getElementById('et-frac')?.value) > 0;
+
+  var wrapper = document.createElement('div');
+  wrapper.innerHTML = renderAssignmentTotal(hasDraft);
+  totalEl.replaceWith(wrapper.firstChild);
+}
+
+function wireAssignmentInputs() {
+  var hoursEl = document.getElementById('et-hours');
+  var fracEl  = document.getElementById('et-frac');
+
+  if (hoursEl && !hoursEl.dataset.wired) {
+    hoursEl.addEventListener('input', syncAssignFromHours);
+    hoursEl.dataset.wired = '1';
+  }
+
+  if (fracEl && !fracEl.dataset.wired) {
+    fracEl.addEventListener('input', syncAssignFromFraction);
+    fracEl.dataset.wired = '1';
+  }
+}
 
 function loadAssignments(taskId) {
   var sel = document.getElementById('et-res');
@@ -962,58 +1044,78 @@ function loadAssignments(taskId) {
     _RES.forEach(function(r) {
       var o = document.createElement('option');
       o.value = r.id;
-      o.textContent = r.acronym + (r.full_name ? ' - '+r.full_name : '');
+      o.textContent = r.acronym + (r.full_name ? ' - ' + r.full_name : '');
       sel.appendChild(o);
     });
   }
+
   var box = document.getElementById('et-assignments');
   if (!box) return;
+
   box.innerHTML = '<div style="color:var(--dim);font-size:0.75rem;">Chargement...</div>';
-  fetch('/api/tasks/'+taskId+'/assignments')
+
+  fetch('/api/tasks/' + taskId + '/assignments')
   .then(function(r) { return r.json(); })
   .then(function(list) {
-    if (!list.length) {
-      box.innerHTML = '<div style="color:var(--dim);font-size:0.75rem;">Aucune ressource assignee.</div>';
+    _CURRENT_ASSIGNMENTS = Array.isArray(list) ? list : [];
+
+    var h = '';
+
+    if (!_CURRENT_ASSIGNMENTS.length) {
+      h += '<div style="color:var(--dim);font-size:0.75rem;">Aucune ressource assignee.</div>';
+      h += renderAssignmentTotal(false);
+      box.innerHTML = h;
+      refreshAssignmentTotal();
       return;
     }
-    var h = '';
-    list.forEach(function(a) {
-      h += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:5px;'+
+
+    _CURRENT_ASSIGNMENTS.forEach(function(a) {
+      h += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:5px;' +
            'background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:3px;font-size:0.78rem;">';
-      h += '<span style="background:'+(a.color||'#1E90FF')+';color:#fff;padding:1px 7px;border-radius:8px;font-size:0.72rem;font-weight:700;">'+a.acronym+'</span>';
-      if (a.full_name) h += '<span style="color:var(--dim);">'+a.full_name+'</span>';
-      if (a.hours  > 0) h += '<span style="color:var(--accent);font-size:0.75rem;">'+a.hours+'h</span>';
-      if (a.fraction > 0) h += '<span style="color:var(--green);font-size:0.75rem;">'+(a.fraction*100).toFixed(0)+'%</span>';
+      h += '<span style="background:' + (a.color || '#1E90FF') + ';color:#fff;padding:1px 7px;border-radius:8px;font-size:0.72rem;font-weight:700;">' + a.acronym + '</span>';
+      if (a.full_name) h += '<span style="color:var(--dim);">' + a.full_name + '</span>';
+      if (num(a.hours) > 0) h += '<span style="color:var(--accent);font-size:0.75rem;">' + num(a.hours).toFixed(1) + 'h</span>';
+      if (num(a.fraction) > 0) h += '<span style="color:var(--green);font-size:0.75rem;">' + (num(a.fraction) * 100).toFixed(0) + '%</span>';
       h += '<span style="flex:1;"></span>';
-      h += '<button style="background:none;border:none;color:var(--red);cursor:pointer;" '+
-           'data-tid="'+a.task_id+'" data-rid="'+a.resource_id+'" class="da-btn">&times;</button>';
+      h += '<button style="background:none;border:none;color:var(--red);cursor:pointer;" ' +
+           'data-tid="' + a.task_id + '" data-rid="' + a.resource_id + '" class="da-btn">&times;</button>';
       h += '</div>';
     });
+
+    h += renderAssignmentTotal(false);
     box.innerHTML = h;
+
     box.querySelectorAll('.da-btn').forEach(function(b) {
       b.addEventListener('click', function() {
-        fetch('/api/tasks/'+this.dataset.tid+'/assignments/'+this.dataset.rid,{method:'DELETE'})
-        .then(function(){loadAssignments(taskId);});
+        fetch('/api/tasks/' + this.dataset.tid + '/assignments/' + this.dataset.rid, { method:'DELETE' })
+        .then(function() { loadAssignments(taskId); });
       });
     });
+
+    refreshAssignmentTotal();
   });
 }
+
+wireAssignmentInputs();
 
 var _btnadd = document.getElementById('btn-add-assign');
 if (_btnadd) {
   _btnadd.addEventListener('click', function() {
     var tid = parseInt(document.getElementById('et-id').value);
     var rid = parseInt(document.getElementById('et-res').value);
-    if (!tid||!rid) { alert('Choisissez une ressource.'); return; }
-    var hours = parseFloat(document.getElementById('et-hours').value)||0;
-    var frac  = parseFloat(document.getElementById('et-frac').value)||0;
-    fetch('/api/tasks/'+tid+'/assignments',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({resource_id:rid,hours:hours,fraction:frac})
-    }).then(function(){
-      document.getElementById('et-hours').value='';
-      document.getElementById('et-frac').value='';
-      document.getElementById('et-res').value='';
+    if (!tid || !rid) { alert('Choisissez une ressource.'); return; }
+
+    var hours = num(document.getElementById('et-hours').value);
+    var frac  = num(document.getElementById('et-frac').value);
+
+    fetch('/api/tasks/' + tid + '/assignments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resource_id: rid, hours: hours, fraction: frac })
+    }).then(function() {
+      document.getElementById('et-hours').value = '';
+      document.getElementById('et-frac').value = '';
+      document.getElementById('et-res').value = '';
       loadAssignments(tid);
     });
   });
@@ -1023,6 +1125,7 @@ if (_btnadd) {
 var _oedit = openEditTask;
 openEditTask = function(taskId) {
   _oedit(taskId);
+  wireAssignmentInputs();
   loadAssignments(taskId);
 };
 
