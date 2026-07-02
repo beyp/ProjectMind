@@ -29,6 +29,7 @@ from core.models import (
 )
 from ai.task_parser import TaskParser, VisionTaskParser
 from ai.projectmind_agent import ProjectMindAgent
+from services.project_action_executor import ProjectActionExecutor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 task_parser        = TaskParser(GROQ_API_KEY)
 vision_task_parser = VisionTaskParser(GROQ_API_KEY)
 projectmind_agent = ProjectMindAgent(GROQ_API_KEY)
+project_action_executor = ProjectActionExecutor()
 
 TEMPLATES_DIR = Path("templates")
 templates     = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -1348,4 +1350,12 @@ async def api_projectmind_ai(project_id: int, request: Request):
         image_mime=image_mime,
     )
 
-    return result
+    actions = result.get("actions", [])
+    executed = project_action_executor.execute(project_id, actions)
+
+    return {
+        "ok": True,
+        "actions": executed,
+        "message": result.get("message", ""),
+        "raw": result.get("raw", ""),
+    }
