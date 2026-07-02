@@ -28,6 +28,7 @@ from core.models import (
     get_role_colors, upsert_role_color, delete_role_color, color_for_role
 )
 from ai.task_parser import TaskParser, VisionTaskParser
+from ai.projectmind_agent import ProjectMindAgent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 task_parser        = TaskParser(GROQ_API_KEY)
 vision_task_parser = VisionTaskParser(GROQ_API_KEY)
+projectmind_agent = ProjectMindAgent(GROQ_API_KEY)
 
 TEMPLATES_DIR = Path("templates")
 templates     = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -1317,3 +1319,33 @@ async def api_delete_category(category_id: int):
     conn.close()
     return {"ok": deleted}
 
+@app.post("/api/projects/{project_id}/ai")
+async def api_projectmind_ai(project_id: int, request: Request):
+    body = await request.json()
+
+    text = body.get("text", "")
+    image_data = body.get("image_data", "")
+    image_mime = body.get("image_mime", "image/jpeg")
+
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(404, "Projet introuvable")
+
+    context = {
+        "project": project,
+        "tasks": get_tasks(project_id),
+        "categories": get_categories(project_id),
+        "milestones": get_milestones(project_id),
+        "risks": get_risks(project_id),
+        "resources": get_resources(project_id),
+        "assignments": get_project_assignments(project_id),
+    }
+
+    result = projectmind_agent.run(
+        project_context=context,
+        user_text=text,
+        image_data=image_data,
+        image_mime=image_mime,
+    )
+
+    return result
