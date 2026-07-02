@@ -192,6 +192,18 @@ async def api_create_project(request: Request):
     )
     return {"id": project_id, "ok": True}
 
+@app.patch("/api/projects/{project_id}")
+async def api_update_project(project_id: int, request: Request):
+    data = await request.json()
+    conn = get_db()
+    conn.execute("""
+        UPDATE projects
+        SET language = COALESCE(?, language)
+        WHERE id=?
+    """, (data.get("language"), project_id))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
 
 @app.delete("/api/projects/{project_id}")
 async def api_delete_project(project_id: int):
@@ -1068,3 +1080,37 @@ async def export_pptx(project_id: int):
     except Exception as e:
         logger.error("PPTX export error: %s", e)
         raise HTTPException(500, str(e))
+
+@app.put("/api/categories/{category_id}")
+async def api_update_category(category_id: int, request: Request):
+    data = await request.json()
+    conn = get_db()
+    conn.execute("""
+        UPDATE categories
+        SET name=?, name_en=?, color=?
+        WHERE id=?
+    """, (
+        data.get("name", ""),
+        data.get("name_en", ""),
+        data.get("color", "#041E42"),
+        category_id,
+    ))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@app.delete("/api/categories/{category_id}")
+async def api_delete_category(category_id: int):
+    conn = get_db()
+    c = conn.cursor()
+
+    # On détache les tâches avant suppression
+    c.execute("UPDATE tasks SET category_id=NULL WHERE category_id=?", (category_id,))
+    c.execute("DELETE FROM categories WHERE id=?", (category_id,))
+
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return {"ok": deleted}
+

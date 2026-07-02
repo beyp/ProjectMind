@@ -374,6 +374,10 @@ header h1{color:var(--accent);font-size:1.1rem;}
 
     <div class="tab-content" id="tc-cfg">
       <div class="card">
+        <div class="card">
+          <div class="card-ttl">Categories existantes</div>
+          <div id="cat-list"></div>
+        </div>
         <div class="card-ttl">Ajouter une categorie</div>
         <div class="fg2">
           <div class="fg"><label>Nom FR *</label><input id="c-n" type="text" placeholder="ex: OCM"></div>
@@ -498,12 +502,43 @@ header h1{color:var(--accent);font-size:1.1rem;}
   </div>
 </div>
 
+<div class="moverlay" id="modal-cat">
+  <div class="mbox">
+    <h3 style="color:var(--accent);margin-bottom:14px;">Modifier la categorie</h3>
+    <input type="hidden" id="ec-id">
+
+    <div class="fg">
+      <label>Nom FR *</label>
+      <input id="ec-name" type="text">
+    </div>
+
+    <div class="fg">
+      <label>Nom EN</label>
+      <input id="ec-name-en" type="text">
+    </div>
+
+    <div class="fg">
+      <label>Couleur</label>
+      <input id="ec-color" type="color">
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:space-between;margin-top:10px;">
+      <button class="btn btn-r" id="btn-del-cat">Supprimer</button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-n" id="btn-cancel-cat">Annuler</button>
+        <button class="btn btn-p" id="btn-save-cat">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Données projet ────────────────────────────────────────────────────────────
 var PID       = {{ project.id }};
 var LANG      = "{{ project.language }}";
 var TASKS_ALL = {{ tasks_by_cat.values() | sum(start=[]) | list | tojson }};
 var RESOURCES = {{ resources | default([]) | tojson }};
+var CATEGORIES = {{ categories | default([]) | tojson }};
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 function showTab(name) {
@@ -875,6 +910,105 @@ document.getElementById('btn-add-cat').addEventListener('click', function() {
     if (d.ok) { var el = document.getElementById('cat-ok'); if (el) el.textContent = 'Ajoutee !'; setTimeout(function() { location.reload(); }, 800); }
   });
 });
+function renderCategoryList() {
+  var box = document.getElementById('cat-list');
+  if (!box) return;
+
+  if (!CATEGORIES.length) {
+    box.innerHTML = '<div style="color:var(--dim);font-size:0.8rem;">Aucune categorie.</div>';
+    return;
+  }
+
+  var html = '';
+  CATEGORIES.forEach(function(c) {
+    html += '<div class="cat-edit-row" data-id="'+c.id+'" ' +
+      'style="display:flex;align-items:center;gap:8px;padding:7px 8px;' +
+      'border:1px solid var(--border);border-radius:6px;margin-bottom:6px;cursor:pointer;">';
+
+    html += '<span style="width:12px;height:12px;border-radius:50%;background:' +
+      (c.color || '#041E42') + ';display:inline-block;"></span>';
+
+    html += '<span style="font-weight:600;">' + (c.name || '') + '</span>';
+
+    if (c.name_en) {
+      html += '<span style="color:var(--dim);font-size:0.75rem;">' + c.name_en + '</span>';
+    }
+
+    html += '<span style="margin-left:auto;color:var(--dim);font-size:0.75rem;">Modifier</span>';
+    html += '</div>';
+  });
+
+  box.innerHTML = html;
+
+  box.querySelectorAll('.cat-edit-row').forEach(function(row) {
+    row.addEventListener('click', function() {
+      openCategoryModal(parseInt(this.dataset.id));
+    });
+  });
+}
+
+function openCategoryModal(catId) {
+  var c = CATEGORIES.find(function(x) { return x.id === catId; });
+  if (!c) return;
+
+  document.getElementById('ec-id').value = c.id;
+  document.getElementById('ec-name').value = c.name || '';
+  document.getElementById('ec-name-en').value = c.name_en || '';
+  document.getElementById('ec-color').value = c.color || '#041E42';
+
+  document.getElementById('modal-cat').classList.add('open');
+}
+
+document.getElementById('btn-cancel-cat').addEventListener('click', function() {
+  document.getElementById('modal-cat').classList.remove('open');
+});
+
+document.getElementById('modal-cat').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+
+document.getElementById('btn-save-cat').addEventListener('click', function() {
+  var id = parseInt(document.getElementById('ec-id').value);
+  if (!id) return;
+
+  var payload = {
+    name: document.getElementById('ec-name').value.trim(),
+    name_en: document.getElementById('ec-name-en').value.trim(),
+    color: document.getElementById('ec-color').value
+  };
+
+  if (!payload.name) {
+    alert('Nom obligatoire');
+    return;
+  }
+
+  fetch('/api/categories/' + id, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) location.reload();
+  });
+});
+
+document.getElementById('btn-del-cat').addEventListener('click', function() {
+  var id = parseInt(document.getElementById('ec-id').value);
+  if (!id) return;
+
+  if (!confirm('Supprimer cette categorie ? Les taches seront conservees sans categorie.')) return;
+
+  fetch('/api/categories/' + id, {
+    method: 'DELETE'
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) location.reload();
+  });
+});
+
+renderCategoryList();
 
 // ── Jalon ─────────────────────────────────────────────────────────────────────
 document.getElementById('btn-add-ms').addEventListener('click', function() {
