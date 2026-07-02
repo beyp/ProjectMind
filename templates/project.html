@@ -922,7 +922,7 @@ function doAIAnalysis() {
     '<div id="ai-load" style="color:#888;">&#x23F3; Analyse ' + model_label + ' en cours...</div>');
   hist.scrollTop = hist.scrollHeight;
 
-  var url = '/api/projects/' + PID + '/ai/capacity';
+  var url = '/api/projects/' + PID + '/ai';
 
   var payload = hasImage
     ? {
@@ -947,56 +947,27 @@ function doAIAnalysis() {
         '<div style="color:#f44336;">Erreur: ' + data.error + '</div>');
       return;
     }
-
-    var tasks = data.tasks || [];
-    var model_used = data.model || model_label;
+    var actions = data.actions || [];
 
     var html = '<div style="background:#1a1d27;border:1px solid #2a2d3e;border-radius:6px;padding:10px;margin-top:8px;">';
-    html += '<b style="color:#4caf50;">' + tasks.length + ' tache(s) identifiee(s)</b>';
-    html += '<span style="color:#888;font-size:0.75rem;margin-left:8px;">via ' + model_used + '</span><br><br>';
+    html += '<b style="color:#4caf50;">' + actions.length + ' action(s) traitée(s)</b><br><br>';
 
-    tasks.forEach(function(t) {
-      if (t.error) {
-        html += '<div style="color:#f44336;font-size:0.8rem;">Erreur: ' + t.error + '</div>';
-        return;
-      }
-      html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 6px;' +
-              'background:#0a0c14;border-radius:4px;margin-bottom:3px;font-size:0.8rem;">';
-      html += '<span style="color:#1e90ff;min-width:80px;font-weight:600;">' + (t.category||'—') + '</span> ';
-      html += '<span style="flex:1;">' + (t.title||'') + '</span> ';
-      html += '<span style="color:#ff9800;font-size:0.72rem;white-space:nowrap;">' + (t.status||'') + '</span>';
-      if (t.date_label) html += ' <span style="color:#888;font-size:0.72rem;">' + t.date_label + '</span>';
+    actions.forEach(function(a) {
+      var label = a.type || 'action';
+      var ok = a.executed === false ? false : true;
+      html += '<div style="font-size:0.8rem;margin-bottom:4px;color:' + (ok ? '#e0e0e0' : '#f44336') + ';">';
+      html += '• ' + label;
+      if (a.text) html += ' — ' + a.text;
+      if (a.note) html += ' — ' + a.note;
+      if (a.error) html += ' — ' + a.error;
       html += '</div>';
     });
 
-    window._pm_tasks = tasks;
-    html += '<br><div style="display:flex;gap:8px;">';
-    html += '<button class="btn btn-g btn-import-ai" style="font-size:0.78rem;">Importer toutes les taches</button>';
-    html += '</div></div>';
-
+    html += '</div>';
     hist.insertAdjacentHTML('beforeend', html);
     hist.scrollTop = hist.scrollHeight;
-
-    // Reset inputs
     document.getElementById('cinput').value = '';
     if (hasImage) clearImage();
-
-    // Attacher l import
-    var importBtns = hist.querySelectorAll('.btn-import-ai');
-    var lastBtn = importBtns[importBtns.length - 1];
-    if (lastBtn) {
-      lastBtn.addEventListener('click', function() {
-        fetch('/api/projects/' + PID + '/ai/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tasks: window._pm_tasks, language: LANG })
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          if (d.ok) { alert(d.imported + ' tache(s) importee(s) !'); location.reload(); }
-        });
-      });
-    }
   })
   .catch(function(err) {
     var ld = document.getElementById('ai-load');
