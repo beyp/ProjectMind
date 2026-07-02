@@ -88,6 +88,16 @@ header h1{color:var(--accent);font-size:1.1rem;}
   font-family:inherit;resize:vertical;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.click-edit {
+    cursor: pointer;
+    transition: color .15s ease;
+}
+
+.click-edit:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    color: var(--accent);
+}
 </style>
 </head>
 <body>
@@ -296,7 +306,13 @@ header h1{color:var(--accent);font-size:1.1rem;}
           <tbody>
             {% for m in milestones %}
             <tr>
-              <td>{{ m.title }}</td>
+              <td>
+                <span onclick="openMilestoneEdit({{ m.id }})"
+                      title="Cliquez ici pour éditer"
+                      class="click-edit">
+                  {{ m.title }}
+                </span>
+              </td>
               <td style="text-align:center;font-size:0.8rem;">{{ m.baseline_date }}</td>
               <td style="text-align:center;font-size:0.8rem;">{{ m.current_date }}</td>
               <td style="text-align:center;font-size:0.78rem;color:var(--dim);">{{ m.status }}</td>
@@ -323,7 +339,13 @@ header h1{color:var(--accent);font-size:1.1rem;}
             {% for r in risks %}
             <tr>
               <td style="text-align:center;font-weight:700;color:var(--orange);">{{ r.risk_type }}:</td>
-              <td style="font-size:0.82rem;">{{ r.description }}</td>
+              <td style="font-size:0.82rem;">
+                <span onclick="openRiskEdit({{ r.id }})"
+                      title="Cliquez ici pour éditer"
+                      class="click-edit">
+                    {{ r.description }}
+                </span>
+              </td>
               <td style="font-size:0.78rem;color:var(--dim);">{{ r.owner }}</td>
             </tr>
             {% endfor %}
@@ -374,21 +396,33 @@ header h1{color:var(--accent);font-size:1.1rem;}
 
     <div class="tab-content" id="tc-cfg">
       <div class="card">
-        <div class="card-ttl">Ajouter une categorie</div>
-        <div class="fg2">
-          <div class="fg"><label>Nom FR *</label><input id="c-n" type="text" placeholder="ex: OCM"></div>
-          <div class="fg"><label>Nom EN</label><input id="c-en" type="text" placeholder="ex: Change Management"></div>
-          <div class="fg"><label>Couleur</label><input id="c-col" type="color" value="#041E42"></div>
-        </div>
-        <button class="btn btn-p" id="btn-add-cat">+ Ajouter categorie</button>
-        <span id="cat-ok" style="margin-left:10px;color:var(--green);font-size:0.8rem;"></span>
-      </div>
-      <div class="card">
         <div class="card-ttl">Infos projet</div>
-        <p style="font-size:0.83rem;color:var(--dim);">
-          ID: {{ project.id }} | Langue: {{ project.language|upper }}
-          {% if project.ado_project %} | ADO: {{ project.ado_project }}{% endif %}
-        </p>
+
+          <div class="fg">
+            <label>Langue du projet</label>
+            <select id="project-lang">
+              <option value="fr" {% if project.language == "fr" %}selected{% endif %}>Français</option>
+              <option value="en" {% if project.language == "en" %}selected{% endif %}>English</option>
+            </select>
+          </div>
+
+          <p style="font-size:0.83rem;color:var(--dim);">
+            ID: {{ project.id }}
+            {% if project.ado_project %} | ADO: {{ project.ado_project }}{% endif %}
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-ttl">Categories existantes</div>
+          <div id="cat-list"></div>
+          <div class="card-ttl">Ajouter une categorie</div>
+          <div class="fg2">
+            <div class="fg"><label>Nom FR *</label><input id="c-n" type="text" placeholder="ex: OCM"></div>
+            <div class="fg"><label>Nom EN</label><input id="c-en" type="text" placeholder="ex: Change Management"></div>
+            <div class="fg"><label>Couleur</label><input id="c-col" type="color" value="#041E42"></div>
+          </div>
+          <button class="btn btn-p" id="btn-add-cat">+ Ajouter categorie</button>
+          <span id="cat-ok" style="margin-left:10px;color:var(--green);font-size:0.8rem;"></span>
+        </div>
       </div>
     </div>
   </div>
@@ -498,11 +532,109 @@ header h1{color:var(--accent);font-size:1.1rem;}
   </div>
 </div>
 
+<div class="moverlay" id="modal-cat">
+  <div class="mbox">
+    <h3 style="color:var(--accent);margin-bottom:14px;">Modifier la categorie</h3>
+    <input type="hidden" id="ec-id">
+
+    <div class="fg">
+      <label>Nom FR *</label>
+      <input id="ec-name" type="text">
+    </div>
+
+    <div class="fg">
+      <label>Nom EN</label>
+      <input id="ec-name-en" type="text">
+    </div>
+
+    <div class="fg">
+      <label>Couleur</label>
+      <input id="ec-color" type="color">
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:space-between;margin-top:10px;">
+      <button class="btn btn-r" id="btn-del-cat">Supprimer</button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-n" id="btn-cancel-cat">Annuler</button>
+        <button class="btn btn-p" id="btn-save-cat">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="moverlay" id="modal-ms-edit">
+  <div class="mbox">
+    <h3 style="color:var(--accent);margin-bottom:14px;">Modifier le jalon</h3>
+    <input type="hidden" id="em-id">
+    <div class="fg"><label>Titre *</label><input id="em-title" type="text"></div>
+    <div class="fg2">
+      <div class="fg"><label>Baseline</label><input id="em-base" type="text"></div>
+      <div class="fg"><label>Actuelle</label><input id="em-current" type="text"></div>
+      <div class="fg"><label>Statut</label>
+        <select id="em-status">
+          <option>In progress</option>
+          <option>Completed</option>
+          <option>At Risk</option>
+          <option>Delayed</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:10px;">
+      <button class="btn btn-r" id="btn-del-ms-edit">Supprimer</button>
+      <div>
+        <button class="btn btn-n" id="btn-cancel-ms-edit">Annuler</button>
+        <button class="btn btn-p" id="btn-save-ms-edit">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="moverlay" id="modal-risk-edit">
+  <div class="mbox">
+    <h3 style="color:var(--accent);margin-bottom:14px;">Modifier le risque / issue</h3>
+    <input type="hidden" id="er-id">
+    <div class="fg"><label>Type</label>
+      <select id="er-type">
+        <option value="I">I: Issue</option>
+        <option value="R">R: Risk</option>
+        <option value="D">D: Decision</option>
+      </select>
+    </div>
+    <div class="fg"><label>Description *</label><textarea id="er-desc" rows="3"></textarea></div>
+    <div class="fg"><label>Owner</label><input id="er-owner" type="text"></div>
+    <div style="display:flex;justify-content:space-between;gap:10px;">
+      <button class="btn btn-r" id="btn-del-risk-edit">Supprimer</button>
+      <div>
+        <button class="btn btn-n" id="btn-cancel-risk-edit">Annuler</button>
+        <button class="btn btn-p" id="btn-save-risk-edit">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Données projet ────────────────────────────────────────────────────────────
 var PID       = {{ project.id }};
 var LANG      = "{{ project.language }}";
 var TASKS_ALL = {{ tasks_by_cat.values() | sum(start=[]) | list | tojson }};
+var RESOURCES = {{ resources | default([]) | tojson }};
+var CATEGORIES = {{ categories | default([]) | tojson }};
+var MILESTONES = {{ milestones | default([]) | tojson }};
+var RISKS = {{ risks | default([]) | tojson }};
+
+// ── Project language ──────────────────────────────────────────────────────────────────────
+var projectLang = document.getElementById('project-lang');
+if (projectLang) {
+  projectLang.addEventListener('change', function() {
+    fetch('/api/projects/' + PID, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language: this.value })
+    }).then(function() {
+      location.reload();
+    });
+  });
+}
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 function showTab(name) {
@@ -515,6 +647,7 @@ function showTab(name) {
   if (tc)    tc.classList.add('active');
   if (tab)   tab.classList.add('active');
   if (sbbtn) sbbtn.classList.add('active');
+  localStorage.setItem('pm_active_tab_' + PID, name);
 }
 
 // Attacher les événements tabs via addEventListener (PAS onclick dans le HTML)
@@ -525,7 +658,10 @@ document.getElementById('tab-ms').addEventListener('click', function() { showTab
 document.getElementById('tab-risks').addEventListener('click', function() { showTab('risks'); });
 document.getElementById('tab-kpis').addEventListener('click', function() { showTab('kpis'); });
 document.getElementById('tab-cfg').addEventListener('click', function() { showTab('cfg'); });
-
+var savedTab = localStorage.getItem('pm_active_tab_' + PID);
+if (savedTab) {
+  showTab(savedTab);
+}
 // Sidebar
 document.getElementById('sb-ai').addEventListener('click', function() { showTab('ai'); });
 document.getElementById('sb-weekly').addEventListener('click', function() { showTab('weekly'); });
@@ -543,7 +679,73 @@ document.getElementById('btn-add').addEventListener('click', function() { openMo
 // Bouton dans tab-status
 document.getElementById('tc-add-btn').addEventListener('click', function() { openModal(); });
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
+// ── Modal Milestones & Risks ─────────────────────────────────────────────────────────────────────
+
+function openMilestoneEdit(id) {
+  var m = MILESTONES.find(x => x.id === id);
+  if (!m) return;
+  document.getElementById('em-id').value = m.id;
+  document.getElementById('em-title').value = m.title || '';
+  document.getElementById('em-base').value = m.baseline_date || '';
+  document.getElementById('em-current').value = m.current_date || '';
+  document.getElementById('em-status').value = m.status || 'In progress';
+  document.getElementById('modal-ms-edit').classList.add('open');
+}
+
+function openRiskEdit(id) {
+  var r = RISKS.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('er-id').value = r.id;
+  document.getElementById('er-type').value = r.risk_type || 'I';
+  document.getElementById('er-desc').value = r.description || '';
+  document.getElementById('er-owner').value = r.owner || '';
+  document.getElementById('modal-risk-edit').classList.add('open');
+}
+
+document.getElementById('btn-save-ms-edit').onclick = function() {
+  var id = document.getElementById('em-id').value;
+  fetch('/api/milestones/' + id, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      title: document.getElementById('em-title').value,
+      baseline_date: document.getElementById('em-base').value,
+      current_date: document.getElementById('em-current').value,
+      status: document.getElementById('em-status').value
+    })
+  }).then(() => location.reload());
+};
+
+document.getElementById('btn-del-ms-edit').onclick = function() {
+  var id = document.getElementById('em-id').value;
+  if (!confirm('Supprimer ce jalon ?')) return;
+  fetch('/api/milestones/' + id, {method:'DELETE'}).then(() => location.reload());
+};
+
+document.getElementById('btn-save-risk-edit').onclick = function() {
+  var id = document.getElementById('er-id').value;
+  fetch('/api/risks/' + id, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      risk_type: document.getElementById('er-type').value,
+      description: document.getElementById('er-desc').value,
+      owner: document.getElementById('er-owner').value
+    })
+  }).then(() => location.reload());
+};
+
+document.getElementById('btn-del-risk-edit').onclick = function() {
+  var id = document.getElementById('er-id').value;
+  if (!confirm('Supprimer ce risque / issue ?')) return;
+  fetch('/api/risks/' + id, {method:'DELETE'}).then(() => location.reload());
+};
+
+document.getElementById('btn-cancel-ms-edit').onclick = () => document.getElementById('modal-ms-edit').classList.remove('open');
+document.getElementById('btn-cancel-risk-edit').onclick = () => document.getElementById('modal-risk-edit').classList.remove('open');
+
+
+// ── Modal Tasks ─────────────────────────────────────────────────────────────────────
 function openModal() {
   document.getElementById('modal-task').classList.add('open');
   setTimeout(function() { document.getElementById('nt-t').focus(); }, 50);
@@ -720,14 +922,15 @@ function doAIAnalysis() {
     '<div id="ai-load" style="color:#888;">&#x23F3; Analyse ' + model_label + ' en cours...</div>');
   hist.scrollTop = hist.scrollHeight;
 
-  var url     = hasImage
-    ? '/api/projects/' + PID + '/ai/parse-image'
-    : '/api/projects/' + PID + '/ai/parse';
+  var url = '/api/projects/' + PID + '/ai/capacity';
 
   var payload = hasImage
-    ? { image_data: window._pm_image.data, image_mime: window._pm_image.mime,
-        text_context: text, language: LANG }
-    : { text: text, language: LANG };
+    ? {
+        text: text,
+        image_data: window._pm_image.data,
+        image_mime: window._pm_image.mime
+      }
+    : { text: text };
 
   fetch(url, {
     method: 'POST',
@@ -874,6 +1077,105 @@ document.getElementById('btn-add-cat').addEventListener('click', function() {
     if (d.ok) { var el = document.getElementById('cat-ok'); if (el) el.textContent = 'Ajoutee !'; setTimeout(function() { location.reload(); }, 800); }
   });
 });
+function renderCategoryList() {
+  var box = document.getElementById('cat-list');
+  if (!box) return;
+
+  if (!CATEGORIES.length) {
+    box.innerHTML = '<div style="color:var(--dim);font-size:0.8rem;">Aucune categorie.</div>';
+    return;
+  }
+
+  var html = '';
+  CATEGORIES.forEach(function(c) {
+    html += '<div class="cat-edit-row" data-id="'+c.id+'" ' +
+      'style="display:flex;align-items:center;gap:8px;padding:7px 8px;' +
+      'border:1px solid var(--border);border-radius:6px;margin-bottom:6px;cursor:pointer;">';
+
+    html += '<span style="width:12px;height:12px;border-radius:50%;background:' +
+      (c.color || '#041E42') + ';display:inline-block;"></span>';
+
+    html += '<span style="font-weight:600;">' + (c.name || '') + '</span>';
+
+    if (c.name_en) {
+      html += '<span style="color:var(--dim);font-size:0.75rem;">' + c.name_en + '</span>';
+    }
+
+    html += '<span style="margin-left:auto;color:var(--dim);font-size:0.75rem;">Modifier</span>';
+    html += '</div>';
+  });
+
+  box.innerHTML = html;
+
+  box.querySelectorAll('.cat-edit-row').forEach(function(row) {
+    row.addEventListener('click', function() {
+      openCategoryModal(parseInt(this.dataset.id));
+    });
+  });
+}
+
+function openCategoryModal(catId) {
+  var c = CATEGORIES.find(function(x) { return x.id === catId; });
+  if (!c) return;
+
+  document.getElementById('ec-id').value = c.id;
+  document.getElementById('ec-name').value = c.name || '';
+  document.getElementById('ec-name-en').value = c.name_en || '';
+  document.getElementById('ec-color').value = c.color || '#041E42';
+
+  document.getElementById('modal-cat').classList.add('open');
+}
+
+document.getElementById('btn-cancel-cat').addEventListener('click', function() {
+  document.getElementById('modal-cat').classList.remove('open');
+});
+
+document.getElementById('modal-cat').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+
+document.getElementById('btn-save-cat').addEventListener('click', function() {
+  var id = parseInt(document.getElementById('ec-id').value);
+  if (!id) return;
+
+  var payload = {
+    name: document.getElementById('ec-name').value.trim(),
+    name_en: document.getElementById('ec-name-en').value.trim(),
+    color: document.getElementById('ec-color').value
+  };
+
+  if (!payload.name) {
+    alert('Nom obligatoire');
+    return;
+  }
+
+  fetch('/api/categories/' + id, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) location.reload();
+  });
+});
+
+document.getElementById('btn-del-cat').addEventListener('click', function() {
+  var id = parseInt(document.getElementById('ec-id').value);
+  if (!id) return;
+
+  if (!confirm('Supprimer cette categorie ? Les taches seront conservees sans categorie.')) return;
+
+  fetch('/api/categories/' + id, {
+    method: 'DELETE'
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) location.reload();
+  });
+});
+
+renderCategoryList();
 
 // ── Jalon ─────────────────────────────────────────────────────────────────────
 document.getElementById('btn-add-ms').addEventListener('click', function() {
@@ -952,7 +1254,89 @@ document.getElementById('btn-del-task').addEventListener('click', function() {
 
 
 // ── Ressources assignees aux taches ──────────────────────────────────────────
-var _RES = [];  // resources feature coming in v0.3
+var _RES = RESOURCES || [];
+var _CURRENT_ASSIGNMENTS = [];
+
+function num(v) {
+  var n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+
+function syncAssignFromHours() {
+  var hoursEl = document.getElementById('et-hours');
+  var fracEl  = document.getElementById('et-frac');
+  if (!hoursEl || !fracEl) return;
+
+  var h = num(hoursEl.value);
+  fracEl.value = h > 0 ? (h / 40).toFixed(2) : '';
+  refreshAssignmentTotal();
+}
+
+function syncAssignFromFraction() {
+  var hoursEl = document.getElementById('et-hours');
+  var fracEl  = document.getElementById('et-frac');
+  if (!hoursEl || !fracEl) return;
+
+  var f = num(fracEl.value);
+  hoursEl.value = f > 0 ? (f * 40).toFixed(1) : '';
+  refreshAssignmentTotal();
+}
+
+function assignmentTotals(includeDraft) {
+  var totalHours = 0;
+  var totalFraction = 0;
+
+  (_CURRENT_ASSIGNMENTS || []).forEach(function(a) {
+    totalHours += num(a.hours);
+    totalFraction += num(a.fraction);
+  });
+
+  if (includeDraft) {
+    totalHours += num(document.getElementById('et-hours')?.value);
+    totalFraction += num(document.getElementById('et-frac')?.value);
+  }
+
+  return { hours: totalHours, fraction: totalFraction };
+}
+
+function renderAssignmentTotal(includeDraft) {
+  var totals = assignmentTotals(includeDraft);
+  var draftTxt = includeDraft ? ' <span style="color:var(--dim);font-weight:400;">(avec saisie en cours)</span>' : '';
+
+  return '<div id="et-assign-total" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);font-size:0.78rem;color:var(--accent);font-weight:600;">' +
+         'Total : ' + totals.hours.toFixed(1) + 'h' +
+         ' / ' + (totals.fraction * 100).toFixed(0) + '%' +
+         draftTxt +
+         '</div>';
+}
+
+function refreshAssignmentTotal() {
+  var totalEl = document.getElementById('et-assign-total');
+  if (!totalEl) return;
+
+  var hasDraft =
+    num(document.getElementById('et-hours')?.value) > 0 ||
+    num(document.getElementById('et-frac')?.value) > 0;
+
+  var wrapper = document.createElement('div');
+  wrapper.innerHTML = renderAssignmentTotal(hasDraft);
+  totalEl.replaceWith(wrapper.firstChild);
+}
+
+function wireAssignmentInputs() {
+  var hoursEl = document.getElementById('et-hours');
+  var fracEl  = document.getElementById('et-frac');
+
+  if (hoursEl && !hoursEl.dataset.wired) {
+    hoursEl.addEventListener('input', syncAssignFromHours);
+    hoursEl.dataset.wired = '1';
+  }
+
+  if (fracEl && !fracEl.dataset.wired) {
+    fracEl.addEventListener('input', syncAssignFromFraction);
+    fracEl.dataset.wired = '1';
+  }
+}
 
 function loadAssignments(taskId) {
   var sel = document.getElementById('et-res');
@@ -961,58 +1345,78 @@ function loadAssignments(taskId) {
     _RES.forEach(function(r) {
       var o = document.createElement('option');
       o.value = r.id;
-      o.textContent = r.acronym + (r.full_name ? ' - '+r.full_name : '');
+      o.textContent = r.acronym + (r.full_name ? ' - ' + r.full_name : '');
       sel.appendChild(o);
     });
   }
+
   var box = document.getElementById('et-assignments');
   if (!box) return;
+
   box.innerHTML = '<div style="color:var(--dim);font-size:0.75rem;">Chargement...</div>';
-  fetch('/api/tasks/'+taskId+'/assignments')
+
+  fetch('/api/tasks/' + taskId + '/assignments')
   .then(function(r) { return r.json(); })
   .then(function(list) {
-    if (!list.length) {
-      box.innerHTML = '<div style="color:var(--dim);font-size:0.75rem;">Aucune ressource assignee.</div>';
+    _CURRENT_ASSIGNMENTS = Array.isArray(list) ? list : [];
+
+    var h = '';
+
+    if (!_CURRENT_ASSIGNMENTS.length) {
+      h += '<div style="color:var(--dim);font-size:0.75rem;">Aucune ressource assignee.</div>';
+      h += renderAssignmentTotal(false);
+      box.innerHTML = h;
+      refreshAssignmentTotal();
       return;
     }
-    var h = '';
-    list.forEach(function(a) {
-      h += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:5px;'+
+
+    _CURRENT_ASSIGNMENTS.forEach(function(a) {
+      h += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:5px;' +
            'background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:3px;font-size:0.78rem;">';
-      h += '<span style="background:'+(a.color||'#1E90FF')+';color:#fff;padding:1px 7px;border-radius:8px;font-size:0.72rem;font-weight:700;">'+a.acronym+'</span>';
-      if (a.full_name) h += '<span style="color:var(--dim);">'+a.full_name+'</span>';
-      if (a.hours  > 0) h += '<span style="color:var(--accent);font-size:0.75rem;">'+a.hours+'h</span>';
-      if (a.fraction > 0) h += '<span style="color:var(--green);font-size:0.75rem;">'+(a.fraction*100).toFixed(0)+'%</span>';
+      h += '<span style="background:' + (a.color || '#1E90FF') + ';color:#fff;padding:1px 7px;border-radius:8px;font-size:0.72rem;font-weight:700;">' + a.acronym + '</span>';
+      if (a.full_name) h += '<span style="color:var(--dim);">' + a.full_name + '</span>';
+      if (num(a.hours) > 0) h += '<span style="color:var(--accent);font-size:0.75rem;">' + num(a.hours).toFixed(1) + 'h</span>';
+      if (num(a.fraction) > 0) h += '<span style="color:var(--green);font-size:0.75rem;">' + (num(a.fraction) * 100).toFixed(0) + '%</span>';
       h += '<span style="flex:1;"></span>';
-      h += '<button style="background:none;border:none;color:var(--red);cursor:pointer;" '+
-           'data-tid="'+a.task_id+'" data-rid="'+a.resource_id+'" class="da-btn">&times;</button>';
+      h += '<button style="background:none;border:none;color:var(--red);cursor:pointer;" ' +
+           'data-tid="' + a.task_id + '" data-rid="' + a.resource_id + '" class="da-btn">&times;</button>';
       h += '</div>';
     });
+
+    h += renderAssignmentTotal(false);
     box.innerHTML = h;
+
     box.querySelectorAll('.da-btn').forEach(function(b) {
       b.addEventListener('click', function() {
-        fetch('/api/tasks/'+this.dataset.tid+'/assignments/'+this.dataset.rid,{method:'DELETE'})
-        .then(function(){loadAssignments(taskId);});
+        fetch('/api/tasks/' + this.dataset.tid + '/assignments/' + this.dataset.rid, { method:'DELETE' })
+        .then(function() { loadAssignments(taskId); });
       });
     });
+
+    refreshAssignmentTotal();
   });
 }
+
+wireAssignmentInputs();
 
 var _btnadd = document.getElementById('btn-add-assign');
 if (_btnadd) {
   _btnadd.addEventListener('click', function() {
     var tid = parseInt(document.getElementById('et-id').value);
     var rid = parseInt(document.getElementById('et-res').value);
-    if (!tid||!rid) { alert('Choisissez une ressource.'); return; }
-    var hours = parseFloat(document.getElementById('et-hours').value)||0;
-    var frac  = parseFloat(document.getElementById('et-frac').value)||0;
-    fetch('/api/tasks/'+tid+'/assignments',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({resource_id:rid,hours:hours,fraction:frac})
-    }).then(function(){
-      document.getElementById('et-hours').value='';
-      document.getElementById('et-frac').value='';
-      document.getElementById('et-res').value='';
+    if (!tid || !rid) { alert('Choisissez une ressource.'); return; }
+
+    var hours = num(document.getElementById('et-hours').value);
+    var frac  = num(document.getElementById('et-frac').value);
+
+    fetch('/api/tasks/' + tid + '/assignments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resource_id: rid, hours: hours, fraction: frac })
+    }).then(function() {
+      document.getElementById('et-hours').value = '';
+      document.getElementById('et-frac').value = '';
+      document.getElementById('et-res').value = '';
       loadAssignments(tid);
     });
   });
@@ -1022,6 +1426,7 @@ if (_btnadd) {
 var _oedit = openEditTask;
 openEditTask = function(taskId) {
   _oedit(taskId);
+  wireAssignmentInputs();
   loadAssignments(taskId);
 };
 

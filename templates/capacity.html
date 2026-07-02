@@ -1,74 +1,73 @@
+
 <!DOCTYPE html>
 <html lang="fr" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Capacity &mdash; {{ project.name }}</title>
+<title>Capacity — {{ project.name }}</title>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <style>
-:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3e;--text:#e0e0e0;--dim:#888;--accent:#1e90ff;--green:#4caf50;--orange:#ff9800;--red:#f44336;--hdr:#151821;}
+:root{
+  --bg:#0f1117;--card:#1a1d27;--border:#2a2d3e;--text:#e0e0e0;--dim:#888;
+  --accent:#1e90ff;--green:#4caf50;--orange:#ff9800;--red:#f44336;--hdr:#151821;
+}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:"Segoe UI",sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;}
 header{background:var(--hdr);border-bottom:2px solid var(--accent);padding:0 20px;height:52px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
-header a{color:var(--dim);text-decoration:none;font-size:0.85rem;}header a:hover{color:var(--accent);}
+header a{color:var(--dim);text-decoration:none;font-size:.85rem;} header a:hover{color:var(--accent);}
 header h1{color:var(--accent);font-size:1.05rem;}
 .hmeta{margin-left:auto;display:flex;gap:8px;align-items:center;}
-.hbtn{background:var(--card);border:1px solid var(--border);color:var(--text);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:0.82rem;text-decoration:none;}
+.hbtn{background:var(--card);border:1px solid var(--border);color:var(--text);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.82rem;text-decoration:none;}
 .hbtn:hover,.hbtn.primary{background:var(--accent);color:white;border-color:var(--accent);}
-.main{display:grid;grid-template-columns:280px 1fr;flex:1;overflow:hidden;}
+.main{display:grid;grid-template-columns:290px 1fr;flex:1;overflow:hidden;}
 .left-col{border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;}
-/* Accordeon */
+.right-col{overflow:auto;padding:16px;}
 .acc-sec{border-bottom:1px solid var(--border);}
-.acc-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent);transition:background 0.15s;}
+.acc-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);}
 .acc-hd:hover{background:color-mix(in srgb,var(--accent) 6%,transparent);}
-.acc-arr{font-size:0.72rem;color:var(--dim);transition:transform 0.2s;flex-shrink:0;}
+.acc-arr{font-size:.72rem;color:var(--dim);transition:transform .2s;}
 .acc-hd.open .acc-arr{transform:rotate(180deg);}
 .acc-bd{padding:0 14px 12px 14px;}
 .acc-bd.closed{display:none;}
-/* Ressources */
-.res-item{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:5px;background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:4px;font-size:0.8rem;}
-.res-item:hover{background:color-mix(in srgb,var(--accent) 8%,transparent);}
-.res-handle{color:var(--dim);cursor:grab;font-size:0.9rem;}
-.res-badge{display:inline-block;padding:2px 7px;border-radius:8px;font-size:0.72rem;font-weight:700;color:#fff;white-space:nowrap;flex-shrink:0;}
-.btn-r{background:color-mix(in srgb,var(--red) 20%,transparent);border:1px solid color-mix(in srgb,var(--red) 40%,transparent);color:var(--red);padding:2px 7px;font-size:0.72rem;border-radius:4px;cursor:pointer;}
-.btn-r:hover{background:var(--red);color:white;}
-.leg{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:0.78rem;}
-.leg-dot{width:14px;height:14px;border-radius:3px;flex-shrink:0;}
-.fg{margin-bottom:8px;}.fg label{display:block;font-size:0.72rem;color:var(--dim);margin-bottom:2px;}
-.fg input,.fg select{width:100%;background:#12141f;border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px;font-size:0.8rem;}
-.fg input:focus,.fg select:focus{outline:none;border-color:var(--accent);}
-.fg2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.btn{padding:6px 14px;border-radius:5px;border:none;cursor:pointer;font-size:0.8rem;}
-.btn-p{background:var(--accent);color:white;}.btn-n{background:var(--border);color:var(--text);}.btn:hover{opacity:0.85;}
-.right-col{overflow:auto;padding:16px;}
 .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;}
-.card-ttl{color:var(--accent);font-size:0.85rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.card-ttl{color:var(--accent);font-size:.85rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;gap:8px;align-items:center;}
+.fg{margin-bottom:8px;}.fg label{display:block;font-size:.72rem;color:var(--dim);margin-bottom:2px;}
+.fg input,.fg select,.fg textarea{width:100%;background:#12141f;border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px;font-size:.8rem;font-family:inherit;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--accent);}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.btn{padding:6px 14px;border-radius:5px;border:none;cursor:pointer;font-size:.8rem;}
+.btn-p{background:var(--accent);color:white;}.btn-n{background:var(--border);color:var(--text);}.btn-r{background:color-mix(in srgb,var(--red) 20%,transparent);border:1px solid color-mix(in srgb,var(--red) 40%,transparent);color:var(--red);padding:2px 7px;font-size:.72rem;border-radius:4px;cursor:pointer;}
+.btn:hover,.btn-r:hover{opacity:.88;}.btn-r:hover{background:var(--red);color:white;}
+.res-item{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:5px;background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:4px;font-size:.8rem;}
+.res-item:hover{background:color-mix(in srgb,var(--accent) 8%,transparent);}
+.res-handle{color:var(--dim);cursor:grab;font-size:.9rem;}
+.res-badge{display:inline-block;padding:2px 7px;border-radius:8px;font-size:.72rem;font-weight:700;color:#fff;white-space:nowrap;flex-shrink:0;}
+.leg{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:.78rem;}
+.leg-dot{width:14px;height:14px;border-radius:3px;flex-shrink:0;}
 .qnav{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;}
-.qbtn{padding:3px 10px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--dim);cursor:pointer;font-size:0.78rem;}
+.qbtn{padding:3px 10px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--dim);cursor:pointer;font-size:.78rem;}
 .qbtn.active{background:var(--accent);color:white;border-color:var(--accent);}
 .qbtn:hover:not(.active){border-color:var(--accent);color:var(--text);}
 .cap-wrap{overflow-x:auto;}
-.ctable{border-collapse:collapse;font-size:0.78rem;min-width:600px;}
+.ctable{border-collapse:collapse;font-size:.78rem;min-width:600px;}
 .ctable th,.ctable td{border:1px solid var(--border);padding:3px 5px;text-align:center;white-space:nowrap;}
-.ctable th{background:#041E42;color:#fff;font-size:0.7rem;}
+.ctable th{background:#041E42;color:#fff;font-size:.7rem;}
 .ctable .th-l{text-align:left;min-width:120px;background:#1a1d27;}
-.ctable .th-m{min-width:65px;background:#1a1d27;font-size:0.68rem;color:var(--dim);}
-.cinput{width:48px;background:#0a0c14;border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:3px;font-size:0.75rem;text-align:center;}
+.ctable .th-m{min-width:65px;background:#1a1d27;font-size:.68rem;color:var(--dim);}
+.cinput{width:48px;background:#0a0c14;border:1px solid var(--border);color:var(--text);padding:2px 4px;border-radius:3px;font-size:.75rem;text-align:center;}
 .cinput:focus{outline:none;border-color:var(--accent);}
 .c-ok{background:color-mix(in srgb,var(--green) 10%,transparent);}
 .c-warn{background:color-mix(in srgb,var(--orange) 20%,transparent);}
 .c-over{background:color-mix(in srgb,var(--red) 20%,transparent);}
 .c-tot{background:#12141f;font-weight:600;color:var(--accent);}
-.chist{background:#0a0c14;border-radius:6px;padding:10px;font-size:0.78rem;min-height:80px;max-height:180px;overflow-y:auto;margin-bottom:8px;}
-.pal-item{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:0.78rem;}
-.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;align-items:center;justify-content:center;}
+.chist{background:#0a0c14;border-radius:6px;padding:10px;font-size:.78rem;min-height:80px;max-height:180px;overflow-y:auto;margin-bottom:8px;}
+.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center;}
 .moverlay.open{display:flex;}
-.mbox{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;width:400px;max-width:95vw;}
+.mbox{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;width:420px;max-width:95vw;}
 ::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 </style>
 </head>
 <body>
-
 <header>
   <a href="/project/{{ project.id }}">&larr; {{ project.name }}</a>
   <h1>Capacity Planning</h1>
@@ -84,133 +83,109 @@ header h1{color:var(--accent);font-size:1.05rem;}
 </header>
 
 <div class="main">
-
-  <div class="left-col">
-
-    <div class="acc-sec">
-      <div class="acc-hd open" id="hd-resources" onclick="accToggle('resources')">
-        <span>Ressources ({{ resources|length }})</span><span class="acc-arr">&#x25BC;</span>
-      </div>
+  <aside class="left-col">
+    <section class="acc-sec">
+      <div class="acc-hd open" id="hd-resources" onclick="accToggle('resources')"><span>Ressources ({{ resources|length }})</span><span class="acc-arr">▼</span></div>
       <div class="acc-bd" id="bd-resources">
         <div id="res-list" style="margin-bottom:6px;">
           {% for res in resources %}
           <div class="res-item" data-id="{{ res.id }}">
-            <span class="res-handle">&#x22EE;</span>
+            <span class="res-handle">⋮</span>
             <span class="res-badge" style="background:{{ res.color }};">{{ res.acronym }}</span>
-            <span style="flex:1;cursor:pointer;font-size:0.78rem;" class="res-edit-trigger" data-id="{{ res.id }}" title="Editer">
+            <span class="res-edit-trigger" data-id="{{ res.id }}" style="flex:1;cursor:pointer;font-size:.78rem;" title="Modifier">
               {% if res.full_name %}<span style="color:var(--dim);">{{ res.full_name }}</span>{% endif %}
-              {% if res.role %}<span style="background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);padding:1px 5px;border-radius:6px;font-size:0.66rem;margin-left:3px;">{{ res.role }}</span>{% endif %}
-              {% if res.is_external %}<span style="color:var(--orange);font-size:0.68rem;"> (ext)</span>{% endif %}
+              {% if res.role %}<span style="background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);padding:1px 5px;border-radius:6px;font-size:.66rem;margin-left:3px;">{{ res.role }}</span>{% endif %}
+              {% if res.is_external %}<span style="color:var(--orange);font-size:.68rem;"> (ext)</span>{% endif %}
             </span>
-            <span style="font-size:0.7rem;color:var(--dim);white-space:nowrap;">{{ res.max_fraction }}/{{ (res.max_fraction*40)|int }}h</span>
+            <span style="font-size:.7rem;color:var(--dim);white-space:nowrap;">{{ res.max_fraction }}/{{ (res.max_fraction*40)|int }}h</span>
             <button class="btn-r del-res-btn" data-id="{{ res.id }}">&times;</button>
           </div>
           {% else %}
-          <p style="color:var(--dim);font-size:0.78rem;padding:4px;">Aucune ressource.</p>
+          <p style="color:var(--dim);font-size:.78rem;padding:4px;">Aucune ressource.</p>
           {% endfor %}
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="acc-sec">
-      <div class="acc-hd" id="hd-add" onclick="accToggle('add')">
-        <span>Ajouter ressource</span><span class="acc-arr">&#x25BC;</span>
-      </div>
+    <section class="acc-sec">
+      <div class="acc-hd" id="hd-add" onclick="accToggle('add')"><span>Ajouter ressource</span><span class="acc-arr">▼</span></div>
       <div class="acc-bd closed" id="bd-add">
-        <div class="fg2"><div class="fg"><label>Acronyme *</label><input id="r-acro" type="text" placeholder="LOZN" maxlength="8"></div>
-        <div class="fg"><label>Nom / Societe</label><input id="r-name" type="text" placeholder="Laurent O."></div></div>
         <div class="fg2">
-          <div class="fg"><label>Role</label><input id="r-role" type="text" list="rdl" placeholder="BA, PM..."><datalist id="rdl"><option value="PM"><option value="BA"><option value="SME"><option value="Lead"><option value="Dev"><option value="Analyst"><option value="OD Data CoreHR"><option value="OD Data WFM"><option value="Architect"><option value="QA"><option value="OCM"><option value="Support"></datalist></div>
+          <div class="fg"><label>Acronyme *</label><input id="r-acro" type="text" placeholder="LOZN" maxlength="8"></div>
+          <div class="fg"><label>Nom / société</label><input id="r-name" type="text" placeholder="Laurent O."></div>
+        </div>
+        <div class="fg2">
+          <div class="fg"><label>Rôle</label><input id="r-role" type="text" list="rdl" placeholder="BA, PM..."><datalist id="rdl"></datalist></div>
           <div class="fg"><label>Type</label><select id="r-ext"><option value="0">Interne</option><option value="1">Externe</option></select></div>
         </div>
         <div class="fg2">
           <div class="fg"><label>Max fraction</label><input id="r-max" type="number" value="1.0" min="0.1" max="2" step="0.05"></div>
-          <div class="fg"><label>Couleur</label><input id="r-color" type="color" value="#1E90FF" style="height:30px;padding:2px;cursor:pointer;border:1px solid var(--border);border-radius:5px;"></div>
+          <div class="fg"><label>Couleur</label><input id="r-color" type="color" value="#1E90FF" style="height:30px;padding:2px;cursor:pointer;"></div>
         </div>
         <button class="btn btn-p" id="btn-add-res" style="width:100%;margin-top:4px;">+ Ajouter</button>
-        <button class="btn btn-n" id="btn-reset-colors" style="width:100%;margin-top:5px;font-size:0.75rem;">&#x1F3A8; Reset couleurs par role</button>
+        <button class="btn btn-n" id="btn-reset-colors" style="width:100%;margin-top:5px;font-size:.75rem;">🎨 Reset couleurs par rôle</button>
       </div>
-    </div>
+    </section>
 
-    <div class="acc-sec">
-      <div class="acc-hd open" id="hd-ia" onclick="accToggle('ia')">
-        <span>Assistant IA <span style="font-size:0.62rem;color:var(--dim);text-transform:none;letter-spacing:0;">Groq vision</span></span><span class="acc-arr">&#x25BC;</span>
-      </div>
+    <section class="acc-sec">
+      <div class="acc-hd open" id="hd-ia" onclick="accToggle('ia')"><span>Assistant IA</span><span class="acc-arr">▼</span></div>
       <div class="acc-bd" id="bd-ia">
-        <p style="color:var(--dim);font-size:0.76rem;margin-bottom:8px;">Decrivez vos besoins ou deposez une image.</p>
-        <div id="cap-drop" style="border:2px dashed var(--border);border-radius:5px;padding:8px;text-align:center;cursor:pointer;margin-bottom:7px;font-size:0.76rem;color:var(--dim);">
-          <div id="cap-drop-lbl">&#x1F4F7; Image ou <label for="cap-img-input" style="color:var(--accent);cursor:pointer;text-decoration:underline;">choisir</label></div>
+        <p style="color:var(--dim);font-size:.76rem;margin-bottom:8px;">Décrivez vos besoins ou déposez une image.</p>
+        <div id="cap-drop" style="border:2px dashed var(--border);border-radius:5px;padding:8px;text-align:center;cursor:pointer;margin-bottom:7px;font-size:.76rem;color:var(--dim);">
+          <div id="cap-drop-lbl">📷 Image ou <label for="cap-img-input" style="color:var(--accent);cursor:pointer;text-decoration:underline;">choisir</label></div>
           <input type="file" id="cap-img-input" accept="image/*" style="display:none;">
           <div id="cap-img-preview" style="display:none;margin-top:5px;position:relative;">
             <img id="cap-img-el" style="max-height:80px;max-width:100%;border-radius:4px;">
-            <button id="cap-img-clear" style="position:absolute;top:2px;right:2px;background:var(--red);color:white;border:none;border-radius:50%;width:16px;height:16px;cursor:pointer;font-size:0.75rem;line-height:14px;">&times;</button>
+            <button id="cap-img-clear" style="position:absolute;top:2px;right:2px;background:var(--red);color:white;border:none;border-radius:50%;width:16px;height:16px;cursor:pointer;font-size:.75rem;line-height:14px;">&times;</button>
           </div>
         </div>
-        <div class="chist" id="cap-ia-hist"><div style="color:var(--dim);">Pret. Decrivez vos besoins.</div></div>
+        <div class="chist" id="cap-ia-hist"><div style="color:var(--dim);">Prêt. Décrivez vos besoins.</div></div>
         <div style="display:flex;gap:5px;">
-          <textarea id="cap-ia-input" style="flex:1;background:#12141f;border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px;font-size:0.76rem;font-family:inherit;resize:none;" rows="2" placeholder="Ex: Planifier LOZN a 50% sem 23-30..."></textarea>
-          <button class="btn btn-p" id="cap-ia-send" style="padding:5px 10px;font-size:0.76rem;">IA</button>
+          <textarea id="cap-ia-input" rows="2" placeholder="Ex : Planifier LOZN à 50% semaines 23-30..." style="flex:1;background:#12141f;border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:5px;font-size:.76rem;font-family:inherit;resize:none;"></textarea>
+          <button class="btn btn-p" id="cap-ia-send" style="padding:5px 10px;font-size:.76rem;">IA</button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="acc-sec">
-      <div class="acc-hd" id="hd-palette" onclick="accToggle('palette')">
-        <span>Palette roles</span><span class="acc-arr">&#x25BC;</span>
-      </div>
+    <section class="acc-sec">
+      <div class="acc-hd" id="hd-palette" onclick="accToggle('palette')"><span>Palette rôles</span><span class="acc-arr">▼</span></div>
       <div class="acc-bd closed" id="bd-palette">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
-          <button class="btn btn-n" id="btn-refresh-palette" style="font-size:0.72rem;padding:3px 8px;">&#x21BA; Refresh</button>
-        </div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:6px;"><button class="btn btn-n" id="btn-refresh-palette" style="font-size:.72rem;padding:3px 8px;">↺ Refresh</button></div>
         <div id="palette-list" style="margin-bottom:8px;"></div>
         <div style="display:flex;gap:5px;">
-          <input id="new-role" type="text" placeholder="Nouveau role" style="flex:1;background:#12141f;border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:4px;font-size:0.76rem;">
+          <input id="new-role" type="text" placeholder="Nouveau rôle" style="flex:1;background:#12141f;border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:4px;font-size:.76rem;">
           <input id="new-role-color" type="color" value="#1E90FF" style="width:30px;height:28px;padding:1px;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
-          <button class="btn btn-p" id="btn-add-role" style="padding:4px 9px;font-size:0.76rem;">+</button>
+          <button class="btn btn-p" id="btn-add-role" style="padding:4px 9px;font-size:.76rem;">+</button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="acc-sec">
-      <div class="acc-hd" id="hd-legend" onclick="accToggle('legend')">
-        <span>Legende</span><span class="acc-arr">&#x25BC;</span>
-      </div>
+    <section class="acc-sec">
+      <div class="acc-hd" id="hd-legend" onclick="accToggle('legend')"><span>Légende</span><span class="acc-arr">▼</span></div>
       <div class="acc-bd closed" id="bd-legend">
         <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);"></div>Dans les limites</div>
-        <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--orange) 20%,transparent);border:1px solid var(--orange);"></div>Attention (80-100%)</div>
-        <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--red) 20%,transparent);border:1px solid var(--red);"></div>Surcharge (&gt; max)</div>
-        <div style="margin-top:6px;font-size:0.72rem;color:var(--dim);">1.0=100%=40h | 0.5=50%=20h | 0.25=25%=10h</div>
+        <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--orange) 20%,transparent);border:1px solid var(--orange);"></div>Attention 80-100%</div>
+        <div class="leg"><div class="leg-dot" style="background:color-mix(in srgb,var(--red) 20%,transparent);border:1px solid var(--red);"></div>Surcharge &gt; max</div>
+        <div style="margin-top:6px;font-size:.72rem;color:var(--dim);">1.0 = 100% = 40h | 0.5 = 50% = 20h | 0.25 = 25% = 10h</div>
       </div>
-    </div>
+    </section>
+  </aside>
 
-    <div class="acc-sec">
-      <div class="acc-hd" id="hd-roles" onclick="accToggle('roles')">
-        <span>Roles et couleurs</span><span class="acc-arr">&#x25BC;</span>
-      </div>
-      <div class="acc-bd closed" id="bd-roles">
-        <div id="role-colors-list" style="margin-bottom:8px;"></div>
-        <div style="display:flex;gap:5px;margin-top:6px;">
-          <input id="rc-role" type="text" placeholder="Nom du role" style="flex:1;background:#12141f;border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:4px;font-size:0.76rem;">
-          <input id="rc-color" type="color" value="#1E90FF" style="width:30px;height:28px;padding:1px;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
-          <button class="btn btn-p" id="btn-add-rc" style="padding:4px 9px;font-size:0.76rem;">+</button>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="right-col">
+  <main class="right-col">
     <div class="card">
-      <div class="card-ttl">
-        Grille Capacity
-        <span id="year-lbl" style="color:var(--dim);font-size:0.78rem;text-transform:none;letter-spacing:0;">{{ year }}</span>
+      <div class="card-ttl">Grille Capacity <span id="year-lbl" style="color:var(--dim);font-size:.78rem;text-transform:none;letter-spacing:0;">{{ year }}</span>
+        <span style="margin-left:10px;
+                 color:var(--accent);
+                 font-size:0.80rem;
+                 font-weight:600;">Current week : </span>
+        <span id="week-lbl" style="color:var(--dim);font-size:.78rem;text-transform:none;letter-spacing:0;font-weight:600;"> </span>
       </div>
+
       <div class="qnav" id="qnav"></div>
       <div class="cap-wrap"><table class="ctable" id="ctable"></table></div>
-      <div style="margin-top:8px;color:var(--dim);font-size:0.72rem;">Ctrl+S = sauvegarder &nbsp;|&nbsp; Tab = cellule suivante</div>
+      <div style="margin-top:8px;color:var(--dim);font-size:.72rem;">Ctrl+S = sauvegarder | Tab = cellule suivante</div>
     </div>
-  </div>
-
+  </main>
 </div>
 
 <div class="moverlay" id="modal-edit-res">
@@ -220,10 +195,10 @@ header h1{color:var(--accent);font-size:1.05rem;}
     <div class="fg2">
       <div class="fg"><label>Acronyme *</label><input id="er-acro" type="text" maxlength="8"></div>
       <div class="fg"><label>Nom complet</label><input id="er-name" type="text"></div>
-      <div class="fg"><label>Role</label><input id="er-role" type="text" list="rdl-edit"><datalist id="rdl-edit"><option value="PM"><option value="BA"><option value="SME"><option value="Lead"><option value="Dev"><option value="Analyst"><option value="OD Data CoreHR"><option value="OD Data WFM"><option value="Architect"><option value="QA"><option value="OCM"><option value="Support"></datalist></div>
+      <div class="fg"><label>Rôle</label><input id="er-role" type="text" list="rdl-edit"><datalist id="rdl-edit"></datalist></div>
       <div class="fg"><label>Max fraction</label><input id="er-max" type="number" min="0.1" max="2" step="0.05"></div>
       <div class="fg"><label>Type</label><select id="er-ext"><option value="0">Interne</option><option value="1">Externe</option></select></div>
-      <div class="fg"><label>Couleur</label><input id="er-color" type="color" style="height:30px;padding:2px;cursor:pointer;border:1px solid var(--border);border-radius:5px;"></div>
+      <div class="fg"><label>Couleur</label><input id="er-color" type="color" style="height:30px;padding:2px;cursor:pointer;"></div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
       <button class="btn btn-n" id="er-cancel">Annuler</button>
@@ -233,1660 +208,449 @@ header h1{color:var(--accent);font-size:1.05rem;}
 </div>
 
 <script>
-var PID       = {{ project.id }};
-var CY        = {{ year }};
-var RESOURCES = {{ resources | tojson }};
-var CAP       = {};
-var DIRTY     = {};
-window.ROLE_COLORS = {};
-{% for rc in (role_colors or []) %}window.ROLE_COLORS["{{ rc.role }}"] = "{{ rc.color }}";
-{% endfor %}
-</script>
+const PID = {{ project.id }};
+let CY = {{ year }};
+let RESOURCES = {{ resources | tojson }};
+let ROLE_COLORS = {};
+try {
+  ({{ role_colors | default([]) | tojson }}).forEach(rc => {
+    if (rc && rc.role) ROLE_COLORS[rc.role] = rc.color;
+  });
+} catch(e) {}
+let CAP = {};
+let DIRTY = {};
+let _capImg = null;
+const ACC_STORAGE = 'pm_cap_acc_' + PID;
 
-<script>
-var PID       = {{ project.id }};
-var CY        = {{ year }};
-var RESOURCES = {{ resources | tojson }};
-var CAP       = {};   // "rid:year:week" -> fraction
-var DIRTY     = {};   // entrées modifiées à sauvegarder
-
-// ── Fiscal Year ───────────────────────────────────────────────────────────────
-function fy(yr, mo) { return mo >= 3 ? yr + 1 : yr; }
-
-function getQuarters(year) {
-  var f  = fy(year, 6);
-  var fs = String(f).slice(-2);
-  function wk(y, m, d) {
-    var dt   = new Date(y, m-1, d);
-    var jan1 = new Date(dt.getFullYear(), 0, 1);
-    return Math.ceil(((dt - jan1) / 86400000 + jan1.getDay() + 1) / 7);
-  }
-  return [
-    { lbl:'FY'+fs+'-Q1', sw:wk(year,3,1),    ew:wk(year,5,31)   },
-    { lbl:'FY'+fs+'-Q2', sw:wk(year,6,1),    ew:wk(year,8,31)   },
-    { lbl:'FY'+fs+'-Q3', sw:wk(year,9,1),    ew:wk(year,11,30)  },
-    { lbl:'FY'+fs+'-Q4', sw:wk(year,12,1),   ew:wk(year+1,2,28) },
-  ];
-}
-
-function weeks(sw, ew) {
-  var w = [];
-  if (sw <= ew) { for (var i=sw;i<=ew;i++) w.push(i); }
-  else { for (var i=sw;i<=53;i++) w.push(i); for (var i=1;i<=ew;i++) w.push(i); }
-  return w;
-}
-
-function curWeek() {
-  var d = new Date();
-  var j = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil(((d-j)/86400000 + j.getDay() + 1)/7);
-}
-
-// ── Charger capacity ──────────────────────────────────────────────────────────
-function loadCap(year) {
-  CY = year;
-  document.getElementById('year-lbl').textContent = year;
-  fetch('/api/projects/' + PID + '/capacity?year=' + year)
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    CAP = {};
-    var mat = data.matrix || {};
-    Object.keys(mat).forEach(function(rid) {
-      Object.keys(mat[rid]).forEach(function(w) {
-        CAP[rid+':'+year+':'+w] = mat[rid][w];
-      });
-    });
-    buildQNav(year);
+function apiJson(url, options) {
+  return fetch(url, options).then(r => {
+    if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+    return r.json();
   });
 }
 
-function buildQNav(year) {
-  var nav = document.getElementById('qnav');
-  nav.innerHTML = '';
-  var qs   = getQuarters(year);
-  var now  = curWeek();
-  var actI = 0;
-  qs.forEach(function(q, i) {
-    if (weeks(q.sw, q.ew).indexOf(now) !== -1) actI = i;
-    var b = document.createElement('button');
-    b.className = 'qbtn';
-    b.textContent = q.lbl;
-    b.addEventListener('click', function() {
-      nav.querySelectorAll('.qbtn').forEach(function(x){x.classList.remove('active');});
-      b.classList.add('active');
-      renderTable(q, year);
-    });
-    nav.appendChild(b);
-  });
-  // Bouton année complète
-  var ba = document.createElement('button');
-  ba.className  = 'qbtn';
-  ba.textContent = 'Annee';
-  ba.addEventListener('click', function() {
-    nav.querySelectorAll('.qbtn').forEach(function(x){x.classList.remove('active');});
-    ba.classList.add('active');
-    renderTable({sw:1,ew:52}, year);
-  });
-  nav.appendChild(ba);
-
-  nav.querySelectorAll('.qbtn')[actI].classList.add('active');
-  renderTable(qs[actI], year);
-}
-
-// ── Render tableau ────────────────────────────────────────────────────────────
-function renderTable(q, year) {
-  var ws    = weeks(q.sw, q.ew);
-  var table = document.getElementById('ctable');
-  var html  = '<thead><tr>';
-  html += '<th class="th-l">Ressource</th>';
-  html += '<th class="th-m">Max</th>';
-  ws.forEach(function(w) { html += '<th>S'+w+'</th>'; });
-  html += '<th class="c-tot" style="min-width:55px;">Total</th>';
-  html += '</tr></thead><tbody>';
-
-  RESOURCES.forEach(function(res) {
-    var tot = 0;
-    html += '<tr>';
-    html += '<td style="text-align:left;">';
-    html += '<span class="res-badge" style="background:'+res.color+';">'+res.acronym+'</span>';
-    if (res.full_name) html += ' <span style="font-size:0.72rem;color:var(--dim);">'+res.full_name+'</span>';
-    if (res.role) html += ' <span style="background:color-mix(in srgb,#1e90ff 15%,transparent);color:#1e90ff;padding:1px 5px;border-radius:6px;font-size:0.65rem;">'+res.role+'</span>';
-    html += '</td>';
-    html += '<td class="th-m">'+res.max_fraction+'<br><span style="font-size:0.65rem;">'+(res.max_fraction*40).toFixed(0)+'h</span></td>';
-    ws.forEach(function(w) {
-      var key = res.id+':'+year+':'+w;
-      var val = CAP[key] || 0;
-      tot += val;
-      var pct = res.max_fraction > 0 ? val/res.max_fraction : 0;
-      var cls = val===0 ? '' : pct>1.0 ? 'c-over' : pct>=0.8 ? 'c-warn' : 'c-ok';
-      html += '<td class="'+cls+'">';
-      html += '<input class="cinput" type="number"';
-      html += ' data-rid="'+res.id+'"';
-      html += ' data-yr="'+year+'"';
-      html += ' data-wk="'+w+'"';
-      html += ' value="'+(val>0 ? val.toFixed(2) : '')+'"';
-      html += ' min="0" max="2" step="0.05" placeholder="0">';
-      html += '</td>';
-    });
-    var tc  = ws.length>0 ? tot/ws.length/res.max_fraction : 0;
-    var tcl = tot===0 ? '' : tc>1.0 ? 'c-over' : tc>=0.8 ? 'c-warn' : '';
-    html += '<td class="c-tot '+tcl+'">'+(tot>0?tot.toFixed(2):'')+'</td>';
-    html += '</tr>';
-  });
-
-  // Ligne totaux
-  if (RESOURCES.length > 0) {
-    html += '<tr>';
-    html += '<td colspan="2" style="text-align:left;font-weight:600;color:var(--accent);padding:4px 8px;font-size:0.75rem;">TOTAL</td>';
-    ws.forEach(function(w) {
-      var wt = RESOURCES.reduce(function(s,r){
-        return s + (CAP[r.id+':'+year+':'+w]||0);
-      }, 0);
-      html += '<td class="c-tot">'+(wt>0?wt.toFixed(2):'')+'</td>';
-    });
-    html += '<td class="c-tot"></td></tr>';
-  }
-  html += '</tbody>';
-  table.innerHTML = html;
-
-  // Events sur inputs
-  table.querySelectorAll('.cinput').forEach(function(inp) {
-    inp.addEventListener('change', function() {
-      var rid = this.dataset.rid;
-      var yr  = this.dataset.yr;
-      var wk  = this.dataset.wk;
-      var val = parseFloat(this.value) || 0;
-      var key = rid+':'+yr+':'+wk;
-      CAP[key]   = val;
-      DIRTY[key] = { resource_id:parseInt(rid), year:parseInt(yr), week:parseInt(wk), fraction:val };
-      // Couleur cellule
-      var res = RESOURCES.find(function(r){return r.id===parseInt(rid);});
-      var max = res ? res.max_fraction : 1.0;
-      var pct = max>0 ? val/max : 0;
-      var td  = this.parentElement;
-      td.className = val===0 ? '' : pct>1.0 ? 'c-over' : pct>=0.8 ? 'c-warn' : 'c-ok';
-    });
-    inp.addEventListener('keydown', function(e) {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        var all = Array.from(table.querySelectorAll('.cinput'));
-        var idx = all.indexOf(this);
-        if (idx+1 < all.length) all[idx+1].focus();
-      }
-    });
-  });
-}
-
-// ── Sauvegarder ───────────────────────────────────────────────────────────────
-function doSave() {
-  var entries = Object.values(DIRTY);
-  if (!entries.length) { alert('Aucune modification.'); return; }
-  fetch('/api/projects/'+PID+'/capacity/bulk', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({entries:entries})
-  })
-  .then(function(r){return r.json();})
-  .then(function(d) {
-    if (d.ok) {
-      DIRTY = {};
-      var btn = document.getElementById('btn-save');
-      var orig = btn.textContent;
-      btn.textContent = d.saved + ' cellule(s) sauvegardee(s) !';
-      btn.style.background = 'var(--green)';
-      setTimeout(function(){
-        btn.textContent = orig;
-        btn.style.background = '';
-      }, 2500);
-    }
-  });
-}
-
-// Ctrl+S
-document.addEventListener('keydown', function(e) {
-  if (e.ctrlKey && e.key==='s') { e.preventDefault(); doSave(); }
-});
-
-// ── Export CSV ────────────────────────────────────────────────────────────────
-function doExport() {
-  var ws = []; for (var i=1;i<=52;i++) ws.push(i);
-  var rows = [['Ressource','Nom','Max','Max h/sem'].concat(ws.map(function(w){return 'S'+w;})).concat(['Total'])];
-  RESOURCES.forEach(function(res) {
-    var tot = 0;
-    var vals = ws.map(function(w) {
-      var v = CAP[res.id+':'+CY+':'+w] || 0;
-      tot += v;
-      return v>0 ? v.toFixed(2) : '0';
-    });
-    rows.push([res.acronym, res.full_name||'', res.max_fraction, (res.max_fraction*40).toFixed(0)+'h']
-      .concat(vals).concat([tot.toFixed(2)]));
-  });
-  var csv  = rows.map(function(r){return r.join(';');}).join('\n');
-  var blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
-  var a    = document.createElement('a');
-  a.href   = URL.createObjectURL(blob);
-  a.download = 'capacity_'+CY+'_{{ project.name }}'.replace(/[^a-z0-9]/gi,'_')+'.csv';
-  a.click();
-}
-
-// ── DOMContentLoaded ──────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
-
-  document.getElementById('btn-save').addEventListener('click', doSave);
-  document.getElementById('btn-export').addEventListener('click', doExport);
-
-  document.getElementById('year-sel').addEventListener('change', function() {
-    loadCap(parseInt(this.value));
-  });
-
-  // Ajouter ressource
-  // ── Couleurs des rôles depuis la DB ─────────────────────────────────────────
-  // Chargé via Jinja2 (toujours sync avec la DB)
-  // Palette role_colors depuis serveur via tojson
-  window.ROLE_COLORS = {};
-  ({{ role_colors | tojson }}).forEach(function(rc){
-    if(rc && rc.role) window.ROLE_COLORS[rc.role] = rc.color;
-  });
-
-  function applyRoleColor(role, colorInputId) {
-    var color = window.ROLE_COLORS[role];
-    if (color) {
-      var el = document.getElementById(colorInputId);
-      if (el) el.value = color;
-    }
-  }
-
-  // Auto-couleur formulaire ajout
-  var roleInput = document.getElementById('r-role');
-  if (roleInput) {
-    roleInput.addEventListener('input',  function() { applyRoleColorFromDB(this.value.trim(), 'r-color'); });
-    roleInput.addEventListener('change', function() { applyRoleColorFromDB(this.value.trim(), 'r-color'); });
-  }
-
-  // Mettre à jour datalists avec les rôles de la DB
-  function refreshRoleDatalist(datalistId) {
-    var dl = document.getElementById(datalistId);
-    if (!dl) return;
-    dl.innerHTML = '';
-    Object.keys(window.ROLE_COLORS).forEach(function(role) {
-      var opt = document.createElement('option');
-      opt.value = role;
-      dl.appendChild(opt);
-    });
-  }
-  refreshRoleDatalist('roles-list');
-  refreshRoleDatalist('roles-list-edit');
-
-  // Ajouter ressource
-  // Reset couleurs par rôle
-  var btnResetColors = document.getElementById('btn-reset-colors');
-  if (btnResetColors) {
-    btnResetColors.addEventListener('click', function() {
-      if (!confirm('Remettre les couleurs de toutes les ressources selon leur role ?')) return;
-      fetch('/api/projects/' + PID + '/resources/reset-colors', { method: 'POST' })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.ok) {
-          btnResetColors.textContent = d.message;
-          btnResetColors.style.background = 'var(--green)';
-          btnResetColors.style.color = 'white';
-          setTimeout(function() { location.reload(); }, 1500);
-        }
-      });
-    });
-  }
-
-  document.getElementById('btn-add-res').addEventListener('click', function() {
-    var acro = document.getElementById('r-acro').value.trim().toUpperCase();
-    if (!acro) { alert('Acronyme obligatoire'); return; }
-    var role  = document.getElementById('r-role') ? document.getElementById('r-role').value.trim() : '';
-    var color = document.getElementById('r-color').value;
-    if (!color || color === '#1e90ff' || color === '#1E90FF') {
-      color = window.ROLE_COLORS[role] || '#1E90FF';
-    }
-    fetch('/api/projects/'+PID+'/resources', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        acronym:      acro,
-        full_name:    document.getElementById('r-name').value.trim(),
-        role:         role,
-        max_fraction: parseFloat(document.getElementById('r-max').value)||1.0,
-        color:        color,
-        is_external:  document.getElementById('r-ext').value==='1'
-      })
-    }).then(function(){location.reload();});
-  });
-
-  // Supprimer ressource
-  document.querySelectorAll('.del-res-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var id = this.dataset.id;
-      if (!confirm('Supprimer cette ressource ?')) return;
-      fetch('/api/resources/'+id, {method:'DELETE'})
-      .then(function(){location.reload();});
-    });
-  });
-
-  // Drag & drop ressources
-  var rl = document.getElementById('res-list');
-  if (rl && window.Sortable) {
-    Sortable.create(rl, {
-      handle: '.res-handle', animation:150,
-      onEnd: function() {
-        var ids = Array.from(rl.querySelectorAll('.res-item'))
-          .map(function(el){return parseInt(el.dataset.id);});
-        fetch('/api/projects/'+PID+'/resources/reorder', {
-          method:'PATCH', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ordered_ids:ids})
-        });
-        RESOURCES = ids.map(function(id){
-          return RESOURCES.find(function(r){return r.id===id;});
-        }).filter(Boolean);
-      }
-    });
-  }
-
-  // Charger
-  loadCap(CY);
-
-  // ── Gestion des rôles ────────────────────────────────────────────────────────
-
-  // Supprimer un rôle
-  document.querySelectorAll('.del-role-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var role = this.dataset.role;
-      if (!confirm('Supprimer le role "' + role + '" ?')) return;
-      fetch('/api/role-colors/' + encodeURIComponent(role), { method: 'DELETE' })
-      .then(function(r) { return r.json(); })
-      .then(function(d) { if (d.ok) location.reload(); });
-    });
-  });
-
-  // Ajouter un rôle
-  var btnAddRole = document.getElementById('btn-add-role');
-  if (btnAddRole) {
-    btnAddRole.addEventListener('click', function() {
-      var name  = document.getElementById('new-role-name').value.trim();
-      var color = document.getElementById('new-role-color').value;
-      if (!name) { alert('Nom du role obligatoire'); return; }
-      fetch('/api/role-colors', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ role: name, color: color })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.ok) {
-          window.ROLE_COLORS[name] = color;
-          location.reload();
-        }
-      });
-    });
-    document.getElementById('new-role-name').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') btnAddRole.click();
-    });
-  }
-});
-
-// ── IA Capacity ───────────────────────────────────────────────────────────────
-var _capImg = null;
-
-// Image handling
-document.getElementById('cap-img-input').addEventListener('change', function() {
-  if (this.files && this.files[0]) loadCapImg(this.files[0]);
-});
-document.getElementById('cap-drop').addEventListener('click', function(e) {
-  if (e.target.id !== 'cap-img-clear') document.getElementById('cap-img-input').click();
-});
-document.getElementById('cap-drop').addEventListener('dragover', function(e) {
-  e.preventDefault();
-  this.style.borderColor = 'var(--accent)';
-});
-document.getElementById('cap-drop').addEventListener('dragleave', function() {
-  this.style.borderColor = '';
-});
-document.getElementById('cap-drop').addEventListener('drop', function(e) {
-  e.preventDefault();
-  this.style.borderColor = '';
-  if (e.dataTransfer.files && e.dataTransfer.files[0]) loadCapImg(e.dataTransfer.files[0]);
-});
-document.getElementById('cap-img-clear').addEventListener('click', function(e) {
-  e.stopPropagation();
-  clearCapImg();
-});
-document.addEventListener('paste', function(e) {
-  var items = e.clipboardData && e.clipboardData.items;
-  if (!items) return;
-  for (var i = 0; i < items.length; i++) {
-    if (items[i].type.startsWith('image/')) {
-      loadCapImg(items[i].getAsFile());
-      break;
-    }
-  }
-});
-
-function loadCapImg(file) {
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    _capImg = { data: e.target.result.split(',')[1], mime: file.type, name: file.name };
-    document.getElementById('cap-img-el').src = e.target.result;
-    document.getElementById('cap-img-preview').style.display = 'block';
-    document.getElementById('cap-drop-lbl').style.display = 'none';
-    document.getElementById('cap-drop').style.borderColor = '#9C27B0';
-  };
-  reader.readAsDataURL(file);
-}
-
-function clearCapImg() {
-  _capImg = null;
-  document.getElementById('cap-img-preview').style.display = 'none';
-  document.getElementById('cap-drop-lbl').style.display = 'block';
-  document.getElementById('cap-img-input').value = '';
-  document.getElementById('cap-drop').style.borderColor = '';
-}
-
-// ── Envoyer à l IA Capacity ────────────────────────────────────────────────────
-document.getElementById('cap-ia-send').addEventListener('click', sendToCapacityAI);
-
-document.getElementById('cap-ia-input').addEventListener('keydown', function(e) {
-  if (e.ctrlKey && e.key === 'Enter') sendToCapacityAI();
-});
-
-function sendToCapacityAI() {
-  var text   = document.getElementById('cap-ia-input').value.trim();
-  var hasImg = !!_capImg;
-  var hist   = document.getElementById('cap-ia-hist');
-
-  if (!text && !hasImg) {
-    alert('Entrez du texte ou deposez une image.');
-    return;
-  }
-
-  // Afficher le message
-  hist.insertAdjacentHTML('beforeend',
-    '<div style="color:#1e90ff;margin-top:6px;font-size:0.78rem;">' +
-    (hasImg ? '[Image] ' : '') + (text || '') + '</div>');
-  hist.insertAdjacentHTML('beforeend',
-    '<div id="cap-load" style="color:#888;font-size:0.75rem;">Groq analyse...</div>');
-  hist.scrollTop = hist.scrollHeight;
-
-  // Préparer le payload
-  var payload = { language: 'fr' };
-  if (hasImg) {
-    payload.image_data  = _capImg.data;
-    payload.image_mime  = _capImg.mime;
-    payload.text        = text;
-  } else {
-    payload.text = text;
-  }
-
-  // Appeler la route IA capacity dédiée
-  fetch('/api/projects/' + PID + '/ai/capacity', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(payload)
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    var ld = document.getElementById('cap-load');
-    if (ld) ld.remove();
-
-    if (data.error) {
-      hist.insertAdjacentHTML('beforeend',
-        '<div style="color:#f44336;font-size:0.75rem;">Erreur: ' + data.error + '</div>');
-      return;
-    }
-
-    var actions  = data.actions || [];
-    var messages = actions.filter(function(a) { return a.type === 'message'; });
-    var executed = actions.filter(function(a) { return a.type !== 'message'; });
-
-    // Afficher le message IA
-    messages.forEach(function(m) {
-      hist.insertAdjacentHTML('beforeend',
-        '<div style="color:#4caf50;margin-top:4px;font-size:0.78rem;">' + m.text + '</div>');
-    });
-
-    // Afficher les actions exécutées
-    if (executed.length > 0) {
-      var html = '<div style="background:#1a1d27;border:1px solid #2a2d3e;border-radius:5px;' +
-                 'padding:8px;margin-top:6px;font-size:0.75rem;">';
-      html += '<b style="color:#4caf50;">' + executed.length + ' action(s) executee(s) :</b><br>';
-      executed.forEach(function(a) {
-        var icon  = a.executed ? '✅' : '⚠️';
-        var label = a.type + (a.acronym ? ' ' + a.acronym : '') + (a.note ? ' (' + a.note + ')' : '');
-        html += '<div style="padding:2px 0;">' + icon + ' ' + label + '</div>';
-      });
-      html += '</div>';
-      hist.insertAdjacentHTML('beforeend', html);
-
-      // Recharger la page après 2s si des ressources ont été créées ou capacity modifiée
-      var needsReload = executed.some(function(a) {
-        return (a.type === 'create_resource' || a.type === 'set_capacity') && a.executed;
-      });
-      if (needsReload) {
-        setTimeout(function() {
-          hist.insertAdjacentHTML('beforeend',
-            '<div style="color:#888;font-size:0.72rem;">Rechargement...</div>');
-          location.reload();
-        }, 2000);
-      }
-    }
-
-    hist.scrollTop = hist.scrollHeight;
-    document.getElementById('cap-ia-input').value = '';
-    if (hasImg) clearCapImg();
-  })
-  .catch(function(err) {
-    var ld = document.getElementById('cap-load');
-    if (ld) ld.remove();
-    hist.insertAdjacentHTML('beforeend',
-      '<div style="color:#f44336;font-size:0.75rem;">Erreur reseau: ' + err + '</div>');
-  });
-}
-
-// ── Edition ressource au clic ─────────────────────────────────────────────────
-function openEditRes(resId) {
-  fetch('/api/resources/' + resId)
-  .then(function(r) { return r.json(); })
-  .then(function(res) {
-    document.getElementById('er-id').value    = res.id;
-    document.getElementById('er-acro').value  = res.acronym || '';
-    document.getElementById('er-name').value  = res.full_name || '';
-    document.getElementById('er-role').value  = res.role || '';
-    document.getElementById('er-max').value   = res.max_fraction || 1.0;
-    document.getElementById('er-ext').value   = res.is_external ? '1' : '0';
-    document.getElementById('er-color').value = res.color || '#1E90FF';
-    var modal = document.getElementById('modal-edit-res');
-    modal.style.display = 'flex';
-    document.getElementById('er-acro').focus();
-  });
-}
-
-// Edit resource — wrapped in DOMContentLoaded pour eviter null
-document.addEventListener('DOMContentLoaded', function() {
-  // Clic sur res-edit-trigger
-  document.querySelectorAll('.res-edit-trigger').forEach(function(el) {
-    el.addEventListener('click', function() {
-      openEditRes(parseInt(this.dataset.id));
-    });
-  });
-
-  // Bouton Annuler
-  var erCancel = document.getElementById('er-cancel');
-  if (erCancel) {
-    erCancel.addEventListener('click', function() {
-      var m = document.getElementById('modal-edit-res');
-      if (m) m.style.display = 'none';
-    });
-  }
-
-  // Fermer en cliquant dehors
-  var erModal = document.getElementById('modal-edit-res');
-  if (erModal) {
-    erModal.addEventListener('click', function(e) {
-      if (e.target === this) this.style.display = 'none';
-    });
-  }
-
-  // Auto-couleur modal édition
-  var erRoleInput2 = document.getElementById('er-role');
-  if (erRoleInput2) {
-    erRoleInput2.addEventListener('input',  function() { applyRoleColor(this.value.trim(), 'er-color'); });
-    erRoleInput2.addEventListener('change', function() { applyRoleColor(this.value.trim(), 'er-color'); });
-  }
-
-  // Bouton Sauvegarder édition ressource
-  var erSave = document.getElementById('er-save');
-  if (erSave) {
-    erSave.addEventListener('click', function() {
-      var id = parseInt(document.getElementById('er-id').value);
-      if (!id) return;
-      var role  = document.getElementById('er-role').value.trim();
-      var color = document.getElementById('er-color').value;
-      // Si couleur non modifiée et rôle connu → appliquer couleur du rôle
-      if (window.ROLE_COLORS && window.ROLE_COLORS[role]) {
-        color = window.ROLE_COLORS[role];
-      }
-      fetch('/api/resources/' + id, {
-        method:  'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          acronym:      document.getElementById('er-acro').value.trim().toUpperCase(),
-          full_name:    document.getElementById('er-name').value.trim(),
-          role:         role,
-          max_fraction: parseFloat(document.getElementById('er-max').value) || 1.0,
-          is_external:  document.getElementById('er-ext').value === '1' ? 1 : 0,
-          color:        color,
-        })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.ok) {
-          var m = document.getElementById('modal-edit-res');
-          if (m) m.style.display = 'none';
-          location.reload();
-        }
-      });
-    });
-  }
-});
-
-
-// ── Palette roles/couleurs depuis la DB ─────────────────────────────────────
-window.ROLE_COLORS_DB = {};
-
-function loadPalette() {
-  fetch('/api/role-colors')
-  .then(function(r) { return r.json(); })
-  .then(function(raw) {
-    // Normaliser : s assurer que palette est un dict {role: colorString}
-    var palette = {};
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      Object.keys(raw).forEach(function(key) {
-        var val = raw[key];
-        // val peut être une string "#E74C3C" ou un objet {"color": "#E74C3C"}
-        if (typeof val === 'string') {
-          palette[key] = val;
-        } else if (val && typeof val === 'object' && val.color) {
-          palette[key] = val.color;
-        }
-      });
-    }
-    window.ROLE_COLORS_DB = palette;
-    var list = document.getElementById('palette-list');
-    if (!list) return;
-    list.innerHTML = '';
-    Object.keys(palette).sort().forEach(function(role) {
-      var color = palette[role];
-      // S assurer que color est bien une string hex valide
-      if (!color || typeof color !== 'string' || !color.startsWith('#')) {
-        color = '#1E90FF';
-      }
-      var div   = document.createElement('div');
-      div.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0;font-size:0.78rem;';
-      div.innerHTML =
-        '<span style="width:14px;height:14px;border-radius:3px;background:' + color +
-        ';flex-shrink:0;display:inline-block;"></span>' +
-        '<span style="flex:1;color:var(--dim);">' + role + '</span>' +
-        '<input type="color" value="' + color + '" data-role="' + role +
-        '" class="role-color-picker" style="width:26px;height:22px;padding:1px;' +
-        'border:1px solid var(--border);border-radius:3px;cursor:pointer;">' +
-        '<button class="del-role-btn" data-role="' + role +
-        '" style="background:none;border:none;color:var(--red);cursor:pointer;' +
-        'font-size:0.85rem;padding:0 2px;">&times;</button>';
-      list.appendChild(div);
-    });
-
-    list.querySelectorAll('.role-color-picker').forEach(function(inp) {
-      inp.addEventListener('change', function() {
-        fetch('/api/role-colors/' + encodeURIComponent(this.dataset.role), {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ color: this.value })
-        }).then(function() { loadPalette(); });
-      });
-    });
-
-    list.querySelectorAll('.del-role-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var role = this.dataset.role;
-        if (!confirm('Supprimer "' + role + '" de la palette ?')) return;
-        fetch('/api/role-colors/' + encodeURIComponent(role), { method: 'DELETE' })
-        .then(function() { loadPalette(); });
-      });
-    });
-  });
-}
-
-// Ajouter un rôle
-document.addEventListener('DOMContentLoaded', function() {
-  loadPalette();
-
-  var btnRefresh = document.getElementById('btn-refresh-palette');
-  if (btnRefresh) btnRefresh.addEventListener('click', loadPalette);
-
-  var btnAddRole = document.getElementById('btn-add-role');
-  if (btnAddRole) {
-    btnAddRole.addEventListener('click', function() {
-      var role  = (document.getElementById('new-role') || {}).value || '';
-      var color = (document.getElementById('new-role-color') || {}).value || '#1E90FF';
-      role = role.trim();
-      if (!role) { alert('Nom du role obligatoire'); return; }
-      fetch('/api/role-colors/' + encodeURIComponent(role), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ color: color })
-      }).then(function() {
-        var inp = document.getElementById('new-role');
-        if (inp) inp.value = '';
-        loadPalette();
-      });
-    });
-  }
-});
-
-// Auto-couleur depuis DB quand on choisit un rôle
-function applyRoleColorFromDB(role, colorInputId) {
-  var palette = window.ROLE_COLORS_DB || {};
-  var color   = palette[role];
-  if (color) {
-    var inp = document.getElementById(colorInputId);
-    if (inp) inp.value = color;
-  }
-}
-
-
-// ── Accordéon v2 — simple et robuste ──────────────────────────────────────────
-var ACC_STORAGE = 'pm_cap_acc_' + (typeof PID !== 'undefined' ? PID : '0');
-
-function toggleAcc2(hdr) {
-  var bodyId = hdr.dataset.body;
-  var body   = document.getElementById(bodyId);
-  if (!body) return;
-  var isOpen = hdr.classList.contains('open');
-  if (isOpen) {
-    hdr.classList.remove('open');
-    body.classList.add('closed');
-    body.style.maxHeight = '0';
-  } else {
-    hdr.classList.add('open');
-    body.classList.remove('closed');
-    body.style.maxHeight = body.scrollHeight + 'px';
-  }
-  try {
-    var states = JSON.parse(localStorage.getItem(ACC_STORAGE) || '{}');
-    states[bodyId] = !isOpen;
-    localStorage.setItem(ACC_STORAGE, JSON.stringify(states));
-  } catch(e) {}
-}
-
-// Initialiser accordéons au chargement
-document.addEventListener('DOMContentLoaded', function() {
-  var hdrs = document.querySelectorAll('.acc-toggle');
-  var saved = {};
-  try { saved = JSON.parse(localStorage.getItem(ACC_STORAGE) || '{}'); } catch(e) {}
-
-  hdrs.forEach(function(hdr) {
-    var bodyId = hdr.dataset.body;
-    var body   = document.getElementById(bodyId);
-    if (!body) return;
-
-    // État par défaut ou sauvegardé
-    var isOpen = bodyId in saved ? saved[bodyId] : hdr.classList.contains('open');
-
-    if (isOpen) {
-      hdr.classList.add('open');
-      body.classList.remove('closed');
-      body.style.maxHeight = body.scrollHeight + 'px';
-    } else {
-      hdr.classList.remove('open');
-      body.classList.add('closed');
-      body.style.maxHeight = '0';
-    }
-  });
-});
-
-// Alias pour compatibilité
-function toggleAcc(id) {
-  var hdr = document.querySelector('[data-body="' + id + '-body"]');
-  if (hdr) toggleAcc2(hdr);
-}
-
-var PID       = {{ project.id }};
-var CY        = {{ year }};
-var RESOURCES = {{ resources | tojson }};
-var CAP       = {};   // "rid:year:week" -> fraction
-var DIRTY     = {};   // entrées modifiées à sauvegarder
-
-// ── Fiscal Year ───────────────────────────────────────────────────────────────
-function fy(yr, mo) { return mo >= 3 ? yr + 1 : yr; }
-
-function getQuarters(year) {
-  var f  = fy(year, 6);
-  var fs = String(f).slice(-2);
-  function wk(y, m, d) {
-    var dt   = new Date(y, m-1, d);
-    var jan1 = new Date(dt.getFullYear(), 0, 1);
-    return Math.ceil(((dt - jan1) / 86400000 + jan1.getDay() + 1) / 7);
-  }
-  return [
-    { lbl:'FY'+fs+'-Q1', sw:wk(year,3,1),    ew:wk(year,5,31)   },
-    { lbl:'FY'+fs+'-Q2', sw:wk(year,6,1),    ew:wk(year,8,31)   },
-    { lbl:'FY'+fs+'-Q3', sw:wk(year,9,1),    ew:wk(year,11,30)  },
-    { lbl:'FY'+fs+'-Q4', sw:wk(year,12,1),   ew:wk(year+1,2,28) },
-  ];
-}
-
-function weeks(sw, ew) {
-  var w = [];
-  if (sw <= ew) { for (var i=sw;i<=ew;i++) w.push(i); }
-  else { for (var i=sw;i<=53;i++) w.push(i); for (var i=1;i<=ew;i++) w.push(i); }
-  return w;
-}
-
-function curWeek() {
-  var d = new Date();
-  var j = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil(((d-j)/86400000 + j.getDay() + 1)/7);
-}
-
-// ── Charger capacity ──────────────────────────────────────────────────────────
-function loadCap(year) {
-  CY = year;
-  document.getElementById('year-lbl').textContent = year;
-  fetch('/api/projects/' + PID + '/capacity?year=' + year)
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    CAP = {};
-    var mat = data.matrix || {};
-    Object.keys(mat).forEach(function(rid) {
-      Object.keys(mat[rid]).forEach(function(w) {
-        CAP[rid+':'+year+':'+w] = mat[rid][w];
-      });
-    });
-    buildQNav(year);
-  });
-}
-
-function buildQNav(year) {
-  var nav = document.getElementById('qnav');
-  nav.innerHTML = '';
-  var qs   = getQuarters(year);
-  var now  = curWeek();
-  var actI = 0;
-  qs.forEach(function(q, i) {
-    if (weeks(q.sw, q.ew).indexOf(now) !== -1) actI = i;
-    var b = document.createElement('button');
-    b.className = 'qbtn';
-    b.textContent = q.lbl;
-    b.addEventListener('click', function() {
-      nav.querySelectorAll('.qbtn').forEach(function(x){x.classList.remove('active');});
-      b.classList.add('active');
-      renderTable(q, year);
-    });
-    nav.appendChild(b);
-  });
-  // Bouton année complète
-  var ba = document.createElement('button');
-  ba.className  = 'qbtn';
-  ba.textContent = 'Annee';
-  ba.addEventListener('click', function() {
-    nav.querySelectorAll('.qbtn').forEach(function(x){x.classList.remove('active');});
-    ba.classList.add('active');
-    renderTable({sw:1,ew:52}, year);
-  });
-  nav.appendChild(ba);
-
-  nav.querySelectorAll('.qbtn')[actI].classList.add('active');
-  renderTable(qs[actI], year);
-}
-
-// ── Render tableau ────────────────────────────────────────────────────────────
-function renderTable(q, year) {
-  var ws    = weeks(q.sw, q.ew);
-  var table = document.getElementById('ctable');
-  var html  = '<thead><tr>';
-  html += '<th class="th-l">Ressource</th>';
-  html += '<th class="th-m">Max</th>';
-  ws.forEach(function(w) { html += '<th>S'+w+'</th>'; });
-  html += '<th class="c-tot" style="min-width:55px;">Total</th>';
-  html += '</tr></thead><tbody>';
-
-  RESOURCES.forEach(function(res) {
-    var tot = 0;
-    html += '<tr>';
-    html += '<td style="text-align:left;">';
-    html += '<span class="res-badge" style="background:'+res.color+';">'+res.acronym+'</span>';
-    if (res.full_name) html += ' <span style="font-size:0.72rem;color:var(--dim);">'+res.full_name+'</span>';
-    if (res.role) html += ' <span style="background:color-mix(in srgb,#1e90ff 15%,transparent);color:#1e90ff;padding:1px 5px;border-radius:6px;font-size:0.65rem;">'+res.role+'</span>';
-    html += '</td>';
-    html += '<td class="th-m">'+res.max_fraction+'<br><span style="font-size:0.65rem;">'+(res.max_fraction*40).toFixed(0)+'h</span></td>';
-    ws.forEach(function(w) {
-      var key = res.id+':'+year+':'+w;
-      var val = CAP[key] || 0;
-      tot += val;
-      var pct = res.max_fraction > 0 ? val/res.max_fraction : 0;
-      var cls = val===0 ? '' : pct>1.0 ? 'c-over' : pct>=0.8 ? 'c-warn' : 'c-ok';
-      html += '<td class="'+cls+'">';
-      html += '<input class="cinput" type="number"';
-      html += ' data-rid="'+res.id+'"';
-      html += ' data-yr="'+year+'"';
-      html += ' data-wk="'+w+'"';
-      html += ' value="'+(val>0 ? val.toFixed(2) : '')+'"';
-      html += ' min="0" max="2" step="0.05" placeholder="0">';
-      html += '</td>';
-    });
-    var tc  = ws.length>0 ? tot/ws.length/res.max_fraction : 0;
-    var tcl = tot===0 ? '' : tc>1.0 ? 'c-over' : tc>=0.8 ? 'c-warn' : '';
-    html += '<td class="c-tot '+tcl+'">'+(tot>0?tot.toFixed(2):'')+'</td>';
-    html += '</tr>';
-  });
-
-  // Ligne totaux
-  if (RESOURCES.length > 0) {
-    html += '<tr>';
-    html += '<td colspan="2" style="text-align:left;font-weight:600;color:var(--accent);padding:4px 8px;font-size:0.75rem;">TOTAL</td>';
-    ws.forEach(function(w) {
-      var wt = RESOURCES.reduce(function(s,r){
-        return s + (CAP[r.id+':'+year+':'+w]||0);
-      }, 0);
-      html += '<td class="c-tot">'+(wt>0?wt.toFixed(2):'')+'</td>';
-    });
-    html += '<td class="c-tot"></td></tr>';
-  }
-  html += '</tbody>';
-  table.innerHTML = html;
-
-  // Events sur inputs
-  table.querySelectorAll('.cinput').forEach(function(inp) {
-    inp.addEventListener('change', function() {
-      var rid = this.dataset.rid;
-      var yr  = this.dataset.yr;
-      var wk  = this.dataset.wk;
-      var val = parseFloat(this.value) || 0;
-      var key = rid+':'+yr+':'+wk;
-      CAP[key]   = val;
-      DIRTY[key] = { resource_id:parseInt(rid), year:parseInt(yr), week:parseInt(wk), fraction:val };
-      // Couleur cellule
-      var res = RESOURCES.find(function(r){return r.id===parseInt(rid);});
-      var max = res ? res.max_fraction : 1.0;
-      var pct = max>0 ? val/max : 0;
-      var td  = this.parentElement;
-      td.className = val===0 ? '' : pct>1.0 ? 'c-over' : pct>=0.8 ? 'c-warn' : 'c-ok';
-    });
-    inp.addEventListener('keydown', function(e) {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        var all = Array.from(table.querySelectorAll('.cinput'));
-        var idx = all.indexOf(this);
-        if (idx+1 < all.length) all[idx+1].focus();
-      }
-    });
-  });
-}
-
-// ── Sauvegarder ───────────────────────────────────────────────────────────────
-function doSave() {
-  var entries = Object.values(DIRTY);
-  if (!entries.length) { alert('Aucune modification.'); return; }
-  fetch('/api/projects/'+PID+'/capacity/bulk', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({entries:entries})
-  })
-  .then(function(r){return r.json();})
-  .then(function(d) {
-    if (d.ok) {
-      DIRTY = {};
-      var btn = document.getElementById('btn-save');
-      var orig = btn.textContent;
-      btn.textContent = d.saved + ' cellule(s) sauvegardee(s) !';
-      btn.style.background = 'var(--green)';
-      setTimeout(function(){
-        btn.textContent = orig;
-        btn.style.background = '';
-      }, 2500);
-    }
-  });
-}
-
-// Ctrl+S
-document.addEventListener('keydown', function(e) {
-  if (e.ctrlKey && e.key==='s') { e.preventDefault(); doSave(); }
-});
-
-// ── Export CSV ────────────────────────────────────────────────────────────────
-function doExport() {
-  var ws = []; for (var i=1;i<=52;i++) ws.push(i);
-  var rows = [['Ressource','Nom','Max','Max h/sem'].concat(ws.map(function(w){return 'S'+w;})).concat(['Total'])];
-  RESOURCES.forEach(function(res) {
-    var tot = 0;
-    var vals = ws.map(function(w) {
-      var v = CAP[res.id+':'+CY+':'+w] || 0;
-      tot += v;
-      return v>0 ? v.toFixed(2) : '0';
-    });
-    rows.push([res.acronym, res.full_name||'', res.max_fraction, (res.max_fraction*40).toFixed(0)+'h']
-      .concat(vals).concat([tot.toFixed(2)]));
-  });
-  var csv  = rows.map(function(r){return r.join(';');}).join('\n');
-  var blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
-  var a    = document.createElement('a');
-  a.href   = URL.createObjectURL(blob);
-  a.download = 'capacity_'+CY+'_{{ project.name }}'.replace(/[^a-z0-9]/gi,'_')+'.csv';
-  a.click();
-}
-
-// ── DOMContentLoaded ──────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
-
-  document.getElementById('btn-save').addEventListener('click', doSave);
-  document.getElementById('btn-export').addEventListener('click', doExport);
-
-  document.getElementById('year-sel').addEventListener('change', function() {
-    loadCap(parseInt(this.value));
-  });
-
-  // Ajouter ressource
-  // ── Couleurs des rôles depuis la DB ─────────────────────────────────────────
-  // Chargé via Jinja2 (toujours sync avec la DB)
-  // Palette role_colors depuis serveur via tojson
-  window.ROLE_COLORS = {};
-  ({{ role_colors | tojson }}).forEach(function(rc){
-    if(rc && rc.role) window.ROLE_COLORS[rc.role] = rc.color;
-  });
-
-  function applyRoleColor(role, colorInputId) {
-    var color = window.ROLE_COLORS[role];
-    if (color) {
-      var el = document.getElementById(colorInputId);
-      if (el) el.value = color;
-    }
-  }
-
-  // Auto-couleur formulaire ajout
-  var roleInput = document.getElementById('r-role');
-  if (roleInput) {
-    roleInput.addEventListener('input',  function() { applyRoleColorFromDB(this.value.trim(), 'r-color'); });
-    roleInput.addEventListener('change', function() { applyRoleColorFromDB(this.value.trim(), 'r-color'); });
-  }
-
-  // Mettre à jour datalists avec les rôles de la DB
-  function refreshRoleDatalist(datalistId) {
-    var dl = document.getElementById(datalistId);
-    if (!dl) return;
-    dl.innerHTML = '';
-    Object.keys(window.ROLE_COLORS).forEach(function(role) {
-      var opt = document.createElement('option');
-      opt.value = role;
-      dl.appendChild(opt);
-    });
-  }
-  refreshRoleDatalist('roles-list');
-  refreshRoleDatalist('roles-list-edit');
-
-  // Ajouter ressource
-  // Reset couleurs par rôle
-  var btnResetColors = document.getElementById('btn-reset-colors');
-  if (btnResetColors) {
-    btnResetColors.addEventListener('click', function() {
-      if (!confirm('Remettre les couleurs de toutes les ressources selon leur role ?')) return;
-      fetch('/api/projects/' + PID + '/resources/reset-colors', { method: 'POST' })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.ok) {
-          btnResetColors.textContent = d.message;
-          btnResetColors.style.background = 'var(--green)';
-          btnResetColors.style.color = 'white';
-          setTimeout(function() { location.reload(); }, 1500);
-        }
-      });
-    });
-  }
-
-  document.getElementById('btn-add-res').addEventListener('click', function() {
-    var acro = document.getElementById('r-acro').value.trim().toUpperCase();
-    if (!acro) { alert('Acronyme obligatoire'); return; }
-    var role  = document.getElementById('r-role') ? document.getElementById('r-role').value.trim() : '';
-    var color = document.getElementById('r-color').value;
-    if (!color || color === '#1e90ff' || color === '#1E90FF') {
-      color = window.ROLE_COLORS[role] || '#1E90FF';
-    }
-    fetch('/api/projects/'+PID+'/resources', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        acronym:      acro,
-        full_name:    document.getElementById('r-name').value.trim(),
-        role:         role,
-        max_fraction: parseFloat(document.getElementById('r-max').value)||1.0,
-        color:        color,
-        is_external:  document.getElementById('r-ext').value==='1'
-      })
-    }).then(function(){location.reload();});
-  });
-
-  // Supprimer ressource
-  document.querySelectorAll('.del-res-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var id = this.dataset.id;
-      if (!confirm('Supprimer cette ressource ?')) return;
-      fetch('/api/resources/'+id, {method:'DELETE'})
-      .then(function(){location.reload();});
-    });
-  });
-
-  // Drag & drop ressources
-  var rl = document.getElementById('res-list');
-  if (rl && window.Sortable) {
-    Sortable.create(rl, {
-      handle: '.res-handle', animation:150,
-      onEnd: function() {
-        var ids = Array.from(rl.querySelectorAll('.res-item'))
-          .map(function(el){return parseInt(el.dataset.id);});
-        fetch('/api/projects/'+PID+'/resources/reorder', {
-          method:'PATCH', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ordered_ids:ids})
-        });
-        RESOURCES = ids.map(function(id){
-          return RESOURCES.find(function(r){return r.id===id;});
-        }).filter(Boolean);
-      }
-    });
-  }
-
-  // Charger
-  loadCap(CY);
-
-  // ── Gestion des rôles ────────────────────────────────────────────────────────
-
-  // Supprimer un rôle
-  document.querySelectorAll('.del-role-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var role = this.dataset.role;
-      if (!confirm('Supprimer le role "' + role + '" ?')) return;
-      fetch('/api/role-colors/' + encodeURIComponent(role), { method: 'DELETE' })
-      .then(function(r) { return r.json(); })
-      .then(function(d) { if (d.ok) location.reload(); });
-    });
-  });
-
-  // Ajouter un rôle
-  var btnAddRole = document.getElementById('btn-add-role');
-  if (btnAddRole) {
-    btnAddRole.addEventListener('click', function() {
-      var name  = document.getElementById('new-role-name').value.trim();
-      var color = document.getElementById('new-role-color').value;
-      if (!name) { alert('Nom du role obligatoire'); return; }
-      fetch('/api/role-colors', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ role: name, color: color })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.ok) {
-          window.ROLE_COLORS[name] = color;
-          location.reload();
-        }
-      });
-    });
-    document.getElementById('new-role-name').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') btnAddRole.click();
-    });
-  }
-});
-
-// ── IA Capacity ───────────────────────────────────────────────────────────────
-var _capImg = null;
-
-// Image handling
-document.getElementById('cap-img-input').addEventListener('change', function() {
-  if (this.files && this.files[0]) loadCapImg(this.files[0]);
-});
-document.getElementById('cap-drop').addEventListener('click', function(e) {
-  if (e.target.id !== 'cap-img-clear') document.getElementById('cap-img-input').click();
-});
-document.getElementById('cap-drop').addEventListener('dragover', function(e) {
-  e.preventDefault();
-  this.style.borderColor = 'var(--accent)';
-});
-document.getElementById('cap-drop').addEventListener('dragleave', function() {
-  this.style.borderColor = '';
-});
-document.getElementById('cap-drop').addEventListener('drop', function(e) {
-  e.preventDefault();
-  this.style.borderColor = '';
-  if (e.dataTransfer.files && e.dataTransfer.files[0]) loadCapImg(e.dataTransfer.files[0]);
-});
-document.getElementById('cap-img-clear').addEventListener('click', function(e) {
-  e.stopPropagation();
-  clearCapImg();
-});
-document.addEventListener('paste', function(e) {
-  var items = e.clipboardData && e.clipboardData.items;
-  if (!items) return;
-  for (var i = 0; i < items.length; i++) {
-    if (items[i].type.startsWith('image/')) {
-      loadCapImg(items[i].getAsFile());
-      break;
-    }
-  }
-});
-
-function loadCapImg(file) {
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    _capImg = { data: e.target.result.split(',')[1], mime: file.type, name: file.name };
-    document.getElementById('cap-img-el').src = e.target.result;
-    document.getElementById('cap-img-preview').style.display = 'block';
-    document.getElementById('cap-drop-lbl').style.display = 'none';
-    document.getElementById('cap-drop').style.borderColor = '#9C27B0';
-  };
-  reader.readAsDataURL(file);
-}
-
-function clearCapImg() {
-  _capImg = null;
-  document.getElementById('cap-img-preview').style.display = 'none';
-  document.getElementById('cap-drop-lbl').style.display = 'block';
-  document.getElementById('cap-img-input').value = '';
-  document.getElementById('cap-drop').style.borderColor = '';
-}
-
-// ── Envoyer à l IA Capacity ────────────────────────────────────────────────────
-document.getElementById('cap-ia-send').addEventListener('click', sendToCapacityAI);
-
-document.getElementById('cap-ia-input').addEventListener('keydown', function(e) {
-  if (e.ctrlKey && e.key === 'Enter') sendToCapacityAI();
-});
-
-function sendToCapacityAI() {
-  var text   = document.getElementById('cap-ia-input').value.trim();
-  var hasImg = !!_capImg;
-  var hist   = document.getElementById('cap-ia-hist');
-
-  if (!text && !hasImg) {
-    alert('Entrez du texte ou deposez une image.');
-    return;
-  }
-
-  // Afficher le message
-  hist.insertAdjacentHTML('beforeend',
-    '<div style="color:#1e90ff;margin-top:6px;font-size:0.78rem;">' +
-    (hasImg ? '[Image] ' : '') + (text || '') + '</div>');
-  hist.insertAdjacentHTML('beforeend',
-    '<div id="cap-load" style="color:#888;font-size:0.75rem;">Groq analyse...</div>');
-  hist.scrollTop = hist.scrollHeight;
-
-  // Préparer le payload
-  var payload = { language: 'fr' };
-  if (hasImg) {
-    payload.image_data  = _capImg.data;
-    payload.image_mime  = _capImg.mime;
-    payload.text        = text;
-  } else {
-    payload.text = text;
-  }
-
-  // Appeler la route IA capacity dédiée
-  fetch('/api/projects/' + PID + '/ai/capacity', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(payload)
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    var ld = document.getElementById('cap-load');
-    if (ld) ld.remove();
-
-    if (data.error) {
-      hist.insertAdjacentHTML('beforeend',
-        '<div style="color:#f44336;font-size:0.75rem;">Erreur: ' + data.error + '</div>');
-      return;
-    }
-
-    var actions  = data.actions || [];
-    var messages = actions.filter(function(a) { return a.type === 'message'; });
-    var executed = actions.filter(function(a) { return a.type !== 'message'; });
-
-    // Afficher le message IA
-    messages.forEach(function(m) {
-      hist.insertAdjacentHTML('beforeend',
-        '<div style="color:#4caf50;margin-top:4px;font-size:0.78rem;">' + m.text + '</div>');
-    });
-
-    // Afficher les actions exécutées
-    if (executed.length > 0) {
-      var html = '<div style="background:#1a1d27;border:1px solid #2a2d3e;border-radius:5px;' +
-                 'padding:8px;margin-top:6px;font-size:0.75rem;">';
-      html += '<b style="color:#4caf50;">' + executed.length + ' action(s) executee(s) :</b><br>';
-      executed.forEach(function(a) {
-        var icon  = a.executed ? '✅' : '⚠️';
-        var label = a.type + (a.acronym ? ' ' + a.acronym : '') + (a.note ? ' (' + a.note + ')' : '');
-        html += '<div style="padding:2px 0;">' + icon + ' ' + label + '</div>';
-      });
-      html += '</div>';
-      hist.insertAdjacentHTML('beforeend', html);
-
-      // Recharger la page après 2s si des ressources ont été créées ou capacity modifiée
-      var needsReload = executed.some(function(a) {
-        return (a.type === 'create_resource' || a.type === 'set_capacity') && a.executed;
-      });
-      if (needsReload) {
-        setTimeout(function() {
-          hist.insertAdjacentHTML('beforeend',
-            '<div style="color:#888;font-size:0.72rem;">Rechargement...</div>');
-          location.reload();
-        }, 2000);
-      }
-    }
-
-    hist.scrollTop = hist.scrollHeight;
-    document.getElementById('cap-ia-input').value = '';
-    if (hasImg) clearCapImg();
-  })
-  .catch(function(err) {
-    var ld = document.getElementById('cap-load');
-    if (ld) ld.remove();
-    hist.insertAdjacentHTML('beforeend',
-      '<div style="color:#f44336;font-size:0.75rem;">Erreur reseau: ' + err + '</div>');
-  });
-}
-
-// ── Edition ressource au clic ─────────────────────────────────────────────────
-function openEditRes(resId) {
-  fetch('/api/resources/' + resId)
-  .then(function(r) { return r.json(); })
-  .then(function(res) {
-    document.getElementById('er-id').value    = res.id;
-    document.getElementById('er-acro').value  = res.acronym || '';
-    document.getElementById('er-name').value  = res.full_name || '';
-    document.getElementById('er-role').value  = res.role || '';
-    document.getElementById('er-max').value   = res.max_fraction || 1.0;
-    document.getElementById('er-ext').value   = res.is_external ? '1' : '0';
-    document.getElementById('er-color').value = res.color || '#1E90FF';
-    var modal = document.getElementById('modal-edit-res');
-    modal.style.display = 'flex';
-    document.getElementById('er-acro').focus();
-  });
-}
-
-// Edit resource — wrapped in DOMContentLoaded pour eviter null
-document.addEventListener('DOMContentLoaded', function() {
-  // Clic sur res-edit-trigger
-  document.querySelectorAll('.res-edit-trigger').forEach(function(el) {
-    el.addEventListener('click', function() {
-      openEditRes(parseInt(this.dataset.id));
-    });
-  });
-
-  // Bouton Annuler
-  var erCancel = document.getElementById('er-cancel');
-  if (erCancel) {
-    erCancel.addEventListener('click', function() {
-      var m = document.getElementById('modal-edit-res');
-      if (m) m.style.display = 'none';
-    });
-  }
-
-  // Fermer en cliquant dehors
-  var erModal = document.getElementById('modal-edit-res');
-  if (erModal) {
-    erModal.addEventListener('click', function(e) {
-      if (e.target === this) this.style.display = 'none';
-    });
-  }
-
-  // Auto-couleur modal édition
-  var erRoleInput2 = document.getElementById('er-role');
-  if (erRoleInput2) {
-    erRoleInput2.addEventListener('input',  function() { applyRoleColor(this.value.trim(), 'er-color'); });
-    erRoleInput2.addEventListener('change', function() { applyRoleColor(this.value.trim(), 'er-color'); });
-  }
-
-  // Bouton Sauvegarder édition ressource
-  var erSave = document.getElementById('er-save');
-  if (erSave) {
-    erSave.addEventListener('click', function() {
-      var id = parseInt(document.getElementById('er-id').value);
-      if (!id) return;
-      var role  = document.getElementById('er-role').value.trim();
-      var color = document.getElementById('er-color').value;
-      // Si couleur non modifiée et rôle connu → appliquer couleur du rôle
-      if (window.ROLE_COLORS && window.ROLE_COLORS[role]) {
-        color = window.ROLE_COLORS[role];
-      }
-      fetch('/api/resources/' + id, {
-        method:  'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          acronym:      document.getElementById('er-acro').value.trim().toUpperCase(),
-          full_name:    document.getElementById('er-name').value.trim(),
-          role:         role,
-          max_fraction: parseFloat(document.getElementById('er-max').value) || 1.0,
-          is_external:  document.getElementById('er-ext').value === '1' ? 1 : 0,
-          color:        color,
-        })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.ok) {
-          var m = document.getElementById('modal-edit-res');
-          if (m) m.style.display = 'none';
-          location.reload();
-        }
-      });
-    });
-  }
-});
-
-
-// ── Palette roles/couleurs depuis la DB ─────────────────────────────────────
-window.ROLE_COLORS_DB = {};
-
-function loadPalette() {
-  fetch('/api/role-colors')
-  .then(function(r) { return r.json(); })
-  .then(function(raw) {
-    // Normaliser : s assurer que palette est un dict {role: colorString}
-    var palette = {};
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      Object.keys(raw).forEach(function(key) {
-        var val = raw[key];
-        // val peut être une string "#E74C3C" ou un objet {"color": "#E74C3C"}
-        if (typeof val === 'string') {
-          palette[key] = val;
-        } else if (val && typeof val === 'object' && val.color) {
-          palette[key] = val.color;
-        }
-      });
-    }
-    window.ROLE_COLORS_DB = palette;
-    var list = document.getElementById('palette-list');
-    if (!list) return;
-    list.innerHTML = '';
-    Object.keys(palette).sort().forEach(function(role) {
-      var color = palette[role];
-      // S assurer que color est bien une string hex valide
-      if (!color || typeof color !== 'string' || !color.startsWith('#')) {
-        color = '#1E90FF';
-      }
-      var div   = document.createElement('div');
-      div.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0;font-size:0.78rem;';
-      div.innerHTML =
-        '<span style="width:14px;height:14px;border-radius:3px;background:' + color +
-        ';flex-shrink:0;display:inline-block;"></span>' +
-        '<span style="flex:1;color:var(--dim);">' + role + '</span>' +
-        '<input type="color" value="' + color + '" data-role="' + role +
-        '" class="role-color-picker" style="width:26px;height:22px;padding:1px;' +
-        'border:1px solid var(--border);border-radius:3px;cursor:pointer;">' +
-        '<button class="del-role-btn" data-role="' + role +
-        '" style="background:none;border:none;color:var(--red);cursor:pointer;' +
-        'font-size:0.85rem;padding:0 2px;">&times;</button>';
-      list.appendChild(div);
-    });
-
-    list.querySelectorAll('.role-color-picker').forEach(function(inp) {
-      inp.addEventListener('change', function() {
-        fetch('/api/role-colors/' + encodeURIComponent(this.dataset.role), {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ color: this.value })
-        }).then(function() { loadPalette(); });
-      });
-    });
-
-    list.querySelectorAll('.del-role-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var role = this.dataset.role;
-        if (!confirm('Supprimer "' + role + '" de la palette ?')) return;
-        fetch('/api/role-colors/' + encodeURIComponent(role), { method: 'DELETE' })
-        .then(function() { loadPalette(); });
-      });
-    });
-  });
-}
-
-// Ajouter un rôle
-document.addEventListener('DOMContentLoaded', function() {
-  loadPalette();
-
-  var btnRefresh = document.getElementById('btn-refresh-palette');
-  if (btnRefresh) btnRefresh.addEventListener('click', loadPalette);
-
-  var btnAddRole = document.getElementById('btn-add-role');
-  if (btnAddRole) {
-    btnAddRole.addEventListener('click', function() {
-      var role  = (document.getElementById('new-role') || {}).value || '';
-      var color = (document.getElementById('new-role-color') || {}).value || '#1E90FF';
-      role = role.trim();
-      if (!role) { alert('Nom du role obligatoire'); return; }
-      fetch('/api/role-colors/' + encodeURIComponent(role), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ color: color })
-      }).then(function() {
-        var inp = document.getElementById('new-role');
-        if (inp) inp.value = '';
-        loadPalette();
-      });
-    });
-  }
-});
-
-// Auto-couleur depuis DB quand on choisit un rôle
-function applyRoleColorFromDB(role, colorInputId) {
-  var palette = window.ROLE_COLORS_DB || {};
-  var color   = palette[role];
-  if (color) {
-    var inp = document.getElementById(colorInputId);
-    if (inp) inp.value = color;
-  }
-}
-
-
-// ── Accordéon v2 — simple et robuste ──────────────────────────────────────────
-var ACC_STORAGE = 'pm_cap_acc_' + (typeof PID !== 'undefined' ? PID : '0');
-
-function toggleAcc2(hdr) {
-  var bodyId = hdr.dataset.body;
-  var body   = document.getElementById(bodyId);
-  if (!body) return;
-  var isOpen = hdr.classList.contains('open');
-  if (isOpen) {
-    hdr.classList.remove('open');
-    body.classList.add('closed');
-    body.style.maxHeight = '0';
-  } else {
-    hdr.classList.add('open');
-    body.classList.remove('closed');
-    body.style.maxHeight = body.scrollHeight + 'px';
-  }
-  try {
-    var states = JSON.parse(localStorage.getItem(ACC_STORAGE) || '{}');
-    states[bodyId] = !isOpen;
-    localStorage.setItem(ACC_STORAGE, JSON.stringify(states));
-  } catch(e) {}
-}
-
-// Initialiser accordéons au chargement
-document.addEventListener('DOMContentLoaded', function() {
-  var hdrs = document.querySelectorAll('.acc-toggle');
-  var saved = {};
-  try { saved = JSON.parse(localStorage.getItem(ACC_STORAGE) || '{}'); } catch(e) {}
-
-  hdrs.forEach(function(hdr) {
-    var bodyId = hdr.dataset.body;
-    var body   = document.getElementById(bodyId);
-    if (!body) return;
-
-    // État par défaut ou sauvegardé
-    var isOpen = bodyId in saved ? saved[bodyId] : hdr.classList.contains('open');
-
-    if (isOpen) {
-      hdr.classList.add('open');
-      body.classList.remove('closed');
-      body.style.maxHeight = body.scrollHeight + 'px';
-    } else {
-      hdr.classList.remove('open');
-      body.classList.add('closed');
-      body.style.maxHeight = '0';
-    }
-  });
-});
-
-// Alias pour compatibilité
-function toggleAcc(id) {
-  var hdr = document.querySelector('[data-body="' + id + '-body"]');
-  if (hdr) toggleAcc2(hdr);
-}
-
-
-// ── Accordéon panneau gauche v3 ──────────────────────────────────────────────
-function accToggle(hdr) {
-  var bd = hdr.nextElementSibling;
-  if (!bd) return;
-  var isOpen = hdr.classList.contains('open');
-  if (isOpen) {
-    hdr.classList.remove('open');
-    bd.style.display = 'none';
-  } else {
-    hdr.classList.add('open');
-    bd.style.display = 'block';
-  }
-  // Sauvegarder
-  var key = 'acc_' + (hdr.parentElement ? Array.from(hdr.parentElement.parentElement.children).indexOf(hdr.parentElement) : 0);
-  try { localStorage.setItem('cap_acc_' + PID + '_' + key, !isOpen); } catch(e) {}
-}
-</script>
-
-<script>
-var ACC_KEY = 'cap_acc_' + PID;
 function accToggle(id) {
-  var hd = document.getElementById('hd-' + id);
-  var bd = document.getElementById('bd-' + id);
+  const hd = document.getElementById('hd-' + id);
+  const bd = document.getElementById('bd-' + id);
   if (!hd || !bd) return;
-  var isOpen = hd.classList.contains('open');
-  hd.classList.toggle('open', !isOpen);
-  bd.classList.toggle('closed', isOpen);
+  const open = bd.classList.toggle('closed') === false;
+  hd.classList.toggle('open', open);
   try {
-    var s = JSON.parse(localStorage.getItem(ACC_KEY) || '{}');
-    s[id] = !isOpen;
-    localStorage.setItem(ACC_KEY, JSON.stringify(s));
+    const state = JSON.parse(localStorage.getItem(ACC_STORAGE) || '{}');
+    state[id] = open;
+    localStorage.setItem(ACC_STORAGE, JSON.stringify(state));
   } catch(e) {}
 }
-document.addEventListener('DOMContentLoaded', function() {
-  try {
-    var s = JSON.parse(localStorage.getItem(ACC_KEY) || '{}');
-    Object.keys(s).forEach(function(id) {
-      var hd = document.getElementById('hd-' + id);
-      var bd = document.getElementById('bd-' + id);
-      if (!hd || !bd) return;
-      hd.classList.toggle('open', s[id]);
-      bd.classList.toggle('closed', !s[id]);
+
+function restoreAccordions() {
+  let state = {};
+  try { state = JSON.parse(localStorage.getItem(ACC_STORAGE) || '{}'); } catch(e) {}
+  Object.keys(state).forEach(id => {
+    const hd = document.getElementById('hd-' + id);
+    const bd = document.getElementById('bd-' + id);
+    if (!hd || !bd) return;
+    bd.classList.toggle('closed', !state[id]);
+    hd.classList.toggle('open', !!state[id]);
+  });
+}
+
+function weekNo(d) {
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+}
+function fy(yr, mo) { return mo >= 3 ? yr + 1 : yr; }
+function getQuarters(year) {
+  const fs = String(fy(year, 6)).slice(-2);
+  return [
+    { lbl:'FY'+fs+'-Q1', sw:weekNo(new Date(year,2,1)),  ew:weekNo(new Date(year,4,31)) },
+    { lbl:'FY'+fs+'-Q2', sw:weekNo(new Date(year,5,1)),  ew:weekNo(new Date(year,7,31)) },
+    { lbl:'FY'+fs+'-Q3', sw:weekNo(new Date(year,8,1)),  ew:weekNo(new Date(year,10,30)) },
+    { lbl:'FY'+fs+'-Q4', sw:weekNo(new Date(year,11,1)), ew:weekNo(new Date(year+1,1,28)) },
+  ];
+}
+function weeks(sw, ew) {
+  const out = [];
+  if (sw <= ew) for (let i=sw;i<=ew;i++) out.push(i);
+  else { for (let i=sw;i<=53;i++) out.push(i); for (let i=1;i<=ew;i++) out.push(i); }
+  return out;
+}
+
+const USER_LOCALE = 'fr-FR'; // plus tard depuis settings
+
+function weekStartDate(year, week) {
+  // ISO-like : lundi de la semaine
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = jan4.getDay() || 7;
+  const week1Monday = new Date(jan4);
+  week1Monday.setDate(jan4.getDate() - jan4Day + 1);
+
+  const d = new Date(week1Monday);
+  d.setDate(week1Monday.getDate() + (week - 1) * 7);
+  return d;
+}
+
+function shortWeekDate(year, week) {
+  const d = weekStartDate(year, week);
+  return d.toLocaleDateString(USER_LOCALE, {
+    day: '2-digit',
+    month: '2-digit'
+  });
+}
+
+function currentWeek() { return weekNo(new Date()); }
+
+function loadCurrentWeek() {
+   document.getElementById("week-lbl").textContent =
+        currentWeek();
+}
+function loadCapacity(year) {
+  CY = year;
+  document.getElementById('year-lbl').textContent = year;
+  DIRTY = {};
+  return apiJson('/api/projects/' + PID + '/capacity?year=' + year)
+    .then(data => {
+      CAP = {};
+      const matrix = data.matrix || {};
+      Object.keys(matrix).forEach(rid => {
+        Object.keys(matrix[rid] || {}).forEach(w => {
+          CAP[rid + ':' + year + ':' + w] = Number(matrix[rid][w]) || 0;
+        });
+      });
+      buildQNav(year);
+    })
+    .catch(err => {
+      document.getElementById('ctable').innerHTML = '<tbody><tr><td style="color:var(--red);padding:12px;">Erreur chargement capacity : '+err.message+'</td></tr></tbody>';
     });
-  } catch(e) {}
-  // Edit ressource
-  var erCancel = document.getElementById('er-cancel');
-  if (erCancel) erCancel.addEventListener('click', function() { document.getElementById('modal-edit-res').classList.remove('open'); });
-  document.getElementById('modal-edit-res').addEventListener('click', function(e) { if (e.target===this) this.classList.remove('open'); });
-  var erSave = document.getElementById('er-save');
-  if (erSave) erSave.addEventListener('click', function() {
-    var id = parseInt(document.getElementById('er-id').value);
-    if (!id) return;
-    fetch('/api/resources/' + id, {
-      method:'PUT', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        acronym: document.getElementById('er-acro').value.trim().toUpperCase(),
-        full_name: document.getElementById('er-name').value.trim(),
-        role: document.getElementById('er-role').value.trim(),
-        max_fraction: parseFloat(document.getElementById('er-max').value)||1.0,
-        is_external: document.getElementById('er-ext').value==='1'?1:0,
-        color: document.getElementById('er-color').value,
-      })
-    }).then(function(r){return r.json();}).then(function(d){
-      if(d.ok){document.getElementById('modal-edit-res').classList.remove('open');location.reload();}
+}
+
+function buildQNav(year) {
+  const nav = document.getElementById('qnav');
+  nav.innerHTML = '';
+  const qs = getQuarters(year);
+  const now = currentWeek();
+  let activeIndex = 0;
+  qs.forEach((q, i) => {
+    if (weeks(q.sw, q.ew).includes(now)) activeIndex = i;
+    const btn = document.createElement('button');
+    btn.className = 'qbtn';
+    btn.textContent = q.lbl;
+    btn.addEventListener('click', () => {
+      nav.querySelectorAll('.qbtn').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      renderTable(q, year);
+    });
+    nav.appendChild(btn);
+  });
+  const all = document.createElement('button');
+  all.className = 'qbtn';
+  all.textContent = 'Année';
+  all.addEventListener('click', () => {
+    nav.querySelectorAll('.qbtn').forEach(x => x.classList.remove('active'));
+    all.classList.add('active');
+    renderTable({sw:1, ew:52}, year);
+  });
+  nav.appendChild(all);
+  nav.querySelectorAll('.qbtn')[activeIndex]?.classList.add('active');
+  renderTable(qs[activeIndex], year);
+}
+
+function renderTable(q, year) {
+  const ws = weeks(q.sw, q.ew);
+  const table = document.getElementById('ctable');
+  let html = '<thead><tr><th class="th-l">Ressource</th><th class="th-m">Max</th>';
+  ws.forEach(w => {
+    html += '<th>S' + w +
+            '<br><span style="font-size:.62rem;color:#b8c7e0;font-weight:400;">' +
+            shortWeekDate(year, w) +
+            '</span></th>';
+  });
+  html += '<th class="c-tot" style="min-width:55px;">Total</th></tr></thead><tbody>';
+  RESOURCES.forEach(res => {
+    let tot = 0;
+    html += '<tr><td style="text-align:left;">';
+    html += '<span class="res-badge" style="background:'+escapeAttr(res.color || '#1E90FF')+';">'+escapeHtml(res.acronym || '')+'</span>';
+    if (res.full_name) html += ' <span style="font-size:.72rem;color:var(--dim);">'+escapeHtml(res.full_name)+'</span>';
+    if (res.role) html += ' <span style="background:color-mix(in srgb,#1e90ff 15%,transparent);color:#1e90ff;padding:1px 5px;border-radius:6px;font-size:.65rem;">'+escapeHtml(res.role)+'</span>';
+    html += '</td><td class="th-m">'+Number(res.max_fraction || 1).toFixed(2)+'<br><span style="font-size:.65rem;">'+Math.round((res.max_fraction || 1)*40)+'h</span></td>';
+    ws.forEach(w => {
+      const key = res.id + ':' + year + ':' + w;
+      const val = Number(CAP[key] || 0);
+      tot += val;
+      const pct = Number(res.max_fraction || 1) > 0 ? val / Number(res.max_fraction || 1) : 0;
+      const cls = val === 0 ? '' : pct > 1 ? 'c-over' : pct >= .8 ? 'c-warn' : 'c-ok';
+      html += '<td class="'+cls+'"><input class="cinput" type="number" data-rid="'+res.id+'" data-yr="'+year+'" data-wk="'+w+'" value="'+(val>0 ? val.toFixed(2) : '')+'" min="0" max="2" step="0.05" placeholder="0"></td>';
+    });
+    const avg = ws.length && Number(res.max_fraction || 1) > 0 ? tot / ws.length / Number(res.max_fraction || 1) : 0;
+    const tcl = tot === 0 ? '' : avg > 1 ? 'c-over' : avg >= .8 ? 'c-warn' : '';
+    html += '<td class="c-tot '+tcl+'">'+(tot>0 ? tot.toFixed(2) : '')+'</td></tr>';
+  });
+  if (RESOURCES.length) {
+    html += '<tr><td colspan="2" style="text-align:left;font-weight:600;color:var(--accent);padding:4px 8px;font-size:.75rem;">TOTAL</td>';
+    ws.forEach(w => {
+      const wt = RESOURCES.reduce((s,r) => s + Number(CAP[r.id+':'+year+':'+w] || 0), 0);
+      html += '<td class="c-tot">'+(wt>0 ? wt.toFixed(2) : '')+'</td>';
+    });
+    html += '<td class="c-tot"></td></tr>';
+  }
+  html += '</tbody>';
+  table.innerHTML = html;
+  bindCapacityInputs(table);
+}
+
+function bindCapacityInputs(table) {
+  table.querySelectorAll('.cinput').forEach(inp => {
+    inp.addEventListener('change', function() {
+      const rid = parseInt(this.dataset.rid);
+      const yr = parseInt(this.dataset.yr);
+      const wk = parseInt(this.dataset.wk);
+      const val = parseFloat(this.value) || 0;
+      const key = rid + ':' + yr + ':' + wk;
+      CAP[key] = val;
+      DIRTY[key] = { resource_id: rid, year: yr, week: wk, fraction: val };
+      const res = RESOURCES.find(r => Number(r.id) === rid);
+      const max = Number(res?.max_fraction || 1);
+      const pct = max > 0 ? val / max : 0;
+      this.parentElement.className = val === 0 ? '' : pct > 1 ? 'c-over' : pct >= .8 ? 'c-warn' : 'c-ok';
+    });
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const all = Array.from(table.querySelectorAll('.cinput'));
+        const idx = all.indexOf(this);
+        if (idx + 1 < all.length) all[idx+1].focus();
+      }
     });
   });
+}
+
+function doSave() {
+  const entries = Object.values(DIRTY);
+  if (!entries.length) { alert('Aucune modification.'); return; }
+  apiJson('/api/projects/' + PID + '/capacity/bulk', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({entries})
+  }).then(d => {
+    DIRTY = {};
+    const btn = document.getElementById('btn-save');
+    const original = btn.textContent;
+    btn.textContent = (d.saved || entries.length) + ' cellule(s) sauvegardée(s)';
+    btn.style.background = 'var(--green)';
+    setTimeout(() => { btn.textContent = original; btn.style.background = ''; }, 2200);
+  }).catch(err => alert('Erreur sauvegarde : ' + err.message));
+}
+
+function doExport() {
+  const ws = Array.from({length:52}, (_,i)=>i+1);
+  const rows = [['Ressource','Nom','Max','Max h/sem'].concat(ws.map(w=>'S'+w)).concat(['Total'])];
+  RESOURCES.forEach(res => {
+    let tot = 0;
+    const vals = ws.map(w => {
+      const v = Number(CAP[res.id+':'+CY+':'+w] || 0);
+      tot += v;
+      return v > 0 ? v.toFixed(2) : '0';
+    });
+    rows.push([res.acronym, res.full_name || '', res.max_fraction, Math.round((res.max_fraction || 1)*40)+'h'].concat(vals).concat([tot.toFixed(2)]));
+  });
+  const csv = rows.map(r => r.map(csvCell).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'capacity_' + CY + '_{{ project.name }}'.replace(/[^a-z0-9]/gi,'_') + '.csv';
+  a.click();
+}
+
+function csvCell(v) { return String(v ?? '').includes(';') ? '"' + String(v).replaceAll('"','""') + '"' : String(v ?? ''); }
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }
+
+function refreshRoleDatalists() {
+  ['rdl','rdl-edit'].forEach(id => {
+    const dl = document.getElementById(id);
+    if (!dl) return;
+    dl.innerHTML = '';
+    Object.keys(ROLE_COLORS).sort().forEach(role => {
+      const opt = document.createElement('option'); opt.value = role; dl.appendChild(opt);
+    });
+  });
+}
+function applyRoleColor(role, colorInputId) {
+  const color = ROLE_COLORS[role];
+  const el = document.getElementById(colorInputId);
+  if (color && el) el.value = color;
+}
+function loadPalette() {
+  return apiJson('/api/role-colors').then(raw => {
+    ROLE_COLORS = {};
+    if (Array.isArray(raw)) raw.forEach(rc => { if (rc.role) ROLE_COLORS[rc.role] = rc.color; });
+    else if (raw && typeof raw === 'object') Object.keys(raw).forEach(k => { ROLE_COLORS[k] = typeof raw[k] === 'string' ? raw[k] : raw[k]?.color; });
+    refreshRoleDatalists();
+    renderPalette();
+  }).catch(() => { refreshRoleDatalists(); renderPalette(); });
+}
+function renderPalette() {
+  const list = document.getElementById('palette-list');
+  if (!list) return;
+  list.innerHTML = '';
+  Object.keys(ROLE_COLORS).sort().forEach(role => {
+    const color = ROLE_COLORS[role] || '#1E90FF';
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0;font-size:.78rem;';
+    div.innerHTML = '<span style="width:14px;height:14px;border-radius:3px;background:'+escapeAttr(color)+';display:inline-block;"></span>'+
+      '<span style="flex:1;color:var(--dim);">'+escapeHtml(role)+'</span>'+
+      '<input type="color" value="'+escapeAttr(color)+'" data-role="'+escapeAttr(role)+'" class="role-color-picker" style="width:26px;height:22px;padding:1px;border:1px solid var(--border);border-radius:3px;cursor:pointer;">'+
+      '<button class="del-role-btn" data-role="'+escapeAttr(role)+'" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.85rem;padding:0 2px;">&times;</button>';
+    list.appendChild(div);
+  });
+  list.querySelectorAll('.role-color-picker').forEach(inp => inp.addEventListener('change', function() {
+    apiJson('/api/role-colors/' + encodeURIComponent(this.dataset.role), {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({color:this.value})}).then(loadPalette);
+  }));
+  list.querySelectorAll('.del-role-btn').forEach(btn => btn.addEventListener('click', function() {
+    if (!confirm('Supprimer "' + this.dataset.role + '" de la palette ?')) return;
+    apiJson('/api/role-colors/' + encodeURIComponent(this.dataset.role), {method:'DELETE'}).then(loadPalette);
+  }));
+}
+
+function addResource() {
+  const acro = document.getElementById('r-acro').value.trim().toUpperCase();
+  if (!acro) { alert('Acronyme obligatoire'); return; }
+  const role = document.getElementById('r-role').value.trim();
+  const color = document.getElementById('r-color').value || ROLE_COLORS[role] || '#1E90FF';
+  apiJson('/api/projects/' + PID + '/resources', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      acronym: acro,
+      full_name: document.getElementById('r-name').value.trim(),
+      role: role,
+      max_fraction: parseFloat(document.getElementById('r-max').value) || 1.0,
+      color: ROLE_COLORS[role] || color,
+      is_external: document.getElementById('r-ext').value === '1'
+    })
+  }).then(() => location.reload()).catch(err => alert('Erreur ajout ressource : ' + err.message));
+}
+
+function openEditRes(resId) {
+  apiJson('/api/resources/' + resId).then(res => {
+    document.getElementById('er-id').value = res.id;
+    document.getElementById('er-acro').value = res.acronym || '';
+    document.getElementById('er-name').value = res.full_name || '';
+    document.getElementById('er-role').value = res.role || '';
+    document.getElementById('er-max').value = res.max_fraction || 1.0;
+    document.getElementById('er-ext').value = res.is_external ? '1' : '0';
+    document.getElementById('er-color').value = res.color || '#1E90FF';
+    document.getElementById('modal-edit-res').classList.add('open');
+  }).catch(err => alert('Erreur lecture ressource : ' + err.message));
+}
+function saveEditRes() {
+  const id = parseInt(document.getElementById('er-id').value);
+  const role = document.getElementById('er-role').value.trim();
+  const color = ROLE_COLORS[role] || document.getElementById('er-color').value || '#1E90FF';
+  if (!id) return;
+  apiJson('/api/resources/' + id, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      acronym: document.getElementById('er-acro').value.trim().toUpperCase(),
+      full_name: document.getElementById('er-name').value.trim(),
+      role: role,
+      max_fraction: parseFloat(document.getElementById('er-max').value) || 1.0,
+      is_external: document.getElementById('er-ext').value === '1' ? 1 : 0,
+      color: color
+    })
+  }).then(() => location.reload()).catch(err => alert('Erreur sauvegarde ressource : ' + err.message));
+}
+
+function loadCapImg(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    _capImg = { data:e.target.result.split(',')[1], mime:file.type, name:file.name };
+    document.getElementById('cap-img-el').src = e.target.result;
+    document.getElementById('cap-img-preview').style.display = 'block';
+    document.getElementById('cap-drop-lbl').style.display = 'none';
+    document.getElementById('cap-drop').style.borderColor = '#9C27B0';
+  };
+  reader.readAsDataURL(file);
+}
+function clearCapImg() {
+  _capImg = null;
+  document.getElementById('cap-img-preview').style.display = 'none';
+  document.getElementById('cap-drop-lbl').style.display = 'block';
+  document.getElementById('cap-img-input').value = '';
+  document.getElementById('cap-drop').style.borderColor = '';
+}
+function sendToCapacityAI() {
+  const text = document.getElementById('cap-ia-input').value.trim();
+  const hasImg = !!_capImg;
+  const hist = document.getElementById('cap-ia-hist');
+  if (!text && !hasImg) { alert('Entrez du texte ou déposez une image.'); return; }
+  hist.insertAdjacentHTML('beforeend','<div style="color:#1e90ff;margin-top:6px;font-size:.78rem;">'+(hasImg?'[Image] ':'')+escapeHtml(text)+'</div><div id="cap-load" style="color:#888;font-size:.75rem;">Groq analyse...</div>');
+  hist.scrollTop = hist.scrollHeight;
+  const payload = { language:'fr', text:text };
+  if (hasImg) { payload.image_data = _capImg.data; payload.image_mime = _capImg.mime; }
+  apiJson('/api/projects/' + PID + '/ai/capacity', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(data => {
+      document.getElementById('cap-load')?.remove();
+      if (data.error) { hist.insertAdjacentHTML('beforeend','<div style="color:#f44336;font-size:.75rem;">Erreur : '+escapeHtml(data.error)+'</div>'); return; }
+      const actions = data.actions || [];
+      actions.filter(a => a.type === 'message').forEach(m => hist.insertAdjacentHTML('beforeend','<div style="color:#4caf50;margin-top:4px;font-size:.78rem;">'+escapeHtml(m.text || '')+'</div>'));
+      const executed = actions.filter(a => a.type !== 'message');
+      if (executed.length) {
+        let html = '<div style="background:#1a1d27;border:1px solid #2a2d3e;border-radius:5px;padding:8px;margin-top:6px;font-size:.75rem;"><b style="color:#4caf50;">'+executed.length+' action(s) :</b><br>';
+        executed.forEach(a => html += '<div style="padding:2px 0;">'+(a.executed?'✅':'⚠️')+' '+escapeHtml(a.type + (a.acronym?' '+a.acronym:'') + (a.note?' ('+a.note+')':''))+'</div>');
+        html += '</div>'; hist.insertAdjacentHTML('beforeend', html);
+        if (executed.some(a => a.executed && ['create_resource','set_capacity'].includes(a.type))) setTimeout(() => location.reload(), 1600);
+      }
+      document.getElementById('cap-ia-input').value = '';
+      if (hasImg) clearCapImg();
+    })
+    .catch(err => { document.getElementById('cap-load')?.remove(); hist.insertAdjacentHTML('beforeend','<div style="color:#f44336;font-size:.75rem;">Erreur réseau : '+escapeHtml(err.message)+'</div>'); });
+}
+
+function bindEvents() {
+  document.getElementById('btn-save').addEventListener('click', doSave);
+  document.getElementById('btn-export').addEventListener('click', doExport);
+  document.getElementById('year-sel').addEventListener('change', function(){ loadCapacity(parseInt(this.value)); });
+  document.addEventListener('keydown', e => { if (e.ctrlKey && e.key.toLowerCase() === 's') { e.preventDefault(); doSave(); } });
+  document.getElementById('btn-add-res').addEventListener('click', addResource);
+  document.getElementById('r-role').addEventListener('input', function(){ applyRoleColor(this.value.trim(), 'r-color'); });
+  document.getElementById('er-role').addEventListener('input', function(){ applyRoleColor(this.value.trim(), 'er-color'); });
+  document.querySelectorAll('.del-res-btn').forEach(btn => btn.addEventListener('click', function(){ if(confirm('Supprimer cette ressource ?')) apiJson('/api/resources/'+this.dataset.id,{method:'DELETE'}).then(()=>location.reload()); }));
+  document.querySelectorAll('.res-edit-trigger').forEach(el => el.addEventListener('click', function(){ openEditRes(parseInt(this.dataset.id)); }));
+  document.getElementById('er-cancel').addEventListener('click', () => document.getElementById('modal-edit-res').classList.remove('open'));
+  document.getElementById('modal-edit-res').addEventListener('click', function(e){ if(e.target === this) this.classList.remove('open'); });
+  document.getElementById('er-save').addEventListener('click', saveEditRes);
+  document.getElementById('btn-reset-colors').addEventListener('click', function(){ if(confirm('Remettre les couleurs de toutes les ressources selon leur rôle ?')) apiJson('/api/projects/'+PID+'/resources/reset-colors',{method:'POST'}).then(()=>location.reload()); });
+  document.getElementById('btn-refresh-palette').addEventListener('click', loadPalette);
+  document.getElementById('btn-add-role').addEventListener('click', function(){
+    const role = document.getElementById('new-role').value.trim();
+    const color = document.getElementById('new-role-color').value || '#1E90FF';
+    if (!role) { alert('Nom du rôle obligatoire'); return; }
+    apiJson('/api/role-colors/' + encodeURIComponent(role), {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({color})}).then(() => { document.getElementById('new-role').value = ''; loadPalette(); });
+  });
+  document.getElementById('new-role').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-add-role').click(); });
+  document.getElementById('cap-ia-send').addEventListener('click', sendToCapacityAI);
+  document.getElementById('cap-ia-input').addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'Enter') sendToCapacityAI(); });
+  document.getElementById('cap-img-input').addEventListener('change', function(){ if(this.files?.[0]) loadCapImg(this.files[0]); });
+  document.getElementById('cap-drop').addEventListener('click', e => { if(e.target.id !== 'cap-img-clear') document.getElementById('cap-img-input').click(); });
+  document.getElementById('cap-img-clear').addEventListener('click', e => { e.stopPropagation(); clearCapImg(); });
+  ['dragover','drop'].forEach(evt => document.getElementById('cap-drop').addEventListener(evt, e => e.preventDefault()));
+  document.getElementById('cap-drop').addEventListener('drop', e => { if(e.dataTransfer.files?.[0]) loadCapImg(e.dataTransfer.files[0]); });
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items || [];
+    for (const item of items) if (item.type.startsWith('image/')) { loadCapImg(item.getAsFile()); break; }
+  });
+  const rl = document.getElementById('res-list');
+  if (rl && window.Sortable) Sortable.create(rl, { handle:'.res-handle', animation:150, onEnd:function(){
+    const ids = Array.from(rl.querySelectorAll('.res-item')).map(el => parseInt(el.dataset.id));
+    apiJson('/api/projects/'+PID+'/resources/reorder', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ordered_ids:ids})});
+    RESOURCES = ids.map(id => RESOURCES.find(r => Number(r.id) === id)).filter(Boolean);
+  }});
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  restoreAccordions();
+  bindEvents();
+  refreshRoleDatalists();
+  loadPalette();
+  loadCapacity(CY);
+  loadCurrentWeek();
 });
 </script>
 </body>

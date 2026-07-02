@@ -1,13 +1,14 @@
 """
-ProjectMind - Modeles de donnees SQLite.
+ProjectMind - Modeles de données SQLite.
 """
 import sqlite3
 from datetime import datetime, date
 from pathlib import Path
+from typing import Any
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "projectmind.db"
+DB_PATH = Path("data/projectmind.db")
 
-# ── Statuts disponibles ───────────────────────────────────────────────────────
+# ── Statuts disponibles ────────────────────────────────────────────────────────
 STATUSES = {
     "fr": ["En cours", "Réalisé", "A planifier", "Bloqué", "Annulé", "En retard", "En revue"],
     "en": ["In Progress", "Completed", "To Plan", "Blocked", "Cancelled", "Delayed", "In Review"],
@@ -30,6 +31,7 @@ STATUS_COLORS = {
     "In Review":   "#9C27B0",
 }
 
+# KPI couleurs
 KPI_COLORS = {
     "G": {"label": "Green",  "hex": "#92D050"},
     "Y": {"label": "Yellow", "hex": "#FFFF00"},
@@ -38,8 +40,12 @@ KPI_COLORS = {
 
 KPI_ITEMS = ["COST", "SCOPE", "SCHEDULE", "RESOURCES", "RISK", "TRANSITION"]
 
+ROLE_PALETTE = [
+    "#E74C3C", "#3498DB", "#27AE60", "#8E44AD",
+    "#F39C12", "#1ABC9C", "#D35400", "#2ECC71",
+    "#9B59B6", "#16A085", "#E67E22", "#7F8C8D",
+]
 
-# ── Connexion DB ──────────────────────────────────────────────────────────────
 
 def get_db() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -53,22 +59,22 @@ def init_db() -> None:
     conn = get_db()
     c = conn.cursor()
 
-    # ── projects ──────────────────────────────────────────────────────────────
+    # ── Projects ──────────────────────────────────────────────────────────────
     c.execute("""
         CREATE TABLE IF NOT EXISTS projects (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            name          TEXT NOT NULL,
-            description   TEXT,
-            language      TEXT DEFAULT 'fr',
-            go_live_date  TEXT,
-            ado_project   TEXT,
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            name        TEXT NOT NULL,
+            description TEXT,
+            language    TEXT DEFAULT 'fr',
+            go_live_date TEXT,
+            ado_project TEXT,
             ado_area_path TEXT,
-            created_at    TEXT DEFAULT (datetime('now')),
-            updated_at    TEXT DEFAULT (datetime('now'))
+            created_at  TEXT DEFAULT (datetime('now')),
+            updated_at  TEXT DEFAULT (datetime('now'))
         )
     """)
 
-    # ── project_kpis ──────────────────────────────────────────────────────────
+    # ── KPIs par projet ────────────────────────────────────────────────────────
     c.execute("""
         CREATE TABLE IF NOT EXISTS project_kpis (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,7 +87,7 @@ def init_db() -> None:
         )
     """)
 
-    # ── categories ────────────────────────────────────────────────────────────
+    # ── Categories (livrables) ─────────────────────────────────────────────────
     c.execute("""
         CREATE TABLE IF NOT EXISTS categories (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,30 +100,30 @@ def init_db() -> None:
         )
     """)
 
-    # ── tasks ─────────────────────────────────────────────────────────────────
+    # ── Tasks (tâches/activités) ───────────────────────────────────────────────
     c.execute("""
         CREATE TABLE IF NOT EXISTS tasks (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_id    INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-            category_id   INTEGER REFERENCES categories(id) ON DELETE SET NULL,
-            title         TEXT NOT NULL,
-            title_en      TEXT,
-            description   TEXT,
-            status        TEXT DEFAULT 'A planifier',
-            date_label    TEXT,
-            start_date    TEXT,
-            end_date      TEXT,
-            progress      INTEGER DEFAULT 0,
-            ado_item_id   INTEGER,
-            ado_project   TEXT,
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            category_id  INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+            title        TEXT NOT NULL,
+            title_en     TEXT,
+            description  TEXT,
+            status       TEXT DEFAULT 'A planifier',
+            date_label   TEXT,
+            start_date   TEXT,
+            end_date     TEXT,
+            progress     INTEGER DEFAULT 0,
+            ado_item_id  INTEGER,
+            ado_project  TEXT,
             ado_area_path TEXT,
-            sort_order    INTEGER DEFAULT 0,
-            created_at    TEXT DEFAULT (datetime('now')),
-            updated_at    TEXT DEFAULT (datetime('now'))
+            sort_order   INTEGER DEFAULT 0,
+            created_at   TEXT DEFAULT (datetime('now')),
+            updated_at   TEXT DEFAULT (datetime('now'))
         )
     """)
 
-    # ── milestones ────────────────────────────────────────────────────────────
+    # ── Milestones (jalons 4 semaines) ────────────────────────────────────────
     c.execute("""
         CREATE TABLE IF NOT EXISTS milestones (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,7 +136,7 @@ def init_db() -> None:
         )
     """)
 
-    # ── risks ─────────────────────────────────────────────────────────────────
+    # ── Risks / Issues ────────────────────────────────────────────────────────
     c.execute("""
         CREATE TABLE IF NOT EXISTS risks (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -143,35 +149,102 @@ def init_db() -> None:
         )
     """)
 
-    # ── weekly_notes ──────────────────────────────────────────────────────────
+    # ── Weekly notes ──────────────────────────────────────────────────────────
     c.execute("""
         CREATE TABLE IF NOT EXISTS weekly_notes (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-            week_date    TEXT DEFAULT (date('now')),
-            summary      TEXT,
-            achievements TEXT,
-            planned      TEXT,
-            watch_items  TEXT,
-            created_at   TEXT DEFAULT (datetime('now')),
-            UNIQUE(project_id, week_date)
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id      INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            week_date       TEXT DEFAULT (date('now')),
+            summary         TEXT,
+            achievements    TEXT,
+            planned         TEXT,
+            watch_items     TEXT,
+            created_at      TEXT DEFAULT (datetime('now'))
         )
     """)
+
+    # ── Migration : CREATE TABLE si elles n existent pas (safe pour DB existante) ──
+    # task_assignments
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS task_assignments (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id     INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+            resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+            hours       REAL    DEFAULT 0.0,
+            fraction    REAL    DEFAULT 0.0,
+            notes       TEXT    DEFAULT '',
+            UNIQUE(task_id, resource_id)
+        )
+    """)
+
+        # ── resources ──────────────────────────────────────────────────────────────
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS resources (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id    INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            acronym       TEXT NOT NULL,
+            full_name     TEXT,
+            role          TEXT,
+            max_fraction  REAL DEFAULT 1.0,
+            color         TEXT DEFAULT '#1E90FF',
+            is_external   INTEGER DEFAULT 0,
+            sort_order    INTEGER DEFAULT 0,
+            created_at    TEXT DEFAULT (datetime('now')),
+            UNIQUE(project_id, acronym)
+        )
+    """)
+
+    # ── capacity ───────────────────────────────────────────────────────────────
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS capacity (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            resource_id  INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+            year         INTEGER NOT NULL,
+            week         INTEGER NOT NULL,
+            fraction     REAL DEFAULT 0,
+            UNIQUE(project_id, resource_id, year, week)
+        )
+    """)
+
+    # ── capacity planning ─────────────────────────────────────────────────────
+    c.execute("""
+        DROP TABLE IF EXISTS resource_capacity
+    """)
+
+
+    # ── role colors ───────────────────────────────────────────────────────────
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS role_colors (
+            role   TEXT PRIMARY KEY,
+            color  TEXT NOT NULL
+        )
+    """)
+
+    # ── Migration : ajouter colonnes si elles n existent pas (ALTER TABLE) ────
+    _alter_migrations = [
+        "ALTER TABLE resources ADD COLUMN role TEXT DEFAULT ''",
+    ]
+    for _m in _alter_migrations:
+        try:
+            conn.execute(_m)
+        except Exception:
+            pass  # Colonne deja presente
 
     conn.commit()
     conn.close()
 
 
-# ── CRUD projets ──────────────────────────────────────────────────────────────
+# ── CRUD helpers ──────────────────────────────────────────────────────────────
 
-def get_all_projects() -> list:
+def get_all_projects() -> list[dict]:
     conn = get_db()
     rows = conn.execute("SELECT * FROM projects ORDER BY created_at DESC").fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 
-def get_project(project_id: int):
+def get_project(project_id: int) -> dict | None:
     conn = get_db()
     row = conn.execute("SELECT * FROM projects WHERE id=?", (project_id,)).fetchone()
     conn.close()
@@ -188,29 +261,18 @@ def create_project(name: str, description: str = "", language: str = "fr",
         VALUES (?, ?, ?, ?, ?, ?)
     """, (name, description, language, go_live_date, ado_project, ado_area_path))
     project_id = c.lastrowid
+    # Initialiser les KPIs par défaut
     for kpi in KPI_ITEMS:
-        c.execute(
-            "INSERT OR IGNORE INTO project_kpis (project_id, kpi_name) VALUES (?, ?)",
-            (project_id, kpi)
-        )
+        c.execute("""
+            INSERT OR IGNORE INTO project_kpis (project_id, kpi_name)
+            VALUES (?, ?)
+        """, (project_id, kpi))
     conn.commit()
     conn.close()
     return project_id
 
 
-def delete_project(project_id: int) -> bool:
-    conn = get_db()
-    c = conn.cursor()
-    c.execute("DELETE FROM projects WHERE id=?", (project_id,))
-    deleted = c.rowcount > 0
-    conn.commit()
-    conn.close()
-    return deleted
-
-
-# ── CRUD catégories ───────────────────────────────────────────────────────────
-
-def get_categories(project_id: int) -> list:
+def get_categories(project_id: int) -> list[dict]:
     conn = get_db()
     rows = conn.execute(
         "SELECT * FROM categories WHERE project_id=? ORDER BY sort_order, id",
@@ -224,19 +286,29 @@ def create_category(project_id: int, name: str, name_en: str = "",
                     color: str = "#041E42") -> int:
     conn = get_db()
     c = conn.cursor()
-    c.execute(
-        "INSERT INTO categories (project_id, name, name_en, color) VALUES (?, ?, ?, ?)",
-        (project_id, name, name_en, color)
-    )
+    c.execute("""
+        INSERT INTO categories (project_id, name, name_en, color)
+        VALUES (?, ?, ?, ?)
+    """, (project_id, name, name_en, color))
     cat_id = c.lastrowid
     conn.commit()
     conn.close()
     return cat_id
 
+def get_task(task_id: int) -> dict | None:
+    """Retourne une tâche par son identifiant."""
+    conn = get_db()
 
-# ── CRUD tâches ───────────────────────────────────────────────────────────────
+    row = conn.execute(
+        "SELECT * FROM tasks WHERE id=?",
+        (task_id,)
+    ).fetchone()
 
-def get_tasks(project_id: int, category_id: int = None) -> list:
+    conn.close()
+
+    return dict(row) if row else None
+
+def get_tasks(project_id: int, category_id: int | None = None) -> list[dict]:
     conn = get_db()
     if category_id:
         rows = conn.execute(
@@ -252,10 +324,10 @@ def get_tasks(project_id: int, category_id: int = None) -> list:
     return [dict(r) for r in rows]
 
 
-def create_task(project_id: int, title: str, category_id: int = None,
+def create_task(project_id: int, title: str, category_id: int | None = None,
                 status: str = "A planifier", date_label: str = "",
                 start_date: str = "", end_date: str = "",
-                description: str = "", ado_item_id: int = None) -> int:
+                description: str = "", ado_item_id: int | None = None) -> int:
     conn = get_db()
     c = conn.cursor()
     c.execute("""
@@ -275,28 +347,16 @@ def update_task(task_id: int, **kwargs) -> None:
     if not kwargs:
         return
     kwargs["updated_at"] = datetime.now().isoformat()
-    sets = ", ".join(f"{k}=?" for k in kwargs)
-    vals = list(kwargs.values()) + [task_id]
-    conn = get_db()
+    sets  = ", ".join(f"{k}=?" for k in kwargs)
+    vals  = list(kwargs.values()) + [task_id]
+    conn  = get_db()
     conn.execute(f"UPDATE tasks SET {sets} WHERE id=?", vals)
     conn.commit()
     conn.close()
 
 
-def delete_task(task_id: int) -> bool:
-    conn = get_db()
-    c = conn.cursor()
-    c.execute("DELETE FROM tasks WHERE id=?", (task_id,))
-    deleted = c.rowcount > 0
-    conn.commit()
-    conn.close()
-    return deleted
-
-
-# ── CRUD KPIs ─────────────────────────────────────────────────────────────────
-
-def get_kpis(project_id: int) -> list:
-    """Retourne UN seul enregistrement par KPI (le plus récent)."""
+def get_kpis(project_id: int) -> list[dict]:
+    """Retourne UN seul enregistrement par KPI (le plus recent)."""
     conn = get_db()
     rows = conn.execute("""
         SELECT * FROM project_kpis
@@ -309,9 +369,7 @@ def get_kpis(project_id: int) -> list:
     return [dict(r) for r in rows]
 
 
-# ── CRUD weekly notes ─────────────────────────────────────────────────────────
-
-def get_weekly_note(project_id: int):
+def get_weekly_note(project_id: int) -> dict | None:
     conn = get_db()
     row = conn.execute(
         "SELECT * FROM weekly_notes WHERE project_id=? ORDER BY week_date DESC LIMIT 1",
@@ -321,9 +379,7 @@ def get_weekly_note(project_id: int):
     return dict(row) if row else None
 
 
-# ── CRUD jalons ───────────────────────────────────────────────────────────────
-
-def get_milestones(project_id: int) -> list:
+def get_milestones(project_id: int) -> list[dict]:
     conn = get_db()
     rows = conn.execute(
         "SELECT * FROM milestones WHERE project_id=? ORDER BY sort_order, id",
@@ -333,33 +389,7 @@ def get_milestones(project_id: int) -> list:
     return [dict(r) for r in rows]
 
 
-def create_milestone(project_id: int, title: str, baseline_date: str = "",
-                     current_date: str = "", status: str = "In progress") -> int:
-    conn = get_db()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO milestones (project_id, title, baseline_date, current_date, status) VALUES (?, ?, ?, ?, ?)",
-        (project_id, title, baseline_date, current_date, status)
-    )
-    mid = c.lastrowid
-    conn.commit()
-    conn.close()
-    return mid
-
-
-def delete_milestone(milestone_id: int) -> bool:
-    conn = get_db()
-    c = conn.cursor()
-    c.execute("DELETE FROM milestones WHERE id=?", (milestone_id,))
-    deleted = c.rowcount > 0
-    conn.commit()
-    conn.close()
-    return deleted
-
-
-# ── CRUD risques ──────────────────────────────────────────────────────────────
-
-def get_risks(project_id: int) -> list:
+def get_risks(project_id: int) -> list[dict]:
     conn = get_db()
     rows = conn.execute(
         "SELECT * FROM risks WHERE project_id=? AND status='Open' ORDER BY id",
@@ -369,59 +399,312 @@ def get_risks(project_id: int) -> list:
     return [dict(r) for r in rows]
 
 
-def create_risk(project_id: int, description: str, owner: str = "",
-                risk_type: str = "I") -> int:
-    conn = get_db()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO risks (project_id, risk_type, description, owner) VALUES (?, ?, ?, ?)",
-        (project_id, risk_type, description, owner)
-    )
-    rid = c.lastrowid
-    conn.commit()
-    conn.close()
-    return rid
+# ── Fiscal Year helpers ────────────────────────────────────────────────────────
 
-
-def delete_risk(risk_id: int) -> bool:
+def delete_project(project_id: int) -> bool:
+    """Supprime un projet et toutes ses donnees (CASCADE)."""
     conn = get_db()
-    c = conn.cursor()
-    c.execute("DELETE FROM risks WHERE id=?", (risk_id,))
+    c    = conn.cursor()
+    c.execute("DELETE FROM projects WHERE id=?", (project_id,))
     deleted = c.rowcount > 0
     conn.commit()
     conn.close()
     return deleted
 
 
-# ── Fiscal Year helpers ───────────────────────────────────────────────────────
+def get_task_assignments(task_id: int) -> list[dict]:
+    """Retourne les ressources assignées à une tâche."""
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT ta.*, r.acronym, r.full_name, r.color, r.max_fraction
+        FROM task_assignments ta
+        JOIN resources r ON ta.resource_id = r.id
+        WHERE ta.task_id=?
+        ORDER BY r.acronym
+    """, (task_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
-def get_fiscal_year(d: date = None) -> str:
+
+def get_project_assignments(project_id: int) -> list[dict]:
+    """Retourne toutes les assignations d'un projet."""
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT ta.*, r.acronym, r.full_name, r.color, t.title as task_title,
+               t.start_date, t.end_date, t.progress
+        FROM task_assignments ta
+        JOIN resources r ON ta.resource_id = r.id
+        JOIN tasks t ON ta.task_id = t.id
+        WHERE t.project_id=?
+        ORDER BY r.acronym, t.id
+    """, (project_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def upsert_task_assignment(task_id: int, resource_id: int,
+                           hours: float = 0.0, fraction: float = 0.0,
+                           notes: str = "") -> int:
+    """Crée ou met à jour une assignation ressource ↔ tâche."""
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("""
+        INSERT INTO task_assignments (task_id, resource_id, hours, fraction, notes)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(task_id, resource_id)
+        DO UPDATE SET hours=excluded.hours,
+                      fraction=excluded.fraction,
+                      notes=excluded.notes
+    """, (task_id, resource_id, hours, fraction, notes))
+    aid = c.lastrowid
+    conn.commit()
+    conn.close()
+    return aid
+
+
+def delete_task_assignment(task_id: int, resource_id: int) -> bool:
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("DELETE FROM task_assignments WHERE task_id=? AND resource_id=?",
+              (task_id, resource_id))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
+
+
+def compute_task_end_date(task_id: int) -> str | None:
+    """
+    Calcule la date de fin estimée d'une tâche
+    basée sur les assignations de ressources et le start_date.
+    Logique : total_hours / (sum des fractions * 40h/sem) → nb semaines.
+    """
+    from datetime import date, timedelta
+    conn  = get_db()
+    task  = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    if not task or not task["start_date"]:
+        conn.close()
+        return None
+
+    assigns = conn.execute("""
+        SELECT ta.hours, ta.fraction, r.max_fraction
+        FROM task_assignments ta
+        JOIN resources r ON ta.resource_id = r.id
+        WHERE ta.task_id=?
+    """, (task_id,)).fetchall()
+    conn.close()
+
+    if not assigns:
+        return None
+
+    # Heures totales nécessaires
+    total_hours = sum(a["hours"] for a in assigns if a["hours"] > 0)
+    if total_hours == 0:
+        return None
+
+    # Capacité hebdomadaire totale des ressources assignées (en heures/sem)
+    weekly_capacity = sum(
+        (a["fraction"] if a["fraction"] > 0 else a["max_fraction"]) * 40
+        for a in assigns
+    )
+    if weekly_capacity == 0:
+        return None
+
+    weeks_needed = total_hours / weekly_capacity
+    try:
+        start = date.fromisoformat(task["start_date"])
+        end   = start + timedelta(weeks=weeks_needed)
+        return end.isoformat()
+    except Exception:
+        return None
+
+
+def get_resources(project_id: int) -> list[dict]:
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM resources WHERE project_id=? ORDER BY sort_order, id",
+        (project_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def color_for_role(role: str) -> str:
+
+    role_colors = get_role_colors()
+    role = (role or "").strip()
+    if not role:
+        return "#1E90FF"
+    if role in role_colors:
+        return role_colors[role]
+
+    color = ROLE_PALETTE[len(role_colors) % len(ROLE_PALETTE)]
+    upsert_role_color(role, color)
+    role_colors[role] = color
+    return color
+
+def create_resource(project_id: int, acronym: str, full_name: str = "",
+                    role: str = "", is_external: bool = False,
+                    max_fraction: float = 1.0, color: str | None = None) -> int:
+    if not color:
+        color = color_for_role(role)
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("""
+        INSERT INTO resources
+        (project_id, acronym, full_name, role, is_external, max_fraction, color)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (project_id, acronym, full_name, role, int(is_external), max_fraction, color))
+    rid = c.lastrowid
+    conn.commit()
+    conn.close()
+    return rid
+
+
+def update_resource(resource_id: int, **kwargs) -> None:
+    if not kwargs:
+        return
+    sets = ", ".join(f"{k}=?" for k in kwargs)
+    vals = list(kwargs.values()) + [resource_id]
+    conn = get_db()
+    conn.execute(f"UPDATE resources SET {sets} WHERE id=?", vals)
+    conn.commit()
+    conn.close()
+
+
+def delete_resource(resource_id: int) -> bool:
+    conn = get_db()
+    c    = conn.cursor()
+    c.execute("DELETE FROM resources WHERE id=?", (resource_id,))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
+
+
+def reorder_resources(project_id: int, ordered_ids: list[int]) -> None:
+    conn = get_db()
+    for idx, rid in enumerate(ordered_ids):
+        conn.execute(
+            "UPDATE resources SET sort_order=? WHERE id=? AND project_id=?",
+            (idx, rid, project_id)
+        )
+    conn.commit()
+    conn.close()
+
+
+def get_capacity(project_id: int, year: int | None = None) -> list[dict]:
+    conn = get_db()
+    if year:
+        rows = conn.execute("""
+            SELECT c.*, r.acronym, r.full_name, r.max_fraction, r.color
+            FROM capacity c
+            JOIN resources r ON c.resource_id = r.id
+            WHERE c.project_id=? AND c.year=?
+            ORDER BY r.sort_order, r.id, c.week
+        """, (project_id, year)).fetchall()
+    else:
+        rows = conn.execute("""
+            SELECT c.*, r.acronym, r.full_name, r.max_fraction, r.color
+            FROM capacity c
+            JOIN resources r ON c.resource_id = r.id
+            WHERE c.project_id=?
+            ORDER BY r.sort_order, r.id, c.year, c.week
+        """, (project_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def upsert_capacity(project_id: int, resource_id: int, year: int, week: int,
+                    fraction: float) -> None:
+    """Insère ou met à jour une cellule capacity."""
+    conn = get_db()
+    # Utiliser INSERT OR REPLACE pour compatibilité SQLite
+    conn.execute("""
+        INSERT INTO capacity (project_id, resource_id, year, week, fraction)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(project_id, resource_id, year, week)
+        DO UPDATE SET fraction=excluded.fraction
+    """, (project_id, resource_id, year, week, fraction))
+    conn.commit()
+    conn.close()
+
+
+def get_capacity_matrix(project_id: int, year: int) -> dict:
+    """
+    Retourne matrix[str(resource_id)][week] = fraction
+    pour affichage dans le tableau capacity.
+    """
+    rows      = get_capacity(project_id, year)
+    resources = get_resources(project_id)
+    matrix: dict[str, dict[int, float]] = {}
+
+    for row in rows:
+        rid  = str(row["resource_id"])
+        week = row["week"]
+        frac = row["fraction"]
+        if rid not in matrix:
+            matrix[rid] = {}
+        matrix[rid][week] = matrix[rid].get(week, 0.0) + frac
+
+    return {
+        "matrix":    matrix,
+        "resources": resources,
+    }
+
+
+def get_fiscal_year(d: date | None = None) -> str:
     """Retourne le Fiscal Year pour une date (ex: FY27)."""
     if d is None:
         d = date.today()
-    fy = d.year + 1 if d.month >= 3 else d.year
+    # FY commence le 1er mars
+    if d.month >= 3:
+        fy = d.year + 1
+    else:
+        fy = d.year
     return f"FY{str(fy)[2:]}"
 
 
-def get_fiscal_quarter(d: date = None) -> str:
-    """Retourne le quarter fiscal (ex: FY27-Q2)."""
+def get_fiscal_quarter(d: date | None = None) -> str:
+    """Retourne le quarter fiscal (ex: FY27-Q1)."""
     if d is None:
         d = date.today()
     fy = get_fiscal_year(d)
-    if d.month in (3, 4, 5):
+    month = d.month
+    # Q1: mars-mai, Q2: juin-août, Q3: sept-nov, Q4: déc-fév
+    if month in (3, 4, 5):
         q = "Q1"
-    elif d.month in (6, 7, 8):
+    elif month in (6, 7, 8):
         q = "Q2"
-    elif d.month in (9, 10, 11):
+    elif month in (9, 10, 11):
         q = "Q3"
     else:
         q = "Q4"
     return f"{fy}-{q}"
 
+def get_role_colors() -> dict:
+    conn = get_db()
+    rows = conn.execute("SELECT role, color FROM role_colors ORDER BY role").fetchall()
+    conn.close()
+    return {r["role"]: r["color"] for r in rows}
 
-# Auto-init: garantit que les tables existent au chargement du module
-try:
-    init_db()
-except Exception as _e:
-    import logging as _logging
-    _logging.getLogger(__name__).warning("init_db auto: %s", _e)
+
+def upsert_role_color(role: str, color: str) -> None:
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO role_colors (role, color)
+        VALUES (?, ?)
+        ON CONFLICT(role)
+        DO UPDATE SET color=excluded.color
+    """, (role, color))
+    conn.commit()
+    conn.close()
+
+
+def delete_role_color(role: str) -> bool:
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("DELETE FROM role_colors WHERE role=?", (role,))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
